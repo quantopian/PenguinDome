@@ -23,7 +23,7 @@ do_crontab = get_bool(prompt, not cron_exists)
 if do_crontab:
     with NamedTemporaryFile() as temp_cron_file:
         temp_cron_file.write(dedent('''\
-            * * * * * {}/bin/client-cron
+            * * * * * root {}/bin/client-cron
         '''.format(top_dir)))
         temp_cron_file.flush()
         shutil.copy(temp_cron_file.name, cron_file)
