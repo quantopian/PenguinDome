@@ -17,7 +17,7 @@ def check_stamp(path, interval):
         modified = os.stat(path).st_mtime
     except:
         return True
-    return time.time() - modified > interval - 1 * 60
+    return time.time() - modified > (interval - 1) * 60
 
 
 def update_stamp(path):
