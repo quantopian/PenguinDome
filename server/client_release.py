@@ -30,7 +30,7 @@ try:
     release_file_path = os.path.join(staging_dir, release_file)
     os.makedirs(os.path.dirname(release_file_path))
     open(release_file_path, 'w').write(str(release) + '\n')
-    subprocess.check_output(os.path.join('server', 'sign.py'))
+    subprocess.check_output(os.path.join('bin', 'sign'))
     sign_file(release_file, top_dir=staging_dir)
     if not os.path.exists(releases_dir):
         os.makedirs(releases_dir)

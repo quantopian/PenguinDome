@@ -148,7 +148,7 @@ def main():
         changed = True
 
     if changed:
-        subprocess.check_output(os.path.join('client', 'verify.py'))
+        subprocess.check_output(os.path.join('bin', 'verify'))
 
 
 def recursive_list(top_dir):

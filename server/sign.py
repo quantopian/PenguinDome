@@ -22,7 +22,7 @@ for file in release_files_iter():
     sign_file(file)
 
 try:
-    subprocess.check_output((os.path.join('client', 'verify.py')),
+    subprocess.check_output(('python', os.path.join('client', 'verify.py')),
                             stderr=subprocess.STDOUT)
 except:
     sys.exit('Verify failed, try running {} again'.format(sys.argv[0]))
