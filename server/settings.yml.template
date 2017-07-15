@@ -9,13 +9,14 @@
 # If it is a mapping/dict, then the keys are port numbers and the values are
 # port-specific settings which override the global settings. Currently
 # supported port-specific settings are "threaded" to indicate whether the
-# server process listening on this port should be threaded, and "deprecated" to
-# indicate whether this port is deprecated. If a client connects to a
-# deprecated port, then it's logged as such an open issue for the client is
-# created in the database. In this way you can transition the server from one
-# port to another and easily determine which clients haven't yet been updated
-# to use the new port, before you turn it off. For example, to transition from
-# port 80 to 8080, you could do:
+# server process listening on this port should be threaded, "ssl" as described
+# below for enabling SSL on a port, and "deprecated" to indicate whether this
+# port is deprecated. If a client connects to a deprecated port, then it's
+# logged as such an open issue for the client is created in the database. In
+# this way you can transition the server from one port to another and easily
+# determine which clients haven't yet been updated to use the new port, before
+# you turn it off. For example, to transition from port 80 to 8080, you could
+# do:
 #
 # port:
 #   80: {deprecated: true}
@@ -36,4 +37,11 @@ logging:
 audit_cron:
   enabled: [default no]
   email: [email address to receive the audit output]
-
+#
+# If you want the server port to be SSL, specify the certificate and key like
+# this. You can also hang this configuration off a single port as described
+# above when the server is listening to multiple ports.
+#
+ssl:
+  certificate: [path to certificate file]
+  key: [path to private key file]

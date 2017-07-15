@@ -262,8 +262,22 @@ def get_port_setting(port, setting, default):
 
 def startServer(port):
     app.config['deprecated_port'] = get_port_setting(port, 'deprecated', False)
-    app.run(host='0.0.0.0', port=port,
-            threaded=get_port_setting(port, 'threaded', True))
+
+    kwargs = {
+        'host': '0.0.0.0',
+        'port': port,
+        'threaded': get_port_setting(port, 'threaded', True),
+    }
+
+    ssl_certificate = get_port_setting(port, 'ssl:certificate', None)
+    ssl_key = get_port_setting(port, 'ssl:key', None)
+    if bool(ssl_certificate) + bool(ssl_key) == 1:
+        raise Exception('You must specify both certificate and key for SSL!')
+
+    if ssl_certificate:
+        kwargs['ssl_context'] = (ssl_certificate, ssl_key)
+
+    app.run(**kwargs)
 
 
 def main():
