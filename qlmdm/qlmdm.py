@@ -244,4 +244,5 @@ def get_logger(settings, name):
     except:
         level = None
     level = logbook.__dict__[level.upper()]
+    logbook.compat.redirect_logging()
     return logbook.Logger('qlmdm-' + name, level=level)
