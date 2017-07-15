@@ -40,7 +40,6 @@ def main():
         log.info('Renerating all signatures')
         shutil.rmtree(signatures_dir, ignore_errors=True)
     elif os.path.exists(signatures_dir):
-        strip = len(signatures_dir) + 1
         for dirpath, dirnames, filenames in os.walk(signatures_dir):
             for f in filenames:
                 old_signatures.add(os.path.join(dirpath, f))
