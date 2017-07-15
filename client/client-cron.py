@@ -29,12 +29,12 @@ client_settings = get_client_settings()
 log = get_logger(client_settings, 'client-cron')
 
 try:
-    collect_internal = client_settings['schedule']['collect_interval']
+    collect_interval = client_settings['schedule']['collect_interval']
 except:
     collect_interval = 5
 
 try:
-    submit_internal = client_settings['schedule']['submit_interval']
+    submit_interval = client_settings['schedule']['submit_interval']
 except:
     submit_interval = 1
 
