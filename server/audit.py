@@ -115,7 +115,7 @@ def main():
             except:
                 grace_threshold = now
             alert_ok = (args.ignore_recent_alerts or
-                        issue['opened_at'] < alert_threshold)
+                        issue['alerted_at'] < alert_threshold)
             grace_ok = (args.ignore_grace_period or
                         issue['opened_at'] < grace_threshold)
             if alert_ok and grace_ok:
