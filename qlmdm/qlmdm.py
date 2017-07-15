@@ -1,3 +1,4 @@
+from collections import defaultdict
 import datetime
 from base64 import b64encode
 import json
@@ -246,3 +247,52 @@ def get_logger(settings, name):
     level = logbook.__dict__[level.upper()]
     logbook.compat.redirect_logging()
     return logbook.Logger('qlmdm-' + name, level=level)
+
+
+def open_issue(hostname, issue_name):
+    """Opens an issue for the specified hostname if there isn't one"""
+    db = get_db()
+    existing = db.issues.find_one({'hostname': hostname,
+                                   'name': issue_name,
+                                   'closed_at': {'$exists': False}})
+    if not existing:
+        db.issues.insert_one({'hostname': hostname,
+                              'name': issue_name,
+                              'opened_at': datetime.datetime.utcnow()})
+
+
+def close_issue(hostname, issue_name):
+    """Closes any open issues for the specified host and issue name"""
+    db = get_db()
+    db.issues.update({'hostname': hostname,
+                      'name': issue_name,
+                      'closed_at': {'$exists': False}},
+                     {'$set': {'closed_at': datetime.datetime.utcnow()}})
+
+
+def get_open_issues(primary_key='host', hostname=None, issue_name=None):
+    """Returns a dictionary of matching open issues
+
+    You can specify 'host' or 'issue' as the primary key. The secondary key is
+    whichever one you don't specify."""
+
+    if primary_key == 'host':
+        primary_key = 'hostname'
+        secondary_key = 'name'
+    elif primary_key == 'issue':
+        primary_key = 'name'
+        secondary_key = 'hostname'
+    else:
+        raise Exception('Unrecognized primary key {}'.format(primary_key))
+
+    issues = defaultdict(dict)
+    db = get_db()
+    spec = {'closed_at': {'$exists': False}}
+    if hostname:
+        spec['hostname'] = hostname
+    if issue_name:
+        spec['name'] = issue_name
+    for issue in db.issues.find(spec):
+        issues[issue[primary_key]][issue[secondary_key]] = issue
+
+    return dict(issues)
