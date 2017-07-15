@@ -308,7 +308,7 @@ if cron_enabled:
             temp_cron_file.write(dedent('''\
                 MAILTO={email}
                 * * * * * root {top_dir}/bin/audit
-            '''.format(email=audit_email, top_dir=top_dir)))
+            '''.format(email=email, top_dir=top_dir)))
             temp_cron_file.flush()
             os.chmod(temp_cron_file.name, 0644)
             shutil.copy(temp_cron_file.name, cron_file)
