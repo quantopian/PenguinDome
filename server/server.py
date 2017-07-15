@@ -6,6 +6,7 @@ import dateutil.parser
 from flask import Flask, request
 from functools import wraps
 import json
+from multiprocessing import Process
 import os
 import subprocess
 import tempfile
@@ -17,6 +18,8 @@ from qlmdm import (
     get_server_settings,
     get_db,
     get_logger,
+    open_issue,
+    close_issue,
 )
 
 log = get_logger(get_server_settings(), 'server')
@@ -25,6 +28,25 @@ os.chdir(top_dir)
 set_gpg('server')
 
 app = Flask(__name__)
+
+
+def log_deprecated_port(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if app.config['deprecated_port']:
+            try:
+                hostname = json.loads(request.form['data'])['hostname']
+            except:
+                log.error('Failed to parse request data')
+                log.warn('Host {} connected to deprecated port',
+                         request.remote_addr)
+            else:
+                log.warn('Host {} connected to deprecated port', hostname)
+                open_issue(hostname, 'deprecated-port')
+        else:
+            close_issue(hostname, 'deprecated-port')
+        return f(*args, **kwargs)
+    return wrapper
 
 
 def verify_signature(f):
@@ -105,6 +127,7 @@ def dict_changes(old, new, prefix=None, changes=None):
 
 @app.route('/qlmdm/v1/submit', methods=('POST',))
 @verify_signature
+@log_deprecated_port
 def submit():
     db = get_db()
     which = []
@@ -147,6 +170,7 @@ def submit():
 
 @app.route('/qlmdm/v1/update', methods=('POST',))
 @verify_signature
+@log_deprecated_port
 def update():
     db = get_db()
     data = json.loads(request.form['data'])
@@ -187,6 +211,7 @@ def update():
 
 @app.route('/qlmdm/v1/acknowledge_patch', methods=('POST',))
 @verify_signature
+@log_deprecated_port
 def acknowledge_patch():
     db = get_db()
     data = json.loads(request.form['data'])
@@ -211,13 +236,59 @@ def datetimeify(d):
                 pass
 
 
+def get_setting(settings, setting, default):
+    """Get a possibly recursive setting from a dictionary
+
+    "settings" is a dictionary. "setting" is a colon-separated list of keys.
+    Recurses through "settings" looking for the specified setting, and returns
+    the specified default if it isn't there.
+    """
+    for key in setting.split(':'):
+        try:
+            settings = settings[key]
+        except:
+            return default
+    return settings
+
+
+def get_port_setting(port, setting, default):
+    global_setting = get_setting(server_settings, setting, default)
+    if 'port' not in server_settings or \
+       isinstance(server_settings['port'], int) or \
+       isinstance(server_settings['port'], list):
+        return global_setting
+    return get_setting(server_settings['port'][port], setting, global_setting)
+
+
+def startServer(port):
+    app.config['deprecated_port'] = get_port_setting(port, 'deprecated', False)
+    app.run(host='0.0.0.0', port=port,
+            threaded=get_port_setting(port, 'threaded', True))
+
+
 def main():
     global server_settings
 
     server_settings = get_server_settings()
 
-    app.run(host='0.0.0.0', port=server_settings.get('port', 80),
-            threaded=server_settings.get('threaded', True))
+    ports = None
+    port = server_settings.get('port', 80)
+    if isinstance(port, list):
+        ports = port
+    elif isinstance(port, dict):
+        ports = port.keys()
+
+    if ports:
+        children = []
+        for port in ports:
+            p = Process(target=startServer, args=(port,))
+            p.daemon = True
+            p.start()
+            children.append(p)
+        for p in children:
+            p.join()
+    else:
+        startServer(port)
 
 
 if __name__ == '__main__':
