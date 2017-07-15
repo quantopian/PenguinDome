@@ -253,6 +253,7 @@ if do_service:
             WantedBy=multi-user.target
         '''.format(server_exe=os.path.join(top_dir, 'bin', 'server'))))
         temp_service_file.flush()
+        os.chmod(temp_service_file.name, 0644)
         shutil.copy(temp_service_file.name, service_file)
     subprocess.check_output(('systemctl', 'daemon-reload'),
                             stderr=subprocess.STDOUT)
