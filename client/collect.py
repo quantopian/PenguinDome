@@ -65,6 +65,7 @@ def run_dir(dir_name, parse_output=True, delete_after_success=False,
                     stderr=stderr_file.fileno())
             except subprocess.CalledProcessError as e:
                 log.exception('Failed to execute {}', run_path)
+                log.debug('Output of failed script:\n{}', e.output)
                 if submit_failures:
                     stderr_file.seek(0)
                     results[run_name] = {
