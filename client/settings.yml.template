@@ -1,0 +1,9 @@
+server_url: [http[s]://hostname[:port], leave off the trailing slash]
+geolocation_api_key: [if you want location tracking, see https://developers.google.com/maps/documentation/geolocation/intro]
+schedule:
+  collect_interval: [how often to collect data in minutes, default 5]
+  submit_interval: [how often to attempt to submit collected data, default 1]
+logging:
+  handler: [any Logbook *Handler, defaults to stderr]
+  level: [log level name, optional, defaults to debug]
+  facility: [facility to use with SyslogHandler, defaults to user]

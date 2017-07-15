@@ -1,0 +1,16 @@
+port: [server port, optional, defaults to 80]
+threaded: [whether to run multithreaded server, optional, defaults to true]
+database:
+  host: [either a single host[:port] or a list, optional, defaults to localhost:27017]
+  replicaset: [replicaset name, optional]
+  name: [MongoDB database name, optional, defaults to "qlmdm"]
+  username: [username to authenticate to database, optional]
+  password: [password to authenticate to database, required if username specified]
+logging:
+  handler: [any Logbook *Handler, defaults to stderr]
+  level: [log level name, optional, defaults to debug]
+  facility: [facility to use with SyslogHandler, defaults to user]
+audit_cron:
+  enabled: [default no]
+  email: [email address to receive the audit output]
+

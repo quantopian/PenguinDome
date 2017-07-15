@@ -1,0 +1,10 @@
+*.pyc
+*~
+.#*
+bin
+client/keyring
+client/settings.yml
+server/keyring
+server/settings.yml
+signatures
+var
