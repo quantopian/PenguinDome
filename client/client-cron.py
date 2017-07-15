@@ -17,6 +17,7 @@ def check_stamp(path, interval):
         modified = os.stat(path).st_mtime
     except:
         return True
+    # This is called once per minute, so we're going to round up.
     return time.time() - modified > (interval - 1) * 60
 
 
@@ -40,8 +41,6 @@ except:
 
 collect_stamp_file = os.path.join(var_dir, 'collect-stamp')
 submit_stamp_file = os.path.join(var_dir, 'submit-stamp')
-
-# This is called once per minute, so we're going to round up.
 
 do_collect = check_stamp(collect_stamp_file, collect_interval)
 do_submit = do_collect or check_stamp(submit_stamp_file, submit_interval)
