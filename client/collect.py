@@ -125,7 +125,7 @@ def main():
                                       delete_after_success=True,
                                       submit_failures=True)
 
-    if not (results.get('plugins'), False or results.get('commands', False)):
+    if not (results.get('plugins', False) or results.get('commands', False)):
         return
 
     if not os.path.exists(collected_dir):
