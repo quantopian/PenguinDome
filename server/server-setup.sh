@@ -20,6 +20,7 @@ done
 
 pip install -q -r server/requirements.txt -c server/constraints.txt
 
+mkdir -p bin
 for file in server/*.py; do
     tail=${file##*/}
     if [ $tail = "initialize.py" ]; then

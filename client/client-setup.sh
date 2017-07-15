@@ -20,6 +20,7 @@ done
 
 pip install -q -r client/requirements.txt -c client/constraints.txt
 
+mkdir -p bin
 for file in client/*.py; do
     tail=${file##*/}
     if [ $tail = "initialize.py" ]; then
