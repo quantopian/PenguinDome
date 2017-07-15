@@ -27,38 +27,36 @@ set_gpg('server')
 app = Flask(__name__)
 
 
-def verify_signature():
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
+def verify_signature(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
             try:
-                try:
-                    data = request.form['data']
-                except:
-                    raise Exception('Malformed request: no data')
-                try:
-                    signature = request.form['signature']
-                except:
-                    raise Exception('Malformed request: no signature')
-                with tempfile.NamedTemporaryFile() as data_file, \
-                        tempfile.NamedTemporaryFile() as signature_file:
-                    data_file.write(data)
-                    data_file.flush()
-                    signature_file.write(signature)
-                    signature_file.flush()
-                    try:
-                        subprocess.check_output(
-                            ('gpg', '--quiet', '--batch', '--verify',
-                             signature_file.name, data_file.name),
-                            stderr=subprocess.STDOUT)
-                    except:
-                        raise Exception('Bad signature')
+                data = request.form['data']
             except:
-                log.exception()
-                raise
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
+                raise Exception('Malformed request: no data')
+            try:
+                signature = request.form['signature']
+            except:
+                raise Exception('Malformed request: no signature')
+            with tempfile.NamedTemporaryFile() as data_file, \
+                    tempfile.NamedTemporaryFile() as signature_file:
+                data_file.write(data)
+                data_file.flush()
+                signature_file.write(signature)
+                signature_file.flush()
+                try:
+                    subprocess.check_output(
+                        ('gpg', '--quiet', '--batch', '--verify',
+                         signature_file.name, data_file.name),
+                        stderr=subprocess.STDOUT)
+                except:
+                    raise Exception('Bad signature')
+        except:
+            log.exception()
+            raise
+        return f(*args, **kwargs)
+    return wrapper
 
 
 def strip_dates(d):
@@ -106,7 +104,7 @@ def dict_changes(old, new, prefix=None, changes=None):
 
 
 @app.route('/qlmdm/v1/submit', methods=('POST',))
-@verify_signature()
+@verify_signature
 def submit():
     db = get_db()
     which = []
@@ -148,7 +146,7 @@ def submit():
 
 
 @app.route('/qlmdm/v1/update', methods=('POST',))
-@verify_signature()
+@verify_signature
 def update():
     db = get_db()
     data = json.loads(request.form['data'])
@@ -188,7 +186,7 @@ def update():
 
 
 @app.route('/qlmdm/v1/acknowledge_patch', methods=('POST',))
-@verify_signature()
+@verify_signature
 def acknowledge_patch():
     db = get_db()
     data = json.loads(request.form['data'])
