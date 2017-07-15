@@ -118,15 +118,30 @@ def server_request(cmd, data=None, data_path=None):
     return response
 
 
-def sign_file(file, top_dir=top_dir):
+def verify_signature(file, top_dir=top_dir, raise_errors=False):
+    signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
+    file = os.path.join(top_dir, file)
+    try:
+        subprocess.check_output(('gpg', '--verify', signature_file, file),
+                                stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        if raise_errors:
+            raise
+        return None
+    return signature_file[len(top_dir)+1:]
+
+
+def sign_file(file, top_dir=top_dir, overwrite=False):
     signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
     file = os.path.join(top_dir, file)
     try:
         os.makedirs(os.path.dirname(signature_file))
     except:
         pass
-    subprocess.check_output(('gpg', '--batch', '--detach-sig',
-                             '-o', signature_file, file))
+    cmd = ['gpg', '--batch', '--detach-sig', '-o', signature_file, file]
+    if overwrite:
+        cmd.insert(1, '--yes')
+    subprocess.check_output(cmd)
 
 
 def sign_data(data):

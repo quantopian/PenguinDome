@@ -1,11 +1,18 @@
 #!/usr/bin/env python
 
 import datetime
+import glob
 import os
 import subprocess
 import time
 
-from qlmdm import get_client_settings, top_dir, var_dir, get_logger
+from qlmdm import (
+    get_client_settings,
+    top_dir,
+    var_dir,
+    get_logger,
+    collected_dir,
+)
 
 
 def bin_path(cmd):
@@ -43,7 +50,8 @@ collect_stamp_file = os.path.join(var_dir, 'collect-stamp')
 submit_stamp_file = os.path.join(var_dir, 'submit-stamp')
 
 do_collect = check_stamp(collect_stamp_file, collect_interval)
-do_submit = do_collect or check_stamp(submit_stamp_file, submit_interval)
+do_submit = do_collect or (check_stamp(submit_stamp_file, submit_interval) and
+                           glob.glob(os.path.join(collected_dir, '*')))
 
 if do_collect or do_submit:
     try:
