@@ -2,7 +2,8 @@
 
 import argparse
 
-from qlmdm import set_gpg, patch_hosts
+from qlmdm import set_gpg
+from qlmdm.server import patch_hosts
 
 set_gpg('server')
 

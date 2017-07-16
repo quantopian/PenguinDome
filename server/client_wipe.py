@@ -3,7 +3,8 @@
 import argparse
 import os
 
-from qlmdm import top_dir, set_gpg, patch_hosts
+from qlmdm import top_dir, set_gpg
+from qlmdm.server import patch_hosts
 
 os.chdir(top_dir)
 set_gpg('server')

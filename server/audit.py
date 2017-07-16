@@ -4,7 +4,8 @@ import argparse
 import datetime
 import os
 
-from qlmdm import top_dir, get_db, open_issue, close_issue, get_open_issues
+from qlmdm import top_dir
+from qlmdm.server import get_db, open_issue, close_issue, get_open_issues
 
 os.chdir(top_dir)
 

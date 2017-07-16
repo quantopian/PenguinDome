@@ -17,11 +17,14 @@ from qlmdm import (
     set_gpg,
     releases_dir,
     get_setting,
+)
+from qlmdm.server import (
+    get_logger,
+    get_setting as get_server_setting,
     get_db,
     open_issue,
     close_issue,
 )
-from qlmdm.server import get_logger, get_setting as get_server_setting
 
 log = get_logger('server')
 
