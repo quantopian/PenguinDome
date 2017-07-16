@@ -171,6 +171,43 @@ if do_config:
         server_changed |= maybe_changed(
             'server', 'port', get_int,
             'What port should the server listen on?')
+
+    configure_ssl = True
+    port = get_server_setting('port')
+    if isinstance(port, dict):
+        for port_number, port_settings in port.items():
+            if 'ssl' in port_settings:
+                # If there are already port-specific SSL settings, then don't
+                # try to configure SSL in this script.
+                configure_ssl = False
+    if configure_ssl:
+        default = get_server_setting('ssl:certificate', None) or \
+            get_server_setting('ssl:key', None)
+        configure_ssl = get_bool('Do you want the server to use SSL?',
+                                 True if default else False)
+    if not configure_ssl:
+        if get_server_setting('ssl:certificate', None):
+            set_server_setting('ssl:certificate', None)
+            server_changed = True
+        if get_server_setting('ssl:key', None):
+            set_server_setting('ssl:key', None)
+            server_changed = True
+    else:
+        while True:
+            server_changed |= maybe_changed(
+                'server', 'ssl:certificate', get_string,
+                'SSL certificate file path:')
+            if os.path.exists(get_server_setting('ssl:certificate')):
+                break
+            print 'That file does not exist.'
+
+        while True:
+            server_changed |= maybe_changed('server', 'ssl:key', get_string,
+                                            'SSL key file path:')
+            if os.path.exists(get_server_setting('ssl:key')):
+                break
+            print 'That file does not exist.'
+        
     server_changed |= maybe_changed('server', 'threaded', get_bool,
                                     'Should the server be multithreaded?')
     server_changed |= maybe_changed('server', 'database:host',
