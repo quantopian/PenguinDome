@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import re
 import subprocess
 
-output = subprocess.check_output('dmidecode')
+output = subprocess.check_output('dmidecode').decode('ascii')
 
 results = {}
 results['full'] = output
@@ -17,4 +17,4 @@ for field, value in re.findall(r'\n\t\b([^:]+):\s*(.*\S(?:\n\t\t.*\S)*)',
     if value == 'Not Applicable':
         continue
     results[want_section][field] = value
-print json.dumps(results)
+print(json.dumps(results))

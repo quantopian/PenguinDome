@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import datetime
 import glob
@@ -49,7 +49,7 @@ if do_collect or do_submit:
         subprocess.check_output((bin_path('update'),),
                                 stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        log.error('update failed:\n{}', e.output)
+        log.error('update failed:\n{}', e.output.decode('ascii'))
 
 subprocess.check_output((bin_path('verify'),))
 
@@ -58,14 +58,14 @@ if do_collect:
         subprocess.check_output((bin_path('collect'), '--plugins'),
                                 stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        log.error('collect --plugins failed:\n{}', e.output)
+        log.error('collect --plugins failed:\n{}', e.output.decode('ascii'))
 
 if do_submit:
     try:
         subprocess.check_output((bin_path('submit'),),
                                 stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        log.error('submit failed:\n{}', e.output)
+        log.error('submit failed:\n{}', e.output.decode('ascii'))
     else:
         update_stamp(submit_stamp_file)
 
@@ -74,7 +74,7 @@ if do_collect:
         subprocess.check_output((bin_path('collect'), '--commands'),
                                 stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        log.error('collect --commands failed:\n{}', e.output)
+        log.error('collect --commands failed:\n{}', e.output.decode('ascii'))
 
     # We don't want to hose the machine, so even when collectin fails, we still
     # wait for the configured interval.
@@ -84,6 +84,6 @@ if do_collect:
         subprocess.check_output((bin_path('submit'),),
                                 stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        log.error('submit failed:\n{}', e.output)
+        log.error('submit failed:\n{}', e.output.decode('ascii'))
     else:
         update_stamp(submit_stamp_file)

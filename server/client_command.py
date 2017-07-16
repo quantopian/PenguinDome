@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import os
@@ -45,9 +45,9 @@ def parse_args():
 def main():
     args = parse_args()
     if args.file:
-        data = open(args.file).read()
+        data = open(args.file, 'rb').read()
     else:
-        data = '#!/bin/bash\n{}\n'.format(args.command)
+        data = '#!/bin/bash\n{}\n'.format(args.command).encode()
     patch_hosts(os.path.join('client', 'commands', args.name),
                 patch_content=data,
                 hosts=args.host if args.host else None)

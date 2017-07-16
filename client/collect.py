@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # There's no error-handling here. If anything fails, the whole script will
 # fail. In the short term, at least, that's acceptable. If something fails,
@@ -59,18 +59,19 @@ def run_dir(dir_name, parse_output=True, delete_after_success=False,
             log.debug('Skipping non-executable {}', run_path)
             continue
         log.debug('Running {}', run_path)
-        with NamedTemporaryFile() as stderr_file:
+        with NamedTemporaryFile('w+') as stderr_file:
             try:
                 run_output = subprocess.check_output(
                     run_path,
-                    stderr=stderr_file.fileno())
+                    stderr=stderr_file.fileno()).decode('ascii')
             except subprocess.CalledProcessError as e:
                 log.exception('Failed to execute {}', run_path)
-                log.debug('Output of failed script:\n{}', e.output)
+                log.debug('Output of failed script:\n{}',
+                          e.output.decode('ascii'))
                 if submit_failures:
                     stderr_file.seek(0)
                     results[run_name] = {
-                        'stdout': e.output,
+                        'stdout': e.output.decode('ascii'),
                         'stderr': stderr_file.read(),
                         'returncode': e.returncode,
                     }

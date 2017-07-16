@@ -1,6 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from itertools import ifilter
 import json
 import re
 import subprocess
@@ -9,9 +8,9 @@ chain_re = re.compile(r'^Chain (.*) \(policy (.*)\)')
 
 
 def get_policies(cmd):
-    output = subprocess.check_output((cmd, '-L', '-n'))
+    output = subprocess.check_output((cmd, '-L', '-n')).decode('ascii')
     lines = output.strip().split('\n')
-    chains = ifilter(None, (chain_re.match(l) for l in lines))
+    chains = filter(None, (chain_re.match(l) for l in lines))
     return {c.group(1): c.group(2)
             for c in chains}
 
@@ -30,4 +29,4 @@ for layer in ('iptables', 'ip6tables'):
 results['status'] = 'off' if any(l for l in results['layers'].values()
                                  if l['status'] == 'off') else 'on'
 
-print json.dumps(results)
+print(json.dumps(results))

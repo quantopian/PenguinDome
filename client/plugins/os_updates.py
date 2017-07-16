@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import os
@@ -10,7 +10,8 @@ def ubuntu_checker():
     results = {}
 
     try:
-        output = subprocess.check_output(('do-release-upgrade', '-c'))
+        output = subprocess.check_output(
+            ('do-release-upgrade', '-c')).decode(ascii)
         results['release'] = True
     except OSError:
         return None
@@ -29,8 +30,9 @@ def ubuntu_checker():
 
     try:
         # So annoying and wrong that output goes to stderr!
-        output = subprocess.check_output('/usr/lib/update-notifier/apt-check',
-                                         stderr=subprocess.STDOUT)
+        output = subprocess.check_output(
+            '/usr/lib/update-notifier/apt-check',
+            stderr=subprocess.STDOUT).decode('ascii')
     except OSError:
         results['patches'] = 'unknown'
     else:
@@ -50,4 +52,4 @@ for checker in checkers:
 if results is None:
     results = 'unknown'
 
-print json.dumps(results)
+print(json.dumps(results))

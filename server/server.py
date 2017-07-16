@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from bson import ObjectId
 import datetime
@@ -34,18 +34,20 @@ app = Flask(__name__)
 def log_deprecated_port(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
+        try:
+            hostname = json.loads(request.form['data'])['hostname']
+            ok = True
+        except:
+            log.error('Failed to parse request data')
+            ok = False
+            hostname = request.remote_addr
         if app.config['deprecated_port']:
-            try:
-                hostname = json.loads(request.form['data'])['hostname']
-            except:
-                log.error('Failed to parse request data')
-                log.warn('Host {} connected to deprecated port',
-                         request.remote_addr)
-            else:
-                log.warn('Host {} connected to deprecated port', hostname)
+            log.warn('Host {} connected to deprecated port', hostname)
+            if ok:
                 open_issue(hostname, 'deprecated-port')
         else:
-            close_issue(hostname, 'deprecated-port')
+            if ok:
+                close_issue(hostname, 'deprecated-port')
         return f(*args, **kwargs)
     return wrapper
 
@@ -62,8 +64,8 @@ def verify_signature(f):
                 signature = request.form['signature']
             except:
                 raise Exception('Malformed request: no signature')
-            with tempfile.NamedTemporaryFile() as data_file, \
-                    tempfile.NamedTemporaryFile() as signature_file:
+            with tempfile.NamedTemporaryFile('w+') as data_file, \
+                    tempfile.NamedTemporaryFile('w+') as signature_file:
                 data_file.write(data)
                 data_file.flush()
                 signature_file.write(signature)
@@ -83,7 +85,7 @@ def verify_signature(f):
 
 
 def strip_dates(d):
-    for key in d.keys():
+    for key in list(d.keys()):
         if key.endswith('_at'):
             del d[key]
         elif isinstance(d[key], dict):
@@ -102,7 +104,7 @@ def short_value(value):
 def dict_changes(old, new, prefix=None, changes=None):
     if changes is None:
         changes = []
-    keys = sorted(list(set(old.keys() + new.keys())))
+    keys = sorted(list(set(old.keys()) | set(new.keys())))
     for key in keys:
         if key not in new:
             changes.append('deleted {} ({})'.format(
@@ -119,6 +121,25 @@ def dict_changes(old, new, prefix=None, changes=None):
                 short_value(new[key])))
         elif isinstance(old[key], dict):
             dict_changes(old[key], new[key], key_name(key, prefix), changes)
+        elif isinstance(old[key], list):
+            # This will work much better of plugins maintain consistent
+            # ordering in lists.
+            if len(old[key]) != len(new[key]):
+                changes.append(
+                    'length change {}[] ({} -> {}, new value {})'.format(
+                        key_name(key, prefix), len(old[key]), len(new[key]),
+                        short_value(str(new[key]))))
+            else:
+                for i in range(len(old[key])):
+                    if isinstance(old[key][i], dict):
+                        dict_changes(old[key][i], new[key][i],
+                                     '{}[{}]'.format(key_name(key, prefix), i),
+                                     changes)
+                    elif str(old[key][i]) != str(new[key][i]):
+                        changes.append('changed {}[{}] ({} -> {})'.format(
+                            key_name(key, prefix), i,
+                            short_value(old[key][i]),
+                            short_value(new[key][i])))
         elif str(old[key]) != str(new[key]):
             changes.append('changed {} ({} -> {})'.format(
                 key_name(key, prefix),

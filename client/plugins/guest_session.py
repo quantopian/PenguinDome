@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 import glob
 import json
 import os
@@ -42,4 +42,4 @@ for checker in checkers:
 if results is None:
     results = 'unknown'
 
-print json.dumps({'enabled': results})
+print(json.dumps({'enabled': results}))

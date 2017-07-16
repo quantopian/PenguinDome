@@ -1,1 +1,1 @@
-from qlmdm import *  # noqa
+from . qlmdm import *  # noqa

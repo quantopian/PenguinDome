@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import os
@@ -64,7 +64,7 @@ def main():
             stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         sys.exit('Verify failed, try running bin/sign again. Output:\n{}'.
-                 format(e.output))
+                 format(e.output.decode('ascii')))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 
@@ -29,7 +29,7 @@ def main():
     kwargs = {}
     if args.mode:
         kwargs['patch_mode'] = args.mode
-    kwargs['patch_content'] = open(args.source_file).read()
+    kwargs['patch_content'] = open(args.source_file, 'rb').read()
     kwargs['hosts'] = args.host if args.host else None
     patch_hosts(args.target_path, **kwargs)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import platform
@@ -10,4 +10,4 @@ results = {
     'version': version,
 }
 
-print json.dumps(results)
+print(json.dumps(results))

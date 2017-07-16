@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import subprocess
@@ -16,7 +16,7 @@ for file in release_files_iter():
         verify_signature(file, raise_errors=True)
     except subprocess.CalledProcessError as e:
         print('Bad signature for {}'.format(file))
-        print(e.output.strip())
+        print(e.output.decode('ascii').strip())
         errors = True
 
 sys.exit(1 if errors else 0)

@@ -1,17 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
-import netinfo
+import netifaces
 
 results = {}
 
-for device in netinfo.list_active_devs():
-    if device == 'lo':
+for device in netifaces.interfaces():
+    if device.startswith('lo'):
         continue
-    results[device] = {}
-    address = netinfo.get_ip(device)
-    if address.startswith('127.'):
-        continue
-    results[device]['ip'] = address
+    results[device] = netifaces.ifaddresses(device)
 
 print(json.dumps(results))

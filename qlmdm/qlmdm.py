@@ -151,8 +151,8 @@ def server_request(cmd, data=None, data_path=None):
     server_url = get_setting(load_settings('client'), 'server_url')
     if data and data_path:
         raise Exception('Both data and data_path specified')
-    with NamedTemporaryFile() as temp_data_file, \
-            NamedTemporaryFile() as signature_file:
+    with NamedTemporaryFile('w+') as temp_data_file, \
+            NamedTemporaryFile('w+') as signature_file:
         if data:
             data = json.dumps(data)
             temp_data_file.write(data)
@@ -199,7 +199,7 @@ def sign_file(file, top_dir=top_dir, overwrite=False):
     if overwrite:
         cmd.insert(1, '--yes')
     subprocess.check_output(cmd)
-    return signature_file
+    return signature_file[len(top_dir)+1:]
 
 
 def sign_data(data):
@@ -224,7 +224,7 @@ def get_db():
     if not host:
         connection = MongoClient()
     else:
-        if not isinstance(host, basestring):
+        if not isinstance(host, str):
             host = ','.join(host)
         kwargs = {}
         replicaset = get_setting(load_settings('server'),
@@ -244,12 +244,12 @@ def get_db():
     return db
 
 
-def patch_hosts(patch_path, patch_mode=0755, patch_content='', signed=True,
+def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
                 hosts=None):
     db = get_db()
     if hosts is None:
         hosts = db['submissions'].distinct('hostname')
-    if isinstance(hosts, basestring):
+    if isinstance(hosts, str):
         hosts = [hosts]
     conflict = db['patches'].find_one({'path': patch_path,
                                        'pending_hosts': {'$in': hosts}})
@@ -258,19 +258,24 @@ def patch_hosts(patch_path, patch_mode=0755, patch_content='', signed=True,
         conflicting_hosts.sort()
         raise Exception('Patch for {} conflicts with patch ID {} on hosts {}'.
                         format(patch_path, conflict['_id'], conflicting_hosts))
+
+    # Somebody please explain to me why b64encode returns bytes rather than
+    # str in python3, when the whole, entire prupose of b64encode is to turn
+    # arbitrary bytes into ASCII. This is stupid.
+
     files = [
         {
             'path': patch_path,
             'mode': patch_mode,
-            'content': b64encode(patch_content),
+            'content': b64encode(patch_content).decode('ascii'),
         },
     ]
 
     if signed:
         files.append({
             'path': os.path.join(signatures_dir, patch_path + '.sig'),
-            'mode': 0644,
-            'content': b64encode(sign_data(patch_content)),
+            'mode': 0o644,
+            'content': b64encode(sign_data(patch_content)).decode('ascii'),
         })
 
     result = db['patches'].insert_one({

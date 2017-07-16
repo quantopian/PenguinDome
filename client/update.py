@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from base64 import b64decode
 import filecmp
@@ -108,7 +108,7 @@ def do_patches(patches):
             patch_dir = os.path.dirname(os.path.join(top_dir, patch_path))
             if not os.path.exists(patch_dir):
                 os.makedirs(patch_dir)
-            open(patch_path, 'w').write(patch_content)
+            open(patch_path, 'wb').write(patch_content)
             os.chmod(patch_path, patch_mode)
 
         server_request('/qlmdm/v1/acknowledge_patch',

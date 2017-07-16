@@ -9,7 +9,7 @@ cd "$(dirname $0)/.."
 
 mkdir -p var
 if [ ! -d $venv ]; then
-    virtualenv $venv
+    virtualenv -p python3 $venv
 fi
 
 for dir in $(find $venv -name site-packages); do

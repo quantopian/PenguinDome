@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import psutil
@@ -7,7 +7,7 @@ import subprocess
 
 def gnome_xscreensaver_status(user, display):
     def user_command(cmd):
-        return subprocess.check_output(('su', user, '-c', cmd))
+        return subprocess.check_output(('su', user, '-c', cmd)).decode('ascii')
 
     # Find out the user's dbus settings.
     for proc in psutil.process_iter():
@@ -48,7 +48,8 @@ display_checkers = (gnome_xscreensaver_status,)
 
 # Who is logged into an X display?
 
-w_lines = subprocess.check_output(('w', '-h', '-s')).strip().split('\n')
+w_lines = subprocess.check_output(
+    ('w', '-h', '-s')).decode('ascii').strip().split('\n')
 w_tuples = (l.split() for l in w_lines)
 w_xlogins = (t for t in w_tuples if t[2].startswith(':'))
 user_displays = ((t[0], t[2]) for t in w_xlogins)
@@ -65,4 +66,4 @@ for user, display in user_displays:
     else:
         results[user] = {'user': user, 'enabled': 'unknown'}
 
-print json.dumps(results.values())
+print(json.dumps(list(results.values())))

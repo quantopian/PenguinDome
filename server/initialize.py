@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from functools import partial
 import logbook
@@ -25,9 +25,9 @@ from qlmdm.prompts import get_bool, get_int, get_string, get_string_or_list
 os.chdir(top_dir)
 
 if not os.path.exists(gpg_private_home):
-    os.makedirs(gpg_private_home, 0700)
+    os.makedirs(gpg_private_home, 0o700)
 if not os.path.exists(gpg_public_home):
-    os.makedirs(gpg_public_home, 0700)
+    os.makedirs(gpg_public_home, 0o700)
 
 server_user_id = 'qlmdm-server'
 client_user_id = 'qlmdm-client'
@@ -42,10 +42,10 @@ def entropy_warning():
         return
     entropy_warned = True
 
-    print dedent('''
+    print(dedent('''
         If this takes a long time to run, you may want to install haveged or
         some other tool for adding entropy to the kernel.
-    ''')
+    '''))
 
 
 def generate_key(mode, user_id):
@@ -246,7 +246,7 @@ if server_changed:
     do_service = get_bool(prompt, default)
 
     if do_service:
-        with NamedTemporaryFile() as temp_service_file:
+        with NamedTemporaryFile('w+') as temp_service_file:
             temp_service_file.write(dedent('''\
                 [Unit]
                 Description=Quantopian Linux MDM Server
@@ -260,7 +260,7 @@ if server_changed:
                 WantedBy=multi-user.target
             '''.format(server_exe=os.path.join(top_dir, 'bin', 'server'))))
             temp_service_file.flush()
-            os.chmod(temp_service_file.name, 0644)
+            os.chmod(temp_service_file.name, 0o644)
             shutil.copy(temp_service_file.name, service_file)
         subprocess.check_output(('systemctl', 'daemon-reload'),
                                 stderr=subprocess.STDOUT)
@@ -308,13 +308,13 @@ if server_changed:
         if get_bool(prompt, not cron_exists):
             email = get_server_setting('audit_cron:email')
 
-            with NamedTemporaryFile() as temp_cron_file:
+            with NamedTemporaryFile('w+') as temp_cron_file:
                 temp_cron_file.write(dedent('''\
                     MAILTO={email}
                     * * * * * root {top_dir}/bin/audit
                 '''.format(email=email, top_dir=top_dir)))
                 temp_cron_file.flush()
-                os.chmod(temp_cron_file.name, 0644)
+                os.chmod(temp_cron_file.name, 0o644)
                 shutil.copy(temp_cron_file.name, cron_file)
 
             print('Installed {}'.format(cron_file))

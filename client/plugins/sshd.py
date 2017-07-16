@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Try to identify a running sshd process in two ways: (1) look for a process
 # with the name "sshd" or "in.sshd"; (2) look for a process listening on port
@@ -35,7 +35,7 @@ except:
     sshd_config_command = ['sshd', '-T']
 
 try:
-    sshd_config = subprocess.check_output(sshd_config_command)
+    sshd_config = subprocess.check_output(sshd_config_command).decode('ascii')
 except:
     sshd_config = ''
 
@@ -53,4 +53,4 @@ for config in sshd_config.strip().split('\n'):
     key, value = config.split(' ', 1)
     results['config'][key] = value
 
-print json.dumps(results)
+print(json.dumps(results))

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from itertools import chain
 import os
@@ -34,8 +34,8 @@ try:
     sign_file(release_file, top_dir=staging_dir)
     if not os.path.exists(releases_dir):
         os.makedirs(releases_dir)
-    with NamedTemporaryFile() as file_list, \
-            NamedTemporaryFile() as staging_file_list:
+    with NamedTemporaryFile('w+') as file_list, \
+            NamedTemporaryFile('w+') as staging_file_list:
         release_files = release_files_iter(with_signatures=True)
         release_files = chain.from_iterable(release_files)
         file_list.write('\n'.join(release_files) + '\n')

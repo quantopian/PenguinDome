@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import cPickle as pickle
+import pickle
 import json
 import os
 import re
@@ -64,10 +64,10 @@ channel_re = re.compile(r'\bChannel:\s*(\d+)')
 access_points = {}
 
 ip_addresses = json.loads(
-    subprocess.check_output('client/plugins/ip_addresses.py'))
+    subprocess.check_output('client/plugins/ip_addresses.py').decode('ascii'))
 
 try:
-    old_data = pickle.load(open(cache_file))
+    old_data = pickle.load(open(cache_file, 'rb'))
 except:
     old_data = {}
 
@@ -75,8 +75,8 @@ except:
 # several times and merge the output.
 for i in range(5):
     try:
-        output = subprocess.check_output(('iwlist', 'scan'),
-                                         stderr=subprocess.STDOUT)
+        output = subprocess.check_output(
+            ('iwlist', 'scan'), stderr=subprocess.STDOUT).decode('ascii')
     except:
         unknown()
 
@@ -106,7 +106,7 @@ for i in range(5):
 
 data = {}
 if access_points:
-    data['wifiAccessPoints'] = access_points.values()
+    data['wifiAccessPoints'] = list(access_points.values())
 
 url = 'https://www.googleapis.com/geolocation/v1/geolocate?key={}'.format(
     api_key)
@@ -122,6 +122,6 @@ old_data = {
     'access_points': access_points,
 }
 
-pickle.dump(old_data, open(cache_file, 'w'))
+pickle.dump(old_data, open(cache_file, 'wb'))
 
 print(json.dumps(response.json()))

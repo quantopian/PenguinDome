@@ -5,7 +5,7 @@ def get_bool(prompt, default=None):
     if default:
         full_prompt += ' [{}]'.format(default)
     full_prompt += ' '
-    answer = raw_input(full_prompt)
+    answer = input(full_prompt)
     if answer == '':
         answer = default
     if not answer:
@@ -22,7 +22,7 @@ def get_int(prompt, default=None, minimum=None):
     if default is not None:
         full_prompt += ' [{}]'.format(default)
     full_prompt += ' '
-    answer = raw_input(full_prompt)
+    answer = input(full_prompt)
     if answer == '':
         answer = default
     if answer is None:
@@ -44,7 +44,7 @@ def get_string(prompt, default=None, none_ok=False):
         if none_ok:
             full_prompt += ' [enter "none" to clear]'
     full_prompt += ' '
-    answer = raw_input(full_prompt)
+    answer = input(full_prompt)
     if answer == '':
         answer = default
     if answer == 'none':
@@ -59,14 +59,14 @@ def get_string_or_list(prompt, default=None):
     while True:
         full_prompt = prompt
         if default and not so_far:
-            if isinstance(default, basestring):
+            if isinstance(default, str):
                 full_prompt += ' [{}]'.format(default)
             else:
                 full_prompt += ' [{}]'.format(', '.join(default))
         if so_far:
             full_prompt += ' [hit Enter when finished]'
         full_prompt += ' '
-        answer = raw_input(full_prompt)
+        answer = input(full_prompt)
         if not answer:
             if so_far:
                 # Canonicalize for comparison purposes.
@@ -75,7 +75,7 @@ def get_string_or_list(prompt, default=None):
             answer = default
         if answer is None:
             return get_string_or_list(prompt, default)
-        if isinstance(answer, basestring):
+        if isinstance(answer, str):
             so_far.append(answer)
         else:
             so_far.extend(answer)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import subprocess
@@ -13,10 +13,12 @@ def is_encrypted(device):
     except:
         pass
     # I hope it's a logical volume!
-    vg = subprocess.check_output(('lvs', '--noheadings', '-o', 'vg_name',
-                                  device), close_fds=True).strip()
+    vg = subprocess.check_output(
+        ('lvs', '--noheadings', '-o', 'vg_name',
+         device), close_fds=True).decode('ascii').strip()
     pv_output = subprocess.check_output(
-        ('vgs', '--noheadings', '-o', 'pv_name', vg), close_fds=True).strip()
+        ('vgs', '--noheadings', '-o', 'pv_name', vg),
+        close_fds=True).decode('ascii').strip()
     pvs = pv_output.split('\n')
     return all(is_encrypted(p) for p in pvs)
 
@@ -39,4 +41,4 @@ for mount in open('/proc/mounts'):
                            'device': device,
                            'encrypted': is_encrypted(device)}
 
-print json.dumps(results.values())
+print(json.dumps(list(results.values())))

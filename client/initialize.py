@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 from tempfile import NamedTemporaryFile
@@ -21,12 +21,12 @@ else:
 do_crontab = get_bool(prompt, not cron_exists)
 
 if do_crontab:
-    with NamedTemporaryFile() as temp_cron_file:
+    with NamedTemporaryFile('w+') as temp_cron_file:
         temp_cron_file.write(dedent('''\
             * * * * * root {}/bin/client-cron
         '''.format(top_dir)))
         temp_cron_file.flush()
-        os.chmod(cron_file, 0644)
+        os.chmod(cron_file, 0o644)
         shutil.copy(temp_cron_file.name, cron_file)
 
     print('Installed {}'.format(cron_file))
