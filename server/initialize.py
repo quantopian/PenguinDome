@@ -119,11 +119,12 @@ def configure_logging(which):
     else:
         raise Exception('Invalid which value {}'.format(which))
 
+    which2 = which.lower()
     changed = False
 
     while True:
         changed |= maybe_changed(
-            which, 'logging:handler', get_string,
+            which2, 'logging:handler', get_string,
             '{} logbook handler (e.g., stderr, syslog):'.format(which))
         handler = getter('logging:handler')
         full_handler = handler.lower() + 'handler'
@@ -137,7 +138,7 @@ def configure_logging(which):
 
     while True:
         changed |= maybe_changed(
-            which, 'logging:level', get_string,
+            which2, 'logging:level', get_string,
             '{} logging level (e.g., debug, info):'.format(which))
         level = getter('logging:level')
         try:
@@ -150,7 +151,7 @@ def configure_logging(which):
 
     if handler.lower() == 'syslog':
         changed |= maybe_changed(
-            which, 'logging:facility', get_string,
+            which2, 'logging:facility', get_string,
             '{} syslog facility (e.g., user, daemon, auth):'.format(which))
 
     return changed
