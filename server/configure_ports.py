@@ -29,7 +29,7 @@ os.chdir(top_dir)
 
 
 def make_self_signed_cert():
-    cert_dir = mkdtemp(dir=var_dir)
+    cert_dir = mkdtemp(prefix='ssl-cert-', dir=var_dir)
     cert_file = os.path.join(cert_dir, 'certificate.pem')
     key_file = os.path.join(cert_dir, 'key.pem')
     with NamedTemporaryFile('w+') as ssl_config:
