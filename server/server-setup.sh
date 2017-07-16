@@ -7,6 +7,11 @@ venv=var/server-venv
 
 cd "$(dirname $0)/.."
 
+. /etc/lsb-release
+if [ "$DISTRIB_ID" = "Ubuntu" ]; then
+    apt-get -qq install $(sed 's/#.*//' server/ubuntu-packages.txt)
+fi
+
 mkdir -p var
 if [ ! -d $venv ]; then
     virtualenv -p python3 $venv

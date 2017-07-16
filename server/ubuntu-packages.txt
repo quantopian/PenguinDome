@@ -1,0 +1,7 @@
+coreutils # shred
+gnupg
+libgfshare-bin
+openssl
+python3
+systemd
+tar

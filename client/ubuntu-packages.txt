@@ -1,0 +1,12 @@
+cryptsetup-bin
+dmidecode
+gnupg
+iptables
+login
+lvm2
+procps
+systemd
+tar
+ubuntu-release-upgrader-core
+update-notifier-common
+wireless-tools
