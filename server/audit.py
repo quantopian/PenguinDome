@@ -3,9 +3,17 @@
 import argparse
 import datetime
 import os
+import subprocess
 
 from qlmdm import top_dir
-from qlmdm.server import get_db, open_issue, close_issue, get_open_issues
+from qlmdm.server import (
+    get_db,
+    open_issue,
+    close_issue,
+    get_open_issues,
+    get_setting,
+    get_port_setting,
+)
 
 os.chdir(top_dir)
 
@@ -59,6 +67,7 @@ problem_checks = {
         'grace-period': datetime.timedelta(hours=1)},
     'pending-patches': {
         'grace-period': datetime.timedelta(hours=1)},
+    'expiring-certificate': {}
 }
 
 
@@ -82,6 +91,39 @@ def parse_args():
     return args
 
 
+def check_ssl_certificates():
+    ports = get_setting('port')
+    if isinstance(ports, int):
+        ports = [ports]
+    elif isinstance(ports, dict):
+        ports = list(ports.keys())
+
+    problem_hosts = []
+    for port in ports:
+        certificate_file = get_port_setting(port, 'ssl:certificate')
+        if not get_port_setting(port, 'ssl:enabled', bool(certificate_file)):
+            continue
+        try:
+            subprocess.check_output(
+                ('openssl', 'x509', '-in', certificate_file, '-checkend',
+                 str(60 * 60 * 24 * 7)), stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+            hostname = 'server-port-{}'.format(port)
+            problem_hosts.append(hostname)
+            open_issue(hostname, 'expiring-certificate')
+    close_issue({'$not': {'$in': list(problem_hosts)}}, 'expiring-certificate')
+
+
+def check_pending_patches():
+    db = get_db()
+    problem_hosts = set()
+    for patch in db.patches.find({'pending_hosts': {'$not': {'$size': 0}}}):
+        for hostname in patch['pending_hosts']:
+            open_issue(hostname, 'pending-patches')
+            problem_hosts.add(hostname)
+    close_issue({'$not': {'$in': list(problem_hosts)}}, 'pending-patches')
+
+
 def main():
     args = parse_args()
     db = get_db()
@@ -95,12 +137,8 @@ def main():
         problem_hosts = [d['hostname'] for d in problems]
         close_issue({'$not': {'$in': problem_hosts}}, check_name)
 
-    problem_hosts = set()
-    for patch in db.patches.find({'pending_hosts': {'$not': {'$size': 0}}}):
-        for hostname in patch['pending_hosts']:
-            open_issue(hostname, 'pending-patches')
-            problem_hosts.add(hostname)
-    close_issue({'$not': {'$in': list(problem_hosts)}}, 'pending-patches')
+    check_pending_patches()
+    check_ssl_certificates()
 
     issues = get_open_issues()
 
@@ -111,9 +149,9 @@ def main():
         key1_printed = False
         for key2, issue in value1.items():
             try:
-                grace_period = problem_checks[issue['name']]
+                grace_period = problem_checks[issue['name']]['grace-period']
                 grace_threshold = now - grace_period
-            except:
+            except KeyError:
                 grace_threshold = now
             alert_ok = (args.ignore_recent_alerts or
                         'alerted_at' not in issue or
