@@ -7,4 +7,5 @@ logging:
   handler: [any Logbook *Handler, defaults to stderr]
   level: [log level name, optional, defaults to debug]
   facility: [facility to use with SyslogHandler, defaults to user]
-ssl_ca_path: [for verifying server's SSL certificate; this is set automatically when using self-signed SSL on the server]
+ssl:
+  ca_path: [for verifying server's SSL certificate]

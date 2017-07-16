@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 
 import argparse
+import filecmp
 from functools import partial
 import os
 import pprint
 import re
+import shutil
+import subprocess
+from tempfile import NamedTemporaryFile, mkdtemp
 import sys
 from urllib.parse import urlparse, urlunparse
 
-from qlmdm import set_setting
+from qlmdm import set_setting, top_dir, var_dir
 from qlmdm.server import (
     get_setting as get_server_setting,
     get_port_setting,
@@ -21,6 +25,33 @@ from qlmdm.client import (
     save_settings as save_client_settings,
 )
 
+os.chdir(top_dir)
+
+
+def make_self_signed_cert():
+    cert_dir = mkdtemp(dir=var_dir)
+    cert_file = os.path.join(cert_dir, 'certificate.pem')
+    key_file = os.path.join(cert_dir, 'key.pem')
+    with NamedTemporaryFile('w+') as ssl_config:
+        config_data = open('/etc/ssl/openssl.cnf', 'r').read()
+        config_data = re.sub(r'^\s*#\s*(copy_extensions\s*=\s*copy)', r'\1',
+                             config_data, 0, re.MULTILINE)
+        config_data = re.sub(r'^(\[\s*v3_ca\s*\].*)',
+                             r'\1\nsubjectAltName=DNS:*\n', config_data, 0,
+                             re.MULTILINE)
+        ssl_config.write(config_data)
+        ssl_config.flush()
+        try:
+            subprocess.check_output(
+                ('openssl', 'req', '-newkey', 'rsa:2048', '-nodes', '-keyout',
+                 key_file, '-x509', '-days', '365', '-out', cert_file, '-subj',
+                 '/CN=*/', '-config', ssl_config.name),
+                stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            raise Exception('Certificate generation failed. Output:\n'.format(
+                e.output))
+    return (cert_file, key_file)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Add, remove, or configure '
@@ -32,11 +63,20 @@ def parse_args():
     options = argparse.ArgumentParser(add_help=False)
     group = options.add_mutually_exclusive_group()
     group.add_argument('--threaded', action='store_true', default=None,
-                       help='Run server in mjlti-threaded mode')
+                       help='Run server in multi-threaded mode')
     group.add_argument('--nothreaded', dest='threaded', default=None,
                        action='store_false',
                        help='Run server in single-threaded mode')
     group = options.add_mutually_exclusive_group()
+    group.add_argument('--deprecated', action='store_true', default=None,
+                       help='Mark the port as deprecated')
+    group.add_argument('--nodeprecated', dest='deprecated', default=None,
+                       action='store_false',
+                       help='Unmark the port as deprecated')
+    group = options.add_mutually_exclusive_group()
+    group.add_argument('--ssl-self-signed', action='store_true', default=None,
+                       help='Configure self-signed certificate and enable SSL '
+                       'unless --nossl is specified')
     group.add_argument('--ssl', dest='ssl', action='store_true',
                        default=None, help='Enable SSL')
     group.add_argument('--nossl', dest='ssl', action='store_false',
@@ -80,8 +120,16 @@ def parse_args():
                        default=None, help='Use https:')
     group.add_argument('--nossl', dest='ssl', action='store_false',
                        default=None, help='Use http:')
+    group = client_parser.add_mutually_exclusive_group()
+    group.add_argument('--ssl-ca-file', help="Path to CA certificate the "
+                       "client should use to verify the server, or a server "
+                       "port number to use that port's certificate")
+    group.add_argument("--nossl-ca-file", action='store_false',
+                       dest='ssl_ca_file', default=None, help='Remove CA '
+                       'certificate from client configuration')
 
     args = parser.parse_args()
+
     return args
 
 
@@ -97,10 +145,9 @@ def ports_iter():
 def port_config(port):
     config = {}
     config['threaded'] = get_port_setting(port, 'threaded')
+    config['deprecated'] = get_port_setting(port, 'deprecated', False)
     if get_port_setting(port, 'ssl'):
         config['ssl'] = {}
-        config['ssl']['self_signed'] = get_port_setting(
-            port, 'ssl:self_signed', False)
         cert = get_port_setting(port, 'ssl:certificate')
         config['ssl']['certificate'] = cert or 'MISSING'
         config['ssl']['enabled'] = get_port_setting(
@@ -113,14 +160,21 @@ def port_config(port):
 def show_configuration(args):
     config = {}
     for port in ports_iter():
-        print('Port {}'.format(port))
+        print('Port {}:'.format(port))
         config = port_config(port)
         pformat = pprint.pformat(config)
-        pformat = re.sub(r'^', '  ', pformat, re.MULTILINE)
+        pformat = re.sub(r'^', '  ', pformat, 0, re.MULTILINE)
         print(pformat)
 
-    server_url = get_client_setting('server_url') or 'MISSING'
-    print('Server URL: {}'.format(server_url))
+    print('Client configuration:')
+    config = {}
+    set_setting(config, 'server_url',
+                get_client_setting('server_url') or 'MISSING')
+    if get_client_setting('ssl:ca_path'):
+        set_setting(config, 'ssl:ca_path', get_client_setting('ssl:ca_path'))
+    pformat = pprint.pformat(config)
+    pformat = re.sub(r'^', '  ', pformat, 0, re.MULTILINE)
+    print(pformat)
 
 
 def add_port(args):
@@ -147,6 +201,10 @@ def remove_port(args):
 
 
 def configure_port(args, add=False):
+    if args.ssl_self_signed and (args.certificate or args.key):
+        sys.exit('--certificate and --key are incompatible with '
+                 '--ssl-self-signed.')
+
     changed = False
     port = args.port
     ports = get_server_setting('port', None)
@@ -167,6 +225,8 @@ def configure_port(args, add=False):
         changed = True
         which = 'Added'
 
+    if not ports[port]:
+        ports[port] = {}
     port_settings = ports[port]
     gps = partial(get_port_setting, port)
 
@@ -178,6 +238,17 @@ def configure_port(args, add=False):
     if args.threaded is not None:
         if bool(gps('threaded')) != args.threaded:
             ss('threaded', args.threaded)
+
+    if args.deprecated is not None:
+        if bool(gps('deprecated')) != args.deprecated:
+            ss('deprecated', args.deprecated)
+
+    if args.ssl_self_signed:
+        cert_file, key_file = make_self_signed_cert()
+        ss('ssl:certificate', cert_file)
+        ss('ssl:key', key_file)
+        if args.ssl is not False:
+            args.ssl = True
 
     if args.certificate and gps('ssl:certificate') != args.certificate:
         if not (args.key or gps('ssl:key')):
@@ -216,14 +287,30 @@ def configure_port(args, add=False):
             else:
                 client_port = {'http': 80, 'https': 443}[url[0]]
             client_ssl = {'http': False, 'https': True}[url[0]]
-            if port == client_port and \
-               client_ssl != gps('ssl:enabled', bool(gps('ssl:certificate'))):
-                print('WARNING: Client is configured to use port {} and {}'
-                      'using SSL.\n'
-                      '         Should it be?'.format(
-                          port, '' if client_ssl else 'not '))
+            if port == client_port:
+                if client_ssl != gps(
+                        'ssl:enabled', bool(gps('ssl:certificate'))):
+                    print('\n'
+                          'WARNING: Client is configured to use port {} and {}'
+                          'using SSL.\n'
+                          '         Should it be?\n'.format(
+                              port, '' if client_ssl else 'not '))
+                if gps('deprecated'):
+                    print('\n'
+                          'WARNING: Client is configured to use deprecated '
+                          'port {}.\n'
+                          '         Do you need to change the client port?'.
+                          format(port))
 
         print('{} port {}.'.format(which, port))
+
+        print("\n"
+              "WARNING: Don't forget to restart the server.\n")
+
+        print("\n"
+              "WARNING: Don't forget to configure client CA file"
+              "         (see help for 'configure-client').\n")
+
         show_configuration(args)
     else:
         print('No changes.')
@@ -265,7 +352,8 @@ def configure_client(args):
             changed = True
 
     if port == 443 and url[0] != 'https':
-        print("WARNING: Are you sure you don't want to use SSL on port 443?")
+        print("\n"
+              "WARNING: Are you sure you don't want to use SSL on port 443?\n")
 
     verbose_port = port or 80
     try:
@@ -275,11 +363,14 @@ def configure_client(args):
     except:
         server_port_ssl = False
     if server_port_ssl and url[0] != 'https':
-        print('WARNING: Port {} on the server is using SSL.\n'
-              '         Does the client need to?'.format(verbose_port))
+        print('\n'
+              'WARNING: Port {} on the server is using SSL.\n'
+              '         Does the client need to?\n'.format(verbose_port))
     elif not server_port_ssl and url[0] != 'http':
-        print('WARNING: Port {} on the server is not using SSL.\n'
-              '         Are you sure the client should?'.format(verbose_port))
+        print('\n'
+              'WARNING: Port {} on the server is not using SSL.\n'
+              '         Are you sure the client should?\n'.format(
+                  verbose_port))
 
     if not hostname:
         sys.exit('You must specify hostname.')
@@ -294,14 +385,43 @@ def configure_client(args):
             url[1] = loc
     else:
         url[1] = hostname
+
+    if args.ssl_ca_file is False:
+        if get_client_setting('ssl:ca_path'):
+            set_client_setting('ssl:ca_path', None)
+            changed = True
+    elif args.ssl_ca_file:
+        try:
+            server_port = int(args.ssl_ca_file)
+        except:
+            pass
+        else:
+            args.ssl_ca_file = get_port_setting(server_port, 'ssl:certificate')
+            if not args.ssl_ca_file:
+                sys.exit('Server port {} does not have an SSL certificate.'
+                         .format(server_port))
+        client_file = os.path.join('client', 'cacert.pem')
+        if not os.path.exists(args.ssl_ca_file):
+            sys.exit('The file {} does not exist.'.format(args.ssl_ca_file))
+        if not (os.path.exists(client_file) and
+                filecmp.cmp(args.ssl_ca_file, client_file)):
+            shutil.copy(args.ssl_ca_file, client_file)
+            changed = True
+        if get_client_setting('ssl:ca_path') != client_file:
+            set_client_setting('ssl:ca_path', client_file)
+            changed = True
+
     url = urlunparse(url)
     url = re.sub(r'/+$', '', url)
     if changed:
         set_client_setting('server_url', url)
         save_client_settings()
-        print('Changed server URL to {}'.format(url))
+        print('Updated client configuration.')
+        show_configuration(args)
+        print("\n"
+              "WARNING: Don't forget to build a new client release.\n")
     else:
-        print('Server URL is unchanged: {}'.format(url))
+        print('Client configuration unchanged.')
 
 
 def main():

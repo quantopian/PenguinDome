@@ -147,8 +147,16 @@ def server_request(cmd, data=None, data_path=None):
             'signature': signature_file.read(),
         }
 
-    response = requests.post('{}{}'.format(server_url, cmd),
-                             data=post_data, timeout=60)
+    kwargs = {
+        'data': post_data,
+        'timeout': 60,
+    }
+    ca_path = get_setting(load_settings('client'), 'ssl:ca_path')
+    if ca_path:
+        if not ca_path.startswith('/'):
+            ca_path = os.path.join(top_dir, ca_path)
+        kwargs['verify'] = ca_path
+    response = requests.post('{}{}'.format(server_url, cmd), **kwargs)
     response.raise_for_status()
     return response
 
