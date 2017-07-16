@@ -13,6 +13,8 @@ from qlmdm import (
     sign_data
 )
 
+db = None
+
 
 def get_setting(setting, default=None, check_defaults=True):
     return main_get_setting(load_settings('server'), setting, default,

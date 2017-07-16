@@ -20,7 +20,6 @@ releases_dir = os.path.join(var_dir, 'client_releases')
 collected_dir = os.path.join(var_dir, 'collected')
 release_file = os.path.join('client', 'release.txt')
 signatures_dir = 'signatures'
-db = None
 
 
 def release_files_iter(with_signatures=False, top_dir=top_dir):
