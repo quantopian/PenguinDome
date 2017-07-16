@@ -85,12 +85,6 @@ def import_key(to_mode, user_id):
                                     stdin=trust_file, stderr=subprocess.STDOUT)
 
 
-generate_key('server', server_user_id)
-generate_key('client', client_user_id)
-import_key('server', client_user_id)
-import_key('client', server_user_id)
-
-
 def maybe_changed(which, setting, prompter, prompt, empty_ok=False):
     if which == 'server':
         getter = get_server_setting
@@ -156,6 +150,11 @@ def configure_logging(which):
 
     return changed
 
+
+generate_key('server', server_user_id)
+generate_key('client', client_user_id)
+import_key('server', client_user_id)
+import_key('client', server_user_id)
 
 default = not (get_client_setting('loaded') and get_server_setting('loaded'))
 
