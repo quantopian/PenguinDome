@@ -17,11 +17,10 @@ from qlmdm import (
     server_request,
     var_dir,
     signatures_dir,
-    get_client_settings,
-    get_logger,
 )
+from qlmdm.client import get_logger
 
-log = get_logger(get_client_settings(), 'update')
+log = get_logger('update')
 
 os.chdir(top_dir)
 set_gpg('client')

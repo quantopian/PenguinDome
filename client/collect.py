@@ -17,7 +17,8 @@ import stat
 from tempfile import NamedTemporaryFile
 import time
 
-from qlmdm import get_client_settings, top_dir, collected_dir, get_logger
+from qlmdm import top_dir, collected_dir
+from qlmdm.client import get_logger
 os.chdir(top_dir)
 
 # Some commands the plugins use are in /sbin or /usr/sbin on some
@@ -26,7 +27,7 @@ for d in ('/sbin', '/usr/sbin'):
     if d not in os.environ['PATH'].split(':'):
         os.environ['PATH'] += ':' + d
 
-log = get_logger(get_client_settings(), 'collect')
+log = get_logger('collect')
 
 
 def run_dir(dir_name, parse_output=True, delete_after_success=False,

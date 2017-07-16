@@ -69,6 +69,8 @@ def get_string_or_list(prompt, default=None):
         answer = raw_input(full_prompt)
         if not answer:
             if so_far:
+                # Canonicalize for comparison purposes.
+                so_far.sort()
                 return so_far
             answer = default
         if answer is None:

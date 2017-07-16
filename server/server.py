@@ -15,14 +15,14 @@ from qlmdm import (
     top_dir,
     set_gpg,
     releases_dir,
-    get_server_settings,
+    get_setting,
     get_db,
-    get_logger,
     open_issue,
     close_issue,
 )
+from qlmdm.server import get_logger, get_setting as get_server_setting
 
-log = get_logger(get_server_settings(), 'server')
+log = get_logger('server')
 
 os.chdir(top_dir)
 set_gpg('server')
@@ -236,28 +236,13 @@ def datetimeify(d):
                 pass
 
 
-def get_setting(settings, setting, default):
-    """Get a possibly recursive setting from a dictionary
-
-    "settings" is a dictionary. "setting" is a colon-separated list of keys.
-    Recurses through "settings" looking for the specified setting, and returns
-    the specified default if it isn't there.
-    """
-    for key in setting.split(':'):
-        try:
-            settings = settings[key]
-        except:
-            return default
-    return settings
-
-
 def get_port_setting(port, setting, default):
-    global_setting = get_setting(server_settings, setting, default)
-    if 'port' not in server_settings or \
-       isinstance(server_settings['port'], int) or \
-       isinstance(server_settings['port'], list):
+    global_setting = get_server_setting(setting, default)
+    settings_port = get_server_setting('port')
+    if isinstance(settings_port, int) or isinstance(settings_port, list):
         return global_setting
-    return get_setting(server_settings['port'][port], setting, global_setting)
+    return get_setting(settings_port[port], setting, global_setting,
+                       check_defaults=False)
 
 
 def startServer(port):
@@ -281,12 +266,8 @@ def startServer(port):
 
 
 def main():
-    global server_settings
-
-    server_settings = get_server_settings()
-
     ports = None
-    port = server_settings.get('port', 80)
+    port = get_server_setting('port')
     if isinstance(port, list):
         ports = port
     elif isinstance(port, dict):

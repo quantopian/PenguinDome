@@ -13,13 +13,12 @@ from qlmdm import (
     signatures_dir,
     verify_signature,
     sign_file,
-    get_server_settings,
-    get_logger,
 )
+from qlmdm.server import get_logger
 
 os.chdir(top_dir)
 
-log = get_logger(get_server_settings(), 'sign')
+log = get_logger('sign')
 
 
 def parse_args():

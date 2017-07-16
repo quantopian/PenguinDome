@@ -30,3 +30,5 @@ if do_crontab:
         shutil.copy(temp_cron_file.name, cron_file)
 
     print('Installed {}'.format(cron_file))
+
+print('Done!')

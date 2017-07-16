@@ -7,12 +7,11 @@ import subprocess
 import time
 
 from qlmdm import (
-    get_client_settings,
     top_dir,
     var_dir,
-    get_logger,
     collected_dir,
 )
+from qlmdm.client import get_setting, get_logger
 
 
 def bin_path(cmd):
@@ -33,18 +32,10 @@ def update_stamp(path):
 
 
 os.chdir(top_dir)
-client_settings = get_client_settings()
-log = get_logger(client_settings, 'client-cron')
+log = get_logger('client-cron')
 
-try:
-    collect_interval = client_settings['schedule']['collect_interval']
-except:
-    collect_interval = 5
-
-try:
-    submit_interval = client_settings['schedule']['submit_interval']
-except:
-    submit_interval = 1
+collect_interval = get_setting('schedule:collect_interval')
+submit_interval = get_setting('schedule:submit_interval')
 
 collect_stamp_file = os.path.join(var_dir, 'collect-stamp')
 submit_stamp_file = os.path.join(var_dir, 'submit-stamp')

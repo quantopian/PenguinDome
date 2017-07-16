@@ -8,7 +8,8 @@ import requests
 import subprocess
 import sys
 
-from qlmdm import top_dir, var_dir, get_client_settings
+from qlmdm import top_dir, var_dir
+from qlmdm.client import get_setting
 
 cache_file = os.path.join(var_dir, 'geolocation.cache')
 
@@ -50,10 +51,8 @@ def old_data_is_good(old_data, ip_addresses, access_points):
     return False
 
 
-client_settings = get_client_settings()
-try:
-    api_key = client_settings['geolocation_api_key']
-except:
+api_key = get_setting('geolocation_api_key')
+if not api_key:
     unknown()
 
 address_re = re.compile(
