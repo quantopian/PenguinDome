@@ -99,7 +99,7 @@ def main():
         for hostname in patch['pending_hosts']:
             open_issue(hostname, 'pending-patches')
             problem_hosts.add(hostname)
-        close_issue({'$not': {'$in': list(problem_hosts)}}, 'pending-patches')
+    close_issue({'$not': {'$in': list(problem_hosts)}}, 'pending-patches')
 
     issues = get_open_issues()
 
@@ -115,6 +115,7 @@ def main():
             except:
                 grace_threshold = now
             alert_ok = (args.ignore_recent_alerts or
+                        'alerted_at' not in issue or
                         issue['alerted_at'] < alert_threshold)
             grace_ok = (args.ignore_grace_period or
                         issue['opened_at'] < grace_threshold)
