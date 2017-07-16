@@ -60,9 +60,9 @@ def get_string_or_list(prompt, default=None):
         full_prompt = prompt
         if default and not so_far:
             if isinstance(default, basestring):
-                full_prompt += ' [{}] '.format(default)
+                full_prompt += ' [{}]'.format(default)
             else:
-                full_prompt += ' [{}] '.format(', '.join(default))
+                full_prompt += ' [{}]'.format(', '.join(default))
         if so_far:
             full_prompt += ' [hit Enter when finished]'
         full_prompt += ' '
