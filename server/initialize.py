@@ -13,13 +13,17 @@ from qlmdm import (
     gpg_private_home,
     gpg_public_home,
     set_gpg,
-    save_server_settings,
-    save_client_settings,
-    set_server_setting,
-    set_client_setting,
 )
-from qlmdm.client import get_setting as get_client_setting
-from qlmdm.server import get_setting as get_server_setting
+from qlmdm.client import (
+    get_setting as get_client_setting,
+    set_setting as set_client_setting,
+    save_settings as save_client_settings,
+)
+from qlmdm.server import (
+    get_setting as get_server_setting,
+    set_setting as set_server_setting,
+    save_settings as save_server_settings,
+)
 from qlmdm.prompts import get_bool, get_int, get_string, get_string_or_list
 
 os.chdir(top_dir)

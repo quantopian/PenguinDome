@@ -91,14 +91,6 @@ def save_settings(which):
     settings['loaded'] = True
 
 
-def save_client_settings():
-    return save_settings('client')
-
-
-def save_server_settings():
-    return save_settings('server')
-
-
 def get_setting(settings, setting, default=None, check_defaults=True):
     """Get a possibly recursive setting from a dictionary
 
@@ -127,18 +119,10 @@ def set_setting(settings, setting, value):
             settings[keys[0]] = {}
         settings = settings[keys[0]]
         keys.pop(0)
-    if value:
+    if value is not None:
         settings[keys[0]] = value
     else:
         settings.pop(keys[0], None)
-
-
-def set_client_setting(setting, value):
-    return set_setting(load_settings('client'), setting, value)
-
-
-def set_server_setting(setting, value):
-    return set_setting(load_settings('server'), setting, value)
 
 
 def server_request(cmd, data=None, data_path=None):

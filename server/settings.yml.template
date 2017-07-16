@@ -43,5 +43,6 @@ audit_cron:
 # above when the server is listening to multiple ports.
 #
 ssl:
+  enabled: [indicates whether enabled, defaults to true if certificate is configured]
   certificate: [path to certificate file]
   key: [path to private key file]

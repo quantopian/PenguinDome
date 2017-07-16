@@ -16,11 +16,11 @@ from qlmdm import (
     top_dir,
     set_gpg,
     releases_dir,
-    get_setting,
 )
 from qlmdm.server import (
     get_logger,
     get_setting as get_server_setting,
+    get_port_setting,
     get_db,
     open_issue,
     close_issue,
@@ -261,15 +261,6 @@ def datetimeify(d):
                 pass
 
 
-def get_port_setting(port, setting, default):
-    global_setting = get_server_setting(setting, default)
-    settings_port = get_server_setting('port')
-    if isinstance(settings_port, int) or isinstance(settings_port, list):
-        return global_setting
-    return get_setting(settings_port[port], setting, global_setting,
-                       check_defaults=False)
-
-
 def startServer(port):
     app.config['deprecated_port'] = get_port_setting(port, 'deprecated', False)
 
@@ -281,10 +272,11 @@ def startServer(port):
 
     ssl_certificate = get_port_setting(port, 'ssl:certificate', None)
     ssl_key = get_port_setting(port, 'ssl:key', None)
+    ssl_enabled = get_port_setting(port, 'ssl:enabled', bool(ssl_certificate))
     if bool(ssl_certificate) + bool(ssl_key) == 1:
         raise Exception('You must specify both certificate and key for SSL!')
 
-    if ssl_certificate:
+    if ssl_enabled:
         kwargs['ssl_context'] = (ssl_certificate, ssl_key)
 
     app.run(**kwargs)

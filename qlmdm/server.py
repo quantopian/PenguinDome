@@ -8,7 +8,9 @@ from pymongo import MongoClient
 from qlmdm import (
     load_settings,
     get_setting as main_get_setting,
+    set_setting as main_set_setting,
     get_logger as main_get_logger,
+    save_settings as main_save_settings,
     signatures_dir,
     sign_data
 )
@@ -19,6 +21,23 @@ db = None
 def get_setting(setting, default=None, check_defaults=True):
     return main_get_setting(load_settings('server'), setting, default,
                             check_defaults)
+
+
+def get_port_setting(port, setting, default=None):
+    global_setting = get_setting(setting, default)
+    settings_port = get_setting('port')
+    if isinstance(settings_port, int) or isinstance(settings_port, list):
+        return global_setting
+    return main_get_setting(settings_port[port], setting, global_setting,
+                            check_defaults=False)
+
+
+def set_setting(setting, value):
+    return main_set_setting(load_settings('server'), setting, value)
+
+
+def save_settings():
+    main_save_settings('server')
 
 
 def get_logger(name):
