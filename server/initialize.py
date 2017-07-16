@@ -199,15 +199,15 @@ if do_config:
                 'SSL certificate file path:')
             if os.path.exists(get_server_setting('ssl:certificate')):
                 break
-            print 'That file does not exist.'
+            print('That file does not exist.')
 
         while True:
             server_changed |= maybe_changed('server', 'ssl:key', get_string,
                                             'SSL key file path:')
             if os.path.exists(get_server_setting('ssl:key')):
                 break
-            print 'That file does not exist.'
-        
+            print('That file does not exist.')
+
     server_changed |= maybe_changed('server', 'threaded', get_bool,
                                     'Should the server be multithreaded?')
     server_changed |= maybe_changed('server', 'database:host',
