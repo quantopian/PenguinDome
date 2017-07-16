@@ -24,6 +24,7 @@ from qlmdm.server import (
     get_db,
     open_issue,
     close_issue,
+    encrypt_document,
 )
 
 log = get_logger('server')
@@ -143,6 +144,8 @@ def dict_changes(old, new, prefix=None, changes=None):
                             key_name(key, prefix), i,
                             short_value(old[key][i]),
                             short_value(new[key][i])))
+        elif key.endswith('-encrypted'):
+            continue
         elif str(old[key]) != str(new[key]):
             changes.append('changed {} ({} -> {})'.format(
                 key_name(key, prefix),
@@ -184,6 +187,9 @@ def submit():
         if old:
             strip_dates(old)
             strip_dates(new)
+            if encrypt_document(new):
+                log.info('Encrypted secret data for {} in document {}',
+                         hostname, new['_id'])
             changes = dict_changes(old, new)
             if changes:
                 log.info('Changes for {}: {}', hostname, ', '.join(changes))

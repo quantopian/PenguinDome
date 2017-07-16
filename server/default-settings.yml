@@ -9,3 +9,8 @@ logging:
   facility: user
 audit_cron:
   enabled: no
+secret_keeping:
+  enabled: no
+  num_shares: 2
+  combine_threshold: 2
+

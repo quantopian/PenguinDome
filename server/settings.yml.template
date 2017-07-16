@@ -46,3 +46,11 @@ ssl:
   enabled: [indicates whether enabled, defaults to true if certificate is configured]
   certificate: [path to certificate file]
   key: [path to private key file]
+secret_keeping:
+  enabled: [optional, defaults to no]
+  key_name: [name of the key used for secret-keeping]
+  key_id: [ID of the key used for secret-keeping]
+  key_fingerprint: [Fingerprint of the key used for secret-keeping]
+  selectors: [One or more MongoDB field selectors indicating which data should be secret]
+  num_shares: [default 2, number of pieces to split the private key into]
+  combine_threshold: [default 2, number of pieces required to reconstruct the private key]

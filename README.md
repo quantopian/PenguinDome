@@ -90,13 +90,31 @@ All of the API endpoints accept two form fields:
 Security
 --------
 
-When the server is configured with `server/server-setup.sh`, two SSH keypairs are generated, one for the server and one for the clients. All of the files in releases that go down to the clients are signed with the server's private key, and clients verify that the files are intact (i.e., the signatures are valid) before using them. Plugins, command scripts, etc., that aren't signed by the server's private key won't be run on the clients.
+When the server is configured with `server/server-setup.sh`, two GPG keypairs are generated, one for the server and one for the clients. All of the files in releases that go down to the clients are signed with the server's private key, and clients verify that the files are intact (i.e., the signatures are valid) before using them. Plugins, command scripts, etc., that aren't signed by the server's private key won't be run on the clients.
 
 The client key is used to sign all API requests sent by the clients to the server. The server won't process any request that doesn't have a valid signature.
 
 All the clients use the same private key. We felt this was sufficient, at least for the time being, for what we're trying to accomplish here.
 
 There's room in the architecture for rotating either the server or the client key, though that's not yet fully supported in the code. We'll cross that bridge when we come to it.
+
+### Secret-keeping
+
+One of the concerns with any MDM platform is "Quis custodiet ipsos custodes?" When private information such as a device's current location is accessible to administrators, then how does one prevent a malicious administrator -- who by necessity needs to have access to the MDM data to do their job -- from accessing private information without a legitimate business need?
+
+Qlmdm solves this problem as follows:
+
+* MongoDB field selectors are used to designate certain data submitted by clients as private.
+
+* A special, separate secret-keeping GPG keypair is generated, to be used for the server to encrypt private data.
+
+* The private key of that keypair is split into several shares, and the original private key can only be reconstructed when several of those shares are provided. The total number of shares and the number required to reconstruct the original key (called the "combine threshold") are configurable.
+
+* The private key shares are distributed to different administrators, who store them separately and securely, and then _the original original private key is removed from the server._
+
+* When clients submit data to the server, any private data contained in them -- as indicated by the previously configured private-data selectors -- are encrypted in the database using the secret-keeping _public_ key.
+
+* If there is ever a need to decrypt and view private data, at least {combine threshold} administrators must provide their shares to reconstruct the private key, at which point the data can be decrypted and viewed.
 
 Database
 --------
