@@ -62,8 +62,9 @@ def main():
         subprocess.check_output(
             ('python', os.path.join('client', 'verify.py')),
             stderr=subprocess.STDOUT)
-    except:
-        sys.exit('Verify failed, try running {} again'.format(sys.argv[0]))
+    except subprocess.CalledProcessError as e:
+        sys.exit('Verify failed, try running bin/sign again. Output:\n{}'.
+                 format(e.output))
 
 
 if __name__ == '__main__':
