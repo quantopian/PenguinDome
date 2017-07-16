@@ -71,7 +71,11 @@ def do_release(data):
 
         for file in obsolete_files:
             log.info('Deleting obsolete {}', file)
-            os.remove(file)
+            try:
+                os.remove(file)
+            except FileNotFoundError:
+                log.warn('Failed to delete {} (already gone)', file)
+                pass
     finally:
         shutil.rmtree(unpack_dir)
 
@@ -98,7 +102,12 @@ def do_patches(patches):
                     continue
                 if os.path.exists(patch_path):
                     log.info('Removing {} due to patch', patch_path)
-                    os.remove(patch_path)
+                    try:
+                        os.remove(patch_path)
+                    except FileNotFoundError:
+                        log.warn('Failed to delete {} (already gone)',
+                                 patch_path)
+                        pass
                 else:
                     log.warn("Patch says to remove {} but it's already gone",
                              patch_path)
