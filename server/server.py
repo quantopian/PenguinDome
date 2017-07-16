@@ -8,6 +8,7 @@ from functools import wraps
 import json
 from multiprocessing import Process
 import os
+import signal
 import subprocess
 import tempfile
 
@@ -280,6 +281,12 @@ def main():
             p.daemon = True
             p.start()
             children.append(p)
+
+        def sigint_handler(*args):
+            for p in children:
+                os.kill(p.pid, signal.SIGINT)
+
+        signal.signal(signal.SIGINT, sigint_handler)
         for p in children:
             p.join()
     else:
