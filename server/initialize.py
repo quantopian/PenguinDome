@@ -57,13 +57,15 @@ def entropy_warning():
 def generate_key(mode, user_id):
     set_gpg(mode)
     try:
-        gpg_command('--list-keys', user_id)
+        gpg_command('--list-keys', user_id, with_trustdb=True)
     except:
         entropy_warning()
         try:
-            gpg_command('--passphrase', '', '--quick-gen-key', user_id)
-        except subprocess.CalledProcessError:
-            sys.exit('Qlmdm requires GnuPG version 2.1 or newer.')
+            gpg_command('--passphrase', '', '--quick-gen-key', user_id,
+                        with_trustdb=True)
+        except subprocess.CalledProcessError as e:
+            sys.exit('Qlmdm requires GnuPG version 2.1 or newer. '
+                     'gpg output:\n{}'.format(e.output))
 
 
 def import_key(to_mode, user_id):

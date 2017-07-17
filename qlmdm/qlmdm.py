@@ -79,7 +79,7 @@ def set_gpg(mode):
     gpg_mode = mode
 
 
-def gpg_command(*cmd):
+def gpg_command(*cmd, with_trustdb=False):
     global gpg_exe, gpg_exe
 
     if not gpg_mode:
@@ -95,8 +95,13 @@ def gpg_command(*cmd):
         else:
             gpg_exe = 'gpg2'
 
-    cmd = tuple(chain((gpg_exe, '--trust-model', 'always', '--batch', '--yes',
-                       '--quiet'), cmd))
+    if with_trustdb:
+        trustdb_args = ()
+    else:
+        trustdb_args = ('--trust-model', 'always')
+
+    cmd = tuple(chain((gpg_exe, '--batch', '--yes', '--quiet'), trustdb_args,
+                      cmd))
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
         decode('ascii')
 
