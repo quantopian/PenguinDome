@@ -157,6 +157,7 @@ def main():
 
     if changed:
         subprocess.check_output(os.path.join('bin', 'verify'))
+        log.info('Successful update')
 
 
 def recursive_list(top_dir):
