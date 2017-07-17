@@ -28,7 +28,7 @@ from qlmdm.client import (
 os.chdir(top_dir)
 
 
-def make_self_signed_cert():
+def make_self_signed_cert(hostname):
     cert_dir = mkdtemp(prefix='ssl-cert-', dir=var_dir)
     cert_file = os.path.join(cert_dir, 'certificate.pem')
     key_file = os.path.join(cert_dir, 'key.pem')
@@ -37,15 +37,15 @@ def make_self_signed_cert():
         config_data = re.sub(r'^\s*#\s*(copy_extensions\s*=\s*copy)', r'\1',
                              config_data, 0, re.MULTILINE)
         config_data = re.sub(r'^(\[\s*v3_ca\s*\].*)',
-                             r'\1\nsubjectAltName=DNS:*\n', config_data, 0,
-                             re.MULTILINE)
+                             r'\1\nsubjectAltName=DNS:{}\n'.format(hostname),
+                             config_data, 0, re.MULTILINE)
         ssl_config.write(config_data)
         ssl_config.flush()
         try:
             subprocess.check_output(
                 ('openssl', 'req', '-newkey', 'rsa:2048', '-nodes', '-keyout',
                  key_file, '-x509', '-days', '365', '-out', cert_file, '-subj',
-                 '/CN=*/', '-config', ssl_config.name),
+                 '/CN={}/'.format(hostname), '-config', ssl_config.name),
                 stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             raise Exception('Certificate generation failed. Output:\n'.format(
@@ -74,9 +74,10 @@ def parse_args():
                        action='store_false',
                        help='Unmark the port as deprecated')
     group = options.add_mutually_exclusive_group()
-    group.add_argument('--ssl-self-signed', action='store_true', default=None,
-                       help='Configure self-signed certificate and enable SSL '
-                       'unless --nossl is specified')
+    group.add_argument('--ssl-self-signed', metavar='HOSTNAME', default=None,
+                       help='Configure self-signed certificate for the '
+                       'specified host name and enable SSL unless --nossl '
+                       'is specified')
     group.add_argument('--ssl', dest='ssl', action='store_true',
                        default=None, help='Enable SSL')
     group.add_argument('--nossl', dest='ssl', action='store_false',
@@ -244,7 +245,7 @@ def configure_port(args, add=False):
             ss('deprecated', args.deprecated)
 
     if args.ssl_self_signed:
-        cert_file, key_file = make_self_signed_cert()
+        cert_file, key_file = make_self_signed_cert(args.ssl_self_signed)
         ss('ssl:certificate', cert_file)
         ss('ssl:key', key_file)
         if args.ssl is not False:
