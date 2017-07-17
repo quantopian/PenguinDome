@@ -5,6 +5,7 @@ import logbook
 import os
 import subprocess
 import shutil
+import sys
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
@@ -59,7 +60,10 @@ def generate_key(mode, user_id):
         gpg_command('--list-keys', user_id)
     except:
         entropy_warning()
-        gpg_command('--passphrase', '', '--quick-gen-key', user_id)
+        try:
+            gpg_command('--passphrase', '', '--quick-gen-key', user_id)
+        except subprocess.CalledProcessError:
+            sys.exit('Qlmdm requires GnuPG version 2.1 or newer.')
 
 
 def import_key(to_mode, user_id):
