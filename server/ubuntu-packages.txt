@@ -6,3 +6,4 @@ openssl
 python3
 systemd
 tar
+virtualenv

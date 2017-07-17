@@ -10,4 +10,5 @@ systemd
 tar
 ubuntu-release-upgrader-core
 update-notifier-common
+virtualenv
 wireless-tools
