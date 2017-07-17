@@ -17,9 +17,11 @@ import stat
 from tempfile import NamedTemporaryFile
 import time
 
-from qlmdm import top_dir, collected_dir
-from qlmdm.client import get_logger
+from qlmdm import top_dir, collected_dir, set_gpg
+from qlmdm.client import get_logger, encrypt_document
+
 os.chdir(top_dir)
+set_gpg('client')
 
 # Some commands the plugins use are in /sbin or /usr/sbin on some
 # distributions, and it isn't always in the search path used by cron scripts.
@@ -130,10 +132,19 @@ def main():
     if not (results.get('plugins', False) or results.get('commands', False)):
         return
 
+    results, updates = encrypt_document(results, log=log)
+    if updates:
+        log.info('Encrypted private data before transmission to server')
+
     if not os.path.exists(collected_dir):
         os.makedirs(collected_dir)
     collected_path = os.path.join(collected_dir, str(int(time.time())))
-    open(collected_path, 'w').write(json.dumps(results))
+    with open(collected_path, 'w') as f:
+        try:
+            f.write(json.dumps(results))
+        except:
+            os.unlink(collected_path)
+            raise
 
 
 if __name__ == '__main__':

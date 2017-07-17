@@ -9,3 +9,7 @@ logging:
   facility: [facility to use with SyslogHandler, defaults to user]
 ssl:
   ca_path: [for verifying server's SSL certificate]
+secret_keeping:
+  enabled: [optional, defaults to no]
+  key_id: [ID of the key used for secret-keeping]
+  selectors: [One or more MongoDB field selectors indicating which data should be secret]

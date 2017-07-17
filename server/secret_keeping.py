@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from base64 import b64decode
 from bson import BSON
 import os
 import pprint
@@ -15,17 +16,23 @@ from qlmdm.server import (
     get_db,
     get_setting as get_server_setting,
     set_setting as set_server_setting,
-    save_settings,
+    save_settings as save_server_settings,
     get_selectors,
     encrypt_document,
+)
+from qlmdm.client import (
+    set_setting as set_client_setting,
+    save_settings as save_client_settings,
 )
 
 os.chdir(top_dir)
 set_gpg('server')
 
 selectors_setting = 'secret_keeping:selectors'
-restart_note = '\nNOTE: Changes do not take effect until you restart the ' \
-    'server.\n'
+restart_note = (
+    '\n'
+    'NOTE: Changes do not fully take effect until you restart the server\n'
+    '      and build a new client release.\n')
 distribute_secrets_note = '''
 The {m} pieces of the secret-keeping key are in this directory:
 
@@ -74,6 +81,11 @@ def parse_args():
 
     enable_parser = subparsers.add_parser(
         'enable', help='Enable secret-keeping')
+    group = enable_parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '--preserve', action='store_true', help="Preserve old encryption keys")
+    group.add_argument(
+        '--replace', action='store_true', help="Replace old encryption keys")
     enable_parser.add_argument('--shares', type=int, help='Number of pieces '
                                'to split the private key into')
     enable_parser.add_argument(
@@ -132,14 +144,19 @@ def select_handler(args):
         for selector in args.selector:
             if not db.submissions.find_one({selector: {'$exists': True}},
                                            projection=[]):
-                sys.stderr.write('Selector {} does not match anything.\n'.
+                sys.stderr.write('Selector {} does not match anything.\n'
+                                 'Specify --force to save anyway.\n'.
                                  format(selector))
                 errors = True
         if errors:
             sys.exit(1)
 
     selectors.extend(args.selector)
-    save_settings()
+    save_server_settings()
+
+    set_client_setting(selectors_setting, selectors)
+    save_client_settings()
+
     print(restart_note)
 
 
@@ -163,13 +180,23 @@ def deselect_handler(args):
     if errors:
         sys.exit(1)
 
-    save_settings()
+    save_server_settings()
+
+    set_client_setting(selectors_setting, selectors)
+    save_client_settings()
+
     print(restart_note)
 
 
 def enable_handler(args):
     if get_server_setting('secret_keeping:enabled'):
         sys.exit('Secret-keeping is already enabled.')
+
+    if get_server_setting('secret_keeping:key_id'):
+        if not (args.replace or args.preserve):
+            sys.exit('Must specify --replace or --preserve.')
+    else:
+        args.replace = True
 
     args.shares = args.shares or \
         get_server_setting('secret_keeping:num_shares')
@@ -184,38 +211,62 @@ def enable_handler(args):
         sys.exit('--combine-threshold must be less than {}.'.format(
             args.shares + 1))
 
-    key_name = 'qlmdm-secret-keeping-' + uuid.uuid4().hex
-    output = subprocess.check_output(('gpg', '--batch', '--passphrase', '',
-                                      '--quick-gen-key', key_name),
-                                     stderr=subprocess.STDOUT).decode('ascii')
-    match = re.search(r'key (.*) marked as ultimately trusted', output)
-    key_id = match.group(1)
-    match = re.search(r'/([0-9A-F]+)\.rev', output)
-    key_fingerprint = match.group(1)
+    if args.replace:
+        key_name = 'qlmdm-secret-keeping-' + uuid.uuid4().hex
+        output = subprocess.check_output(
+            ('gpg', '--batch', '--passphrase', '', '--quick-gen-key',
+             key_name), stderr=subprocess.STDOUT).decode('ascii')
+        match = re.search(r'key (.*) marked as ultimately trusted', output)
+        key_id = match.group(1)
+        match = re.search(r'/([0-9A-F]+)\.rev', output)
+        key_fingerprint = match.group(1)
 
-    split_dir = os.path.join(var_dir, key_name)
-    key_file = os.path.join(split_dir, 'private_key.asc')
-    os.makedirs(split_dir)
-    subprocess.check_output(('gpg', '--batch', '--yes', '--export-secret-key',
-                             '--armor', '-o', key_file))
-    subprocess.check_output(('gfsplit', '-n', str(args.combine_threshold),
-                             '-m', str(args.shares), key_file),
-                            stderr=subprocess.STDOUT)
-    subprocess.check_output(('gpg', '--batch', '--yes',
-                             '--delete-secret-keys', key_fingerprint),
-                            stderr=subprocess.STDOUT)
-    subprocess.check_output(('shred', '-u', key_file),
-                            stderr=subprocess.STDOUT)
+        split_dir = os.path.join(var_dir, key_name)
+        key_file = os.path.join(split_dir, 'private_key.asc')
+        os.makedirs(split_dir)
+        subprocess.check_output(
+            ('gpg', '--batch', '--yes', '--export-secret-key', '--armor',
+             '-o', key_file))
+        subprocess.check_output(('gfsplit', '-n', str(args.combine_threshold),
+                                 '-m', str(args.shares), key_file),
+                                stderr=subprocess.STDOUT)
+        try:
+            subprocess.check_output(('gpg', '--batch', '--yes',
+                                     '--delete-secret-keys', key_fingerprint),
+                                    stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            sys.exit('Failed to delete secret key:\n{}'.format(
+                e.output.decode('ascii')))
+        subprocess.check_output(('shred', '-u', key_file),
+                                stderr=subprocess.STDOUT)
+
+        with NamedTemporaryFile() as public_key_file:
+            subprocess.check_output(('gpg', '--batch', '--yes', '--export',
+                                     '-o', public_key_file.name, key_id),
+                                    stderr=subprocess.STDOUT)
+            set_gpg('client')
+            try:
+                subprocess.check_output(('gpg', '--batch', '--yes', '--import',
+                                         public_key_file.name),
+                                        stderr=subprocess.STDOUT)
+            finally:
+                set_gpg('server')
+
+        set_server_setting('secret_keeping:key_name', key_name)
+        set_server_setting('secret_keeping:key_id', key_id)
+        set_server_setting('secret_keeping:key_fingerprint', key_fingerprint)
+
+        set_client_setting('secret_keeping:key_id', key_id)
 
     set_server_setting('secret_keeping:num_shares', args.shares)
     set_server_setting('secret_keeping:combine_threshold',
                        args.combine_threshold)
     set_server_setting('secret_keeping:enabled', True)
-    set_server_setting('secret_keeping:key_name', key_id)
-    set_server_setting('secret_keeping:key_id', key_id)
-    set_server_setting('secret_keeping:key_fingerprint', key_fingerprint)
+    save_server_settings()
 
-    save_settings()
+    set_client_setting('secret_keeping:enabled', True)
+    save_client_settings()
+
     print(distribute_secrets_note.format(
         m=args.shares, n=args.combine_threshold, split_dir=split_dir))
     print(restart_note)
@@ -226,7 +277,11 @@ def disable_handler(args):
         sys.exit('Secret-keeping is not enabled.')
 
     set_server_setting('secret_keeping:enabled', False)
-    save_settings()
+    save_server_settings()
+
+    set_client_setting('secret_keeping:enabled', False)
+    save_client_settings()
+
     print(restart_note)
 
 
@@ -252,7 +307,7 @@ def combine_secret_key():
     combine_threshold = get_server_setting('secret_keeping:combine_threshold')
     if len(split_files) < combine_threshold:
         input('Put at least {} of the secret-keeper files into\n{}.\n'
-              'Hit Enter when done: ')
+              'Hit Enter when done: '.format(combine_threshold, split_dir))
         split_files = [f for f in os.listdir(split_dir)
                        if re.search(r'\.\d', f)]
         if len(split_files) < combine_threshold:
@@ -288,16 +343,16 @@ def decrypt_handler(args):
                     continue
                 with NamedTemporaryFile('w+b') as unencrypted_file, \
                         NamedTemporaryFile('w+b') as encrypted_file:
-                    encrypted_file.write(encrypted_data)
+                    encrypted_file.write(b64decode(encrypted_data))
                     encrypted_file.flush()
                     subprocess.check_output(
                         ('gpg', '--decrypt', '--batch', '--yes',
                          '-o', unencrypted_file.name, encrypted_file.name),
                         stderr=subprocess.STDOUT)
                     unencrypted_file.seek(0)
-                    encrypted_data = unencrypted_file.read()
+                    unencrypted_data = unencrypted_file.read()
                 update['$unset'][s.enc_mongo] = True
-                update['$set'][s.plain_mongo] = BSON.decode(encrypted_data)
+                update['$set'][s.plain_mongo] = BSON.decode(unencrypted_data)
             if update['$unset']:
                 db.submissions.update({'_id': doc['_id']}, update)
                 print('Decrypted document {} (host {})'.format(

@@ -187,7 +187,9 @@ def submit():
         if old:
             strip_dates(old)
             strip_dates(new)
-            if encrypt_document(new):
+            new, updates = encrypt_document(new)
+            if updates:
+                db.submissions.update({'_id': new['_id']}, updates)
                 log.info('Encrypted secret data for {} in document {}',
                          hostname, new['_id'])
             changes = dict_changes(old, new)

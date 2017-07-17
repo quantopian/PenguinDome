@@ -1,12 +1,9 @@
 from base64 import b64encode
-from bson import BSON
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 import datetime
 from mongo_proxy import MongoProxy
 import os
 from pymongo import MongoClient
-import subprocess
-from tempfile import NamedTemporaryFile
 
 from qlmdm import (
     load_settings,
@@ -15,13 +12,12 @@ from qlmdm import (
     get_logger as main_get_logger,
     save_settings as main_save_settings,
     signatures_dir,
-    sign_data
+    sign_data,
+    get_selectors as main_get_selectors,
+    encrypt_document as main_encrypt_document,
 )
 
 db = None
-
-SelectorVariants = namedtuple(
-    'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
 
 
 def get_setting(setting, default=None, check_defaults=True):
@@ -174,37 +170,8 @@ def get_open_issues(primary_key='host', hostname=None, issue_name=None):
 
 
 def get_selectors():
-    return tuple(SelectorVariants(s, s.replace('.', ':'), s + '-encrypted',
-                                  s.replace('.', ':') + '-encrypted')
-                 for s in get_setting('secret_keeping:selectors'))
+    return main_get_selectors(get_setting)
 
 
-def encrypt_document(doc):
-    if not get_setting('secret_keeping:enabled'):
-        return False
-    key_id = get_setting('secret_keeping:key_id')
-    selectors = get_selectors()
-    update = {'$unset': {}, '$set': {}}
-    for s in selectors:
-        decrypted_data = main_get_setting(
-            doc, s.plain_mem, check_defaults=False)
-        if not decrypted_data:
-            continue
-        with NamedTemporaryFile('w+b') as unencrypted_file, \
-                NamedTemporaryFile('w+b') as encrypted_file:
-            unencrypted_file.write(BSON.encode(decrypted_data))
-            unencrypted_file.flush()
-            subprocess.check_output(
-                ('gpg', '--encrypt', '--batch', '--yes', '--recipient',
-                 key_id, '-o', encrypted_file.name, unencrypted_file.name),
-                stderr=subprocess.STDOUT)
-            encrypted_file.seek(0)
-            encrypted_data = encrypted_file.read()
-        update['$unset'][s.plain_mongo] = True
-        update['$set'][s.enc_mongo] = encrypted_data
-        main_set_setting(doc, s.plain_mem, None)
-        main_set_setting(doc, s.enc_mem, encrypted_data)
-    if update['$unset']:
-        db.submissions.update({'_id': doc['_id']}, update)
-        return True
-    return False
+def encrypt_document(doc, log=None):
+    return main_encrypt_document(get_setting, doc, log=log)

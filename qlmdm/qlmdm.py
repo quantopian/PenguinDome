@@ -1,3 +1,7 @@
+from base64 import b64encode
+from bson import BSON
+from collections import namedtuple
+from itertools import chain
 import json
 import logbook
 import os
@@ -20,6 +24,10 @@ releases_dir = os.path.join(var_dir, 'client_releases')
 collected_dir = os.path.join(var_dir, 'collected')
 release_file = os.path.join('client', 'release.txt')
 signatures_dir = 'signatures'
+gpg_mode = None
+
+SelectorVariants = namedtuple(
+    'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
 
 
 def release_files_iter(with_signatures=False, top_dir=top_dir):
@@ -51,6 +59,8 @@ def release_files_iter(with_signatures=False, top_dir=top_dir):
 
 
 def set_gpg(mode):
+    global gpg_mode
+
     if mode == 'server':
         os.environ['GNUPGHOME'] = gpg_private_home
     elif mode == 'client':
@@ -58,6 +68,14 @@ def set_gpg(mode):
     else:
         raise Exception('Internal error: Unrecognized GPG mode {}'.format(
             mode))
+    gpg_mode = mode
+
+
+def gpg_command(cmd):
+    if not gpg_mode:
+        raise Exception('Attempt to use GPG before setting mode')
+    return tuple(chain(('gpg', '--trust-model', 'always', '--batch', '--yes',
+                        '--quiet'), cmd))
 
 
 def load_settings(which):
@@ -214,3 +232,45 @@ def get_logger(setting_getter, name):
     level = logbook.__dict__[level.upper()]
     logbook.compat.redirect_logging()
     return logbook.Logger('qlmdm-' + name, level=level)
+
+
+def get_selectors(getter):
+    return tuple(SelectorVariants(s, s.replace('.', ':'), s + '-encrypted',
+                                  s.replace('.', ':') + '-encrypted')
+                 for s in getter('secret_keeping:selectors', []))
+
+
+def encrypt_document(getter, doc, log=None):
+    if not getter('secret_keeping:enabled'):
+        return doc, None
+    key_id = getter('secret_keeping:key_id')
+    selectors = get_selectors(getter)
+    update = {'$unset': {}, '$set': {}}
+    for s in selectors:
+        decrypted_data = get_setting(
+            doc, s.plain_mem, check_defaults=False)
+        if not decrypted_data:
+            continue
+        with NamedTemporaryFile('w+b') as unencrypted_file, \
+                NamedTemporaryFile('w+b') as encrypted_file:
+            unencrypted_file.write(BSON.encode(decrypted_data))
+            unencrypted_file.flush()
+            try:
+                subprocess.check_output(
+                    gpg_command(('--encrypt', '--recipient', key_id, '-o',
+                                 encrypted_file.name, unencrypted_file.name)),
+                    stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e:
+                if log:
+                    log.error('Gpg failed to encrypt. Output:\n{}',
+                              e.output.decode('ascii'))
+                raise
+            encrypted_file.seek(0)
+            encrypted_data = b64encode(encrypted_file.read()).decode('ascii')
+        update['$unset'][s.plain_mongo] = True
+        update['$set'][s.enc_mongo] = encrypted_data
+        set_setting(doc, s.plain_mem, None)
+        set_setting(doc, s.enc_mem, encrypted_data)
+    if update['$unset']:
+        return doc, update
+    return doc, None
