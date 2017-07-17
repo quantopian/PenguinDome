@@ -1,4 +1,5 @@
 coreutils # shred
+cron
 gnupg
 libgfshare-bin
 openssl

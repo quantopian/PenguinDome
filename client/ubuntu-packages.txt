@@ -1,3 +1,4 @@
+cron
 cryptsetup-bin
 dmidecode
 gnupg
