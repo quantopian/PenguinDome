@@ -11,7 +11,14 @@ import sys
 from tempfile import NamedTemporaryFile
 import uuid
 
-from qlmdm import top_dir, var_dir, set_gpg, get_setting, set_setting
+from qlmdm import (
+    top_dir,
+    var_dir,
+    set_gpg,
+    get_setting,
+    set_setting,
+    gpg_command,
+)
 from qlmdm.server import (
     get_db,
     get_setting as get_server_setting,
@@ -213,9 +220,7 @@ def enable_handler(args):
 
     if args.replace:
         key_name = 'qlmdm-secret-keeping-' + uuid.uuid4().hex
-        output = subprocess.check_output(
-            ('gpg', '--batch', '--passphrase', '', '--quick-gen-key',
-             key_name), stderr=subprocess.STDOUT).decode('ascii')
+        output = gpg_command('--passphrase', '', '--quick-gen-key', key_name)
         match = re.search(r'key (.*) marked as ultimately trusted', output)
         key_id = match.group(1)
         match = re.search(r'/([0-9A-F]+)\.rev', output)
@@ -224,16 +229,12 @@ def enable_handler(args):
         split_dir = os.path.join(var_dir, key_name)
         key_file = os.path.join(split_dir, 'private_key.asc')
         os.makedirs(split_dir)
-        subprocess.check_output(
-            ('gpg', '--batch', '--yes', '--export-secret-key', '--armor',
-             '-o', key_file))
+        gpg_command('--export-secret-key', '--armor', '-o', key_file)
         subprocess.check_output(('gfsplit', '-n', str(args.combine_threshold),
                                  '-m', str(args.shares), key_file),
                                 stderr=subprocess.STDOUT)
         try:
-            subprocess.check_output(('gpg', '--batch', '--yes',
-                                     '--delete-secret-keys', key_fingerprint),
-                                    stderr=subprocess.STDOUT)
+            gpg_command('--delete-secret-keys', key_fingerprint)
         except subprocess.CalledProcessError as e:
             sys.exit('Failed to delete secret key:\n{}'.format(
                 e.output.decode('ascii')))
@@ -241,14 +242,10 @@ def enable_handler(args):
                                 stderr=subprocess.STDOUT)
 
         with NamedTemporaryFile() as public_key_file:
-            subprocess.check_output(('gpg', '--batch', '--yes', '--export',
-                                     '-o', public_key_file.name, key_id),
-                                    stderr=subprocess.STDOUT)
+            gpg_command('--export', '-o', public_key_file.name, key_id)
             set_gpg('client')
             try:
-                subprocess.check_output(('gpg', '--batch', '--yes', '--import',
-                                         public_key_file.name),
-                                        stderr=subprocess.STDOUT)
+                gpg_command('--import', public_key_file.name)
             finally:
                 set_gpg('server')
 
@@ -315,16 +312,13 @@ def combine_secret_key():
     cmd = ['gfcombine', '-o', key_file]
     cmd.extend(os.path.join(split_dir, f) for f in split_files)
     subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    subprocess.check_output(('gpg', '--batch', '--yes', '--import',
-                             key_file), stderr=subprocess.STDOUT)
+    gpg_command('--import', key_file)
     subprocess.check_output(('shred', '-u', key_file))
 
 
 def delete_secret_key():
     key_fingerprint = get_server_setting('secret_keeping:key_fingerprint')
-    subprocess.check_output(('gpg', '--batch', '--yes',
-                             '--delete-secret-keys', key_fingerprint),
-                            stderr=subprocess.STDOUT)
+    gpg_command('--delete-secret-keys', key_fingerprint)
     print("\nDon't forget to 'shred -u' the secret-keeper files!\n")
 
 
@@ -345,10 +339,8 @@ def decrypt_handler(args):
                         NamedTemporaryFile('w+b') as encrypted_file:
                     encrypted_file.write(b64decode(encrypted_data))
                     encrypted_file.flush()
-                    subprocess.check_output(
-                        ('gpg', '--decrypt', '--batch', '--yes',
-                         '-o', unencrypted_file.name, encrypted_file.name),
-                        stderr=subprocess.STDOUT)
+                    gpg_command('--decrypt', '-o', unencrypted_file.name,
+                                encrypted_file.name)
                     unencrypted_file.seek(0)
                     unencrypted_data = unencrypted_file.read()
                 update['$unset'][s.enc_mongo] = True
@@ -381,10 +373,8 @@ def access_handler(args):
                         NamedTemporaryFile('w+b') as encrypted_file:
                     encrypted_file.write(encrypted_data)
                     encrypted_file.flush()
-                    subprocess.check_output(
-                        ('gpg', '--decrypt', '--batch', '--yes',
-                         '-o', unencrypted_file.name, encrypted_file.name),
-                        stderr=subprocess.STDOUT)
+                    gpg_command('--decrypt', '-o', unencrypted_file.name,
+                                encrypted_file.name)
                     unencrypted_file.seek(0)
                     encrypted_data = unencrypted_file.read()
                 set_setting(displayed, s.plain_mem,

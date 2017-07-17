@@ -15,6 +15,7 @@ from qlmdm import (
     set_gpg,
     release_files_iter,
     sign_file,
+    gpg_command,
 )
 
 set_gpg('server')
@@ -52,8 +53,7 @@ try:
                                  '--files-from', file_list.name,
                                  '--directory', staging_dir,
                                  '--files-from', staging_file_list.name))
-    subprocess.check_output(('gpg', '--batch', '--armor', '--sign', tar_file),
-                            stderr=subprocess.STDOUT)
+    gpg_command('--armor', '--sign', tar_file)
     assert os.path.exists(tar_file + '.asc')
 finally:
     shutil.rmtree(staging_dir)

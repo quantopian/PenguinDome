@@ -13,6 +13,7 @@ from qlmdm import (
     gpg_private_home,
     gpg_public_home,
     set_gpg,
+    gpg_command,
 )
 from qlmdm.client import (
     get_setting as get_client_setting,
@@ -55,38 +56,23 @@ def entropy_warning():
 def generate_key(mode, user_id):
     set_gpg(mode)
     try:
-        subprocess.check_output(('gpg', '--list-keys', user_id),
-                                stderr=subprocess.STDOUT)
+        gpg_command('--list-keys', user_id)
     except:
         entropy_warning()
-        subprocess.check_output(('gpg', '--batch', '--passphrase', '',
-                                 '--quick-gen-key', user_id),
-                                stderr=subprocess.STDOUT)
+        gpg_command('--passphrase', '', '--quick-gen-key', user_id)
 
 
 def import_key(to_mode, user_id):
     from_mode = 'client' if to_mode == 'server' else 'server'
     set_gpg(to_mode)
     try:
-        subprocess.check_output(('gpg', '--list-keys', user_id),
-                                stderr=subprocess.STDOUT)
+        gpg_command('--list-keys', user_id)
     except:
-        with NamedTemporaryFile() as key_file, \
-             NamedTemporaryFile() as trust_file:
+        with NamedTemporaryFile() as key_file:
             set_gpg(from_mode)
-            subprocess.check_output(('gpg', '--batch', '--yes', '--export',
-                                     '-o', key_file.name, user_id),
-                                    stderr=subprocess.STDOUT)
-            subprocess.check_call(('gpg', '--batch', '--yes',
-                                   '--export-ownertrust'),
-                                  stdout=trust_file)
-            trust_file.seek(0)
+            gpg_command('--export', '-o', key_file.name, user_id)
             set_gpg(to_mode)
-            subprocess.check_output(('gpg', '--batch', '--import',
-                                     key_file.name), stderr=subprocess.STDOUT)
-            subprocess.check_output(('gpg', '--batch', '--import-ownertrust',
-                                     trust_file.name),
-                                    stdin=trust_file, stderr=subprocess.STDOUT)
+            gpg_command('--import', key_file.name)
 
 
 def maybe_changed(which, setting, prompter, prompt, empty_ok=False):

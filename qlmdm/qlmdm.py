@@ -1,6 +1,7 @@
 from base64 import b64encode
 from bson import BSON
 from collections import namedtuple
+import glob
 from itertools import chain
 import json
 import logbook
@@ -62,20 +63,28 @@ def set_gpg(mode):
     global gpg_mode
 
     if mode == 'server':
-        os.environ['GNUPGHOME'] = gpg_private_home
+        home = gpg_private_home
     elif mode == 'client':
-        os.environ['GNUPGHOME'] = gpg_public_home
+        home = gpg_public_home
     else:
         raise Exception('Internal error: Unrecognized GPG mode {}'.format(
             mode))
+
+    os.environ['GNUPGHOME'] = home
+    os.chmod(home, 0o0700)
+    # random seed gets corrupted sometimes because we're copying keyring from
+    # server to client
+    list(map(os.unlink, glob.glob(os.path.join(home, "random_seed*"))))
     gpg_mode = mode
 
 
-def gpg_command(cmd):
+def gpg_command(*cmd):
     if not gpg_mode:
         raise Exception('Attempt to use GPG before setting mode')
-    return tuple(chain(('gpg', '--trust-model', 'always', '--batch', '--yes',
-                        '--quiet'), cmd))
+    cmd = tuple(chain(('gpg', '--trust-model', 'always', '--batch', '--yes',
+                       '--quiet'), cmd))
+    return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
+        decode('ascii')
 
 
 def load_settings(which):
@@ -156,9 +165,8 @@ def server_request(cmd, data=None, data_path=None):
             data_path = temp_data_file.name
         else:
             data = open(data_path).read()
-        subprocess.check_output(('gpg', '--armor', '--batch', '--yes',
-                                 '--detach-sign', '-o', signature_file.name,
-                                 data_path), stderr=subprocess.STDOUT)
+        gpg_command('--armor', '--detach-sign', '-o', signature_file.name,
+                    data_path)
         signature_file.seek(0)
         post_data = {
             'data': data,
@@ -183,8 +191,7 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
     signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
     file = os.path.join(top_dir, file)
     try:
-        subprocess.check_output(('gpg', '--verify', signature_file, file),
-                                stderr=subprocess.STDOUT)
+        gpg_command('--verify', signature_file, file)
     except subprocess.CalledProcessError:
         if raise_errors:
             raise
@@ -192,17 +199,14 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
     return signature_file[len(top_dir)+1:]
 
 
-def sign_file(file, top_dir=top_dir, overwrite=False):
+def sign_file(file, top_dir=top_dir):
     signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
     file = os.path.join(top_dir, file)
     try:
         os.makedirs(os.path.dirname(signature_file))
     except:
         pass
-    cmd = ['gpg', '--batch', '--detach-sig', '-o', signature_file, file]
-    if overwrite:
-        cmd.insert(1, '--yes')
-    subprocess.check_output(cmd)
+    gpg_command('--detach-sig', '-o', signature_file, file)
     return signature_file[len(top_dir)+1:]
 
 
@@ -211,8 +215,7 @@ def sign_data(data):
          NamedTemporaryFile() as signature_file:
         data_file.write(data)
         data_file.flush()
-        subprocess.check_output(('gpg', '--yes', '--batch', '--detach-sig',
-                                 '-o', signature_file.name, data_file.name))
+        gpg_command('--detach-sig', '-o', signature_file.name, data_file.name)
         return signature_file.read()
 
 
@@ -256,10 +259,8 @@ def encrypt_document(getter, doc, log=None):
             unencrypted_file.write(BSON.encode(decrypted_data))
             unencrypted_file.flush()
             try:
-                subprocess.check_output(
-                    gpg_command(('--encrypt', '--recipient', key_id, '-o',
-                                 encrypted_file.name, unencrypted_file.name)),
-                    stderr=subprocess.STDOUT)
+                gpg_command('--encrypt', '--recipient', key_id, '-o',
+                            encrypted_file.name, unencrypted_file.name)
             except subprocess.CalledProcessError as e:
                 if log:
                     log.error('Gpg failed to encrypt. Output:\n{}',

@@ -17,6 +17,7 @@ from qlmdm import (
     server_request,
     var_dir,
     signatures_dir,
+    gpg_command,
 )
 from qlmdm.client import get_logger
 
@@ -33,10 +34,8 @@ def do_release(data):
         update_tar = os.path.join(unpack_dir, 'release.tar')
         update_signed = update_tar + '.asc'
         open(update_signed, 'w').write(data['update'])
-        subprocess.check_output(('gpg', '--batch', '--verify', update_signed),
-                                stderr=subprocess.STDOUT)
-        subprocess.check_output(('gpg', '--batch', update_signed),
-                                stderr=subprocess.STDOUT)
+        gpg_command('--verify', update_signed)
+        gpg_command(update_signed)
         subprocess.check_output(('tar', '--file', update_tar,
                                  '--directory', unpack_dir,
                                  '--extract'))

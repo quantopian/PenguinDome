@@ -9,13 +9,13 @@ import json
 from multiprocessing import Process
 import os
 import signal
-import subprocess
 import tempfile
 
 from qlmdm import (
     top_dir,
     set_gpg,
     releases_dir,
+    gpg_command,
 )
 from qlmdm.server import (
     get_logger,
@@ -75,10 +75,8 @@ def verify_signature(f):
                 signature_file.write(signature)
                 signature_file.flush()
                 try:
-                    subprocess.check_output(
-                        ('gpg', '--quiet', '--batch', '--verify',
-                         signature_file.name, data_file.name),
-                        stderr=subprocess.STDOUT)
+                    gpg_command('--verify', signature_file.name,
+                                data_file.name)
                 except:
                     raise Exception('Bad signature')
         except:

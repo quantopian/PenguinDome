@@ -51,7 +51,7 @@ def main():
         else:
             set_gpg('server')
             log.info('Signing {}', file)
-            signature = sign_file(file, overwrite=True)
+            signature = sign_file(file)
         old_signatures.discard(signature)
 
     for file in old_signatures:
