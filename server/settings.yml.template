@@ -33,7 +33,10 @@ database:
 logging:
   handler: [any Logbook *Handler, defaults to stderr]
   level: [log level name, optional, defaults to debug]
-  facility: [facility to use with SyslogHandler, defaults to user]
+  syslog:
+    facility: [facility to use with SyslogHandler, defaults to user]
+    host: [syslog host, defaults to local UNIX socket]
+    port: [syslog port, only relevant when host is set]
 audit_cron:
   enabled: [default no]
   email: [email address to receive the audit output]

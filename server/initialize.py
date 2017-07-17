@@ -140,9 +140,17 @@ def configure_logging(which):
             break
 
     if handler.lower() == 'syslog':
+        none_ok = partial(get_string, none_ok=True)
         changed |= maybe_changed(
-            which2, 'logging:facility', get_string,
+            which2, 'logging:syslog:facility', get_string,
             '{} syslog facility (e.g., user, daemon, auth):'.format(which))
+        changed |= maybe_changed(
+            which2, 'logging:syslog:host', none_ok,
+            '{} syslog host (or none for localhost):'.format(which))
+        if getter('logging:syslog:host'):
+            changed |= maybe_changed(
+                which2, 'logging:syslog:port', get_int,
+                '{} syslog port:'.format(which))
 
     return changed
 

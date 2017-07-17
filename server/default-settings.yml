@@ -6,7 +6,9 @@ database:
 logging:
   handler: stderr
   level: debug
-  facility: user
+  syslog:
+    facility: user
+    port: syslog
 audit_cron:
   enabled: no
 secret_keeping:

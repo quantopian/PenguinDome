@@ -5,4 +5,7 @@ schedule:
 logging:
   handler: stderr
   level: debug
-  facility: user
+  syslog:
+    facility: user
+    port: syslog
+  

@@ -8,6 +8,7 @@ import logbook
 import os
 import re
 import requests
+import socket
 import stat
 import subprocess
 from tempfile import NamedTemporaryFile
@@ -27,6 +28,7 @@ release_file = os.path.join('client', 'release.txt')
 signatures_dir = 'signatures'
 gpg_mode = None
 gpg_exe = None
+got_logger = None
 
 SelectorVariants = namedtuple(
     'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
@@ -239,21 +241,33 @@ def sign_data(data):
 
 
 def get_logger(setting_getter, name):
+    global got_logger
+    if got_logger:
+        # Yes, this means that if you try to change your logging within an
+        # application, it won't work. This is intentional. You shouldn't do
+        # that.
+        return got_logger
+
     handler_name = setting_getter('logging:handler').lower()
     handler_name += 'handler'
     handler_name = next(d for d in dir(logbook) if d.lower() == handler_name)
     handler = logbook.__dict__[handler_name]
     kwargs = {}
     if handler_name == 'SyslogHandler':
-        kwargs['facility'] = setting_getter('logging:facility')
-    for kwarg, value in ((a, b) for a, b in setting_getter('logging').items()
-                         if a not in ('handler', 'level', 'facility')):
-        kwargs[kwarg] = value
+        kwargs['facility'] = setting_getter('logging:syslog:facility')
+        hostname = setting_getter('logging:syslog:host')
+        if hostname:
+            port = setting_getter('logging:syslog:port')
+            addrinfo = socket.getaddrinfo(hostname, port, socket.AF_INET,
+                                          socket.SOCK_STREAM)[0]
+            kwargs['socktype'] = addrinfo[1]
+            kwargs['address'] = addrinfo[4]
     handler(**kwargs).push_application()
     level = setting_getter('logging:level')
     level = logbook.__dict__[level.upper()]
     logbook.compat.redirect_logging()
-    return logbook.Logger('qlmdm-' + name, level=level)
+    got_logger = logbook.Logger('qlmdm-' + name, level=level)
+    return got_logger
 
 
 def get_selectors(getter):
