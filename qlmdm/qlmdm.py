@@ -80,6 +80,8 @@ def set_gpg(mode):
 
 
 def gpg_command(*cmd):
+    global gpg_exe, gpg_exe
+
     if not gpg_mode:
         raise Exception('Attempt to use GPG before setting mode')
     if not gpg_exe:
