@@ -2,6 +2,7 @@
 *~
 .#*
 bin
+client/cacert.pem
 client/keyring
 client/settings.yml
 server/keyring
