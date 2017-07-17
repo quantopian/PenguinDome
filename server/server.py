@@ -296,7 +296,9 @@ def main():
     if isinstance(port, list):
         ports = port
     elif isinstance(port, dict):
-        ports = port.keys()
+        ports = list(port.keys())
+    if len(ports) == 1:
+        port = ports.pop()
 
     if ports:
         children = []
