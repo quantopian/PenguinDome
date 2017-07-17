@@ -6,9 +6,9 @@ iptables
 login
 lvm2
 procps
+python-virtualenv
 systemd
 tar
 ubuntu-release-upgrader-core
 update-notifier-common
-virtualenv
 wireless-tools
