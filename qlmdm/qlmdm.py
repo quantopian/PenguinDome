@@ -26,6 +26,7 @@ collected_dir = os.path.join(var_dir, 'collected')
 release_file = os.path.join('client', 'release.txt')
 signatures_dir = 'signatures'
 gpg_mode = None
+gpg_exe = None
 
 SelectorVariants = namedtuple(
     'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
@@ -81,7 +82,18 @@ def set_gpg(mode):
 def gpg_command(*cmd):
     if not gpg_mode:
         raise Exception('Attempt to use GPG before setting mode')
-    cmd = tuple(chain(('gpg', '--trust-model', 'always', '--batch', '--yes',
+    if not gpg_exe:
+        try:
+            subprocess.check_output(('gpg2', '--version'),
+                                    stderr=subprocess.STDOUT)
+        except:
+            subprocess.check_output(('gpg', '--version'),
+                                    stderr=subprocess.STDOUT)
+            gpg_exe = 'gpg'
+        else:
+            gpg_exe = 'gpg2'
+
+    cmd = tuple(chain((gpg_exe, '--trust-model', 'always', '--batch', '--yes',
                        '--quiet'), cmd))
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
         decode('ascii')
