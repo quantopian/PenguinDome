@@ -1,7 +1,6 @@
 certifi==2017.4.17
 chardet==3.0.4
 idna==2.5
-Logbook==1.1.0
 netifaces==0.10.6
 psutil==5.2.2
 PyYAML==3.12

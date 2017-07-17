@@ -1,4 +1,4 @@
-Logbook==1.1.0
+-e git://github.com/quantopian/logbook.git#egg=Logbook
 netifaces==0.10.6
 psutil==5.2.2
 PyYAML==3.12
