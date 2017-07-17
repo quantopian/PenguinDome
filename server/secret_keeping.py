@@ -220,7 +220,8 @@ def enable_handler(args):
 
     if args.replace:
         key_name = 'qlmdm-secret-keeping-' + uuid.uuid4().hex
-        output = gpg_command('--passphrase', '', '--quick-gen-key', key_name)
+        output = gpg_command('--passphrase', '', '--quick-gen-key', key_name,
+                             with_trustdb=True, quiet=False)
         match = re.search(r'key (.*) marked as ultimately trusted', output)
         key_id = match.group(1)
         match = re.search(r'/([0-9A-F]+)\.rev', output)
@@ -229,7 +230,7 @@ def enable_handler(args):
         split_dir = os.path.join(var_dir, key_name)
         key_file = os.path.join(split_dir, 'private_key.asc')
         os.makedirs(split_dir)
-        gpg_command('--export-secret-key', '--armor', '-o', key_file)
+        gpg_command('--export-secret-key', '--armor', '-o', key_file, key_id)
         subprocess.check_output(('gfsplit', '-n', str(args.combine_threshold),
                                  '-m', str(args.shares), key_file),
                                 stderr=subprocess.STDOUT)

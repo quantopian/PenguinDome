@@ -81,28 +81,47 @@ def set_gpg(mode):
     gpg_mode = mode
 
 
-def gpg_command(*cmd, with_trustdb=False):
+def gpg_command(*cmd, with_trustdb=False, quiet=True):
     global gpg_exe, gpg_exe
 
     if not gpg_mode:
         raise Exception('Attempt to use GPG before setting mode')
     if not gpg_exe:
         try:
-            subprocess.check_output(('gpg2', '--version'),
-                                    stderr=subprocess.STDOUT)
+            output = subprocess.check_output(
+                ('gpg2', '--version'),
+                stderr=subprocess.STDOUT).decode('ascii')
         except:
-            subprocess.check_output(('gpg', '--version'),
-                                    stderr=subprocess.STDOUT)
+            output = subprocess.check_output(
+                ('gpg', '--version'),
+                stderr=subprocess.STDOUT).decode('ascii')
             gpg_exe = 'gpg'
         else:
             gpg_exe = 'gpg2'
+        match = re.match(r'^gpg.* ((\d+)(?:\.(\d+)(?:\.(\d+))?)?)', output)
+        if not match:
+            raise Exception('Could not determine GnuPG version in output:\n{}'.
+                            format(output))
+        groups = match.groups()
+        major = int(groups[1])
+        minor = int(groups[2]) if len(groups) > 2 else 0
+        patch = int(groups[3]) if len(groups) > 3 else 0
+        version = major * 1000000 + minor * 1000 + patch
+        if version < 2001015:
+            raise Exception('Qlmdm requires GnuPG version 2.1.15 or newer. '
+                            'You have version {}.'.format(groups[0]))
 
     if with_trustdb:
         trustdb_args = ()
     else:
         trustdb_args = ('--trust-model', 'always')
 
-    cmd = tuple(chain((gpg_exe, '--batch', '--yes', '--quiet'), trustdb_args,
+    if quiet:
+        quiet_args = ('--quiet',)
+    else:
+        quiet_args = ()
+
+    cmd = tuple(chain((gpg_exe, '--batch', '--yes'), quiet_args, trustdb_args,
                       cmd))
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
         decode('ascii')
