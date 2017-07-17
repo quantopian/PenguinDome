@@ -23,6 +23,7 @@ done
 
 . $venv/bin/activate
 
+pip install --upgrade pip
 pip install -q -r client/requirements.txt -c client/constraints.txt
 
 mkdir -p bin
