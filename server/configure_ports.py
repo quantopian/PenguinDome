@@ -308,7 +308,7 @@ def configure_port(args, add=False):
               "WARNING: Don't forget to restart the server.\n")
 
         print("\n"
-              "WARNING: Don't forget to configure client CA file"
+              "WARNING: Don't forget to configure client CA file\n"
               "         (see help for 'configure-client').\n")
 
         show_configuration(args)
