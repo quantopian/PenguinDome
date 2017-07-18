@@ -9,3 +9,6 @@ server/keyring
 server/settings.yml
 signatures
 var
+
+# manually add the PKGBUILD files
+arch

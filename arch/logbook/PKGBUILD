@@ -1,0 +1,52 @@
+# $Id$
+# Maintainer: Felix Yan <felixonmars@archlinux.org>
+# Contributor: Tomas Schertel<tschertel@gmail.com>
+# NOTE: this package is a temporary fork of logbook while
+# https://github.com/getlogbook/logbook/pull/242 is being resolved
+
+pkgbase=python-logbook-quantopian
+pkgname=(python-logbook-quantopian python2-logbook-quantopian)
+pkgver=8ecd7c280037cc8193384249e12354fd4d01cf0e
+pkgrel=1
+pkgdesc="Logging sytem for Python that replaces the standard library’s logging module"
+arch=('i686' 'x86_64')
+url="http://packages.python.org/Logbook/index.html"
+license=('BSD')
+makedepends=('python-setuptools' 'python2-setuptools' 'cython' 'cython2' 'python-six' 'python2-six')
+checkdepends=('redis' 'python-pytest' 'python2-pytest' 'python-sqlalchemy' 'python2-sqlalchemy'
+              'python-mock' 'python2-mock' 'python-redis' 'python2-redis' 'python-pyzmq'
+              'python2-pyzmq' 'python-execnet' 'python2-execnet' 'python-jinja' 'python2-jinja'
+              'python-pifpaf')
+source=("$pkgbase-$pkgver.tar.gz::https://github.com/quantopian/logbook/archive/8ecd7c280037cc8193384249e12354fd4d01cf0e.tar.gz")
+sha512sums=('69c11e18af302540b1938cd02c82c7f0783cf0023b94caeb6eb62ca77374f3d4d02d233146e38a9320c8f8d2e9fe1beaf3c8099a102904164b5694a51e26491c')
+conflicts=('python-logbook' 'python2-logbook')
+
+prepare() {
+  cp -a logbook-$pkgver{,-py2}
+}
+
+build() {
+  cd "$srcdir"/logbook-$pkgver
+  cython logbook/_speedups.pyx
+  python setup.py build
+
+  cd "$srcdir"/logbook-$pkgver-py2
+  cython2 logbook/_speedups.pyx
+  python2 setup.py build
+}
+
+package_python-logbook-quantopian() {
+  depends=('python-six')
+
+  cd logbook-$pkgver
+  python setup.py install --root="$pkgdir" --optimize=1
+  install -Dm664 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
+
+package_python2-logbook-quantopian() {
+  depends=('python2-six')
+
+  cd logbook-$pkgver-py2
+  python2 setup.py install --root="$pkgdir" --optimize=1
+  install -Dm664 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}
