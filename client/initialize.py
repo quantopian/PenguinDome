@@ -50,7 +50,9 @@ if do_crontab:
         temp_cron_file.write(dedent('''\
             SHELL=/bin/bash
             * * * * * root {} &>/dev/null
-        '''.format(os.path.join(prefix, 'opt/qlmdm/bin/client/client-cron'))))
+        '''.format(
+            os.path.join(args.prefix, 'opt/qlmdm/bin/client/client-cron'))),
+        )
         temp_cron_file.flush()
         os.chmod(temp_cron_file.name, 0o644)
 
