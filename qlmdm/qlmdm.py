@@ -128,10 +128,12 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True):
 
 
 def load_settings(which):
-    if which in settingses:
-        return settingses[which]
-
     settings_file = os.path.join(top_dir, which, 'settings.yml')
+    mtime = os.stat(settings_file).st_mtime
+
+    if which in settingses and mtime <= settingses[which]['mtime']:
+        return settingses[which]['settings']
+
     if os.path.exists(settings_file):
         settings = yaml.load(open(settings_file))
         settings['loaded'] = True
@@ -144,7 +146,7 @@ def load_settings(which):
     if 'server_url' in settings:
         settings['server_url'] = re.sub(r'/+$', '', settings['server_url'])
 
-    settingses[which] = settings
+    settingses[which] = {'settings': settings, 'mtime': mtime}
 
     return settings
 

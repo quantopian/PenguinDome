@@ -37,9 +37,7 @@ set_gpg('server')
 
 selectors_setting = 'secret_keeping:selectors'
 restart_note = (
-    '\n'
-    'NOTE: Changes do not fully take effect until you restart the server\n'
-    '      and build a new client release.\n')
+    "\nNOTE: Don't forget to build a new client release!\n")
 distribute_secrets_note = '''
 The {m} pieces of the secret-keeping key are in this directory:
 
