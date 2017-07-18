@@ -372,11 +372,8 @@ def download_release():
         return Response(str(e), status=404)
 
     def generate():
-        log.info('file={}', latest_tar_file)
         with open(latest_tar_file, 'rb') as f:
-            log.info('opened')
             while True:
-                log.info('yielding')
                 msg = f.read(8192)
                 if not msg:
                     break
