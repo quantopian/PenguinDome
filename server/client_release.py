@@ -33,8 +33,7 @@ try:
     open(release_file_path, 'w').write(str(release) + '\n')
     subprocess.check_output(os.path.join('bin', 'sign'))
     sign_file(release_file, top_dir=staging_dir)
-    if not os.path.exists(releases_dir):
-        os.makedirs(releases_dir)
+    os.makedirs(releases_dir, exist_ok=True)
     with NamedTemporaryFile('w+') as file_list, \
             NamedTemporaryFile('w+') as staging_file_list:
         release_files = release_files_iter(with_signatures=True)
