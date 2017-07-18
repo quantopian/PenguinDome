@@ -1,0 +1,9 @@
+[Unit]
+Description=Quantopian Linux Mobile Device Management Client
+
+[Service]
+Type=oneshot
+ExecStart=/opt/qlmdm/bin/client-cron
+
+[Install]
+WantedBy=multi-user.target

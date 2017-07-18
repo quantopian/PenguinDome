@@ -17,7 +17,6 @@ depends=('python'
          'python-requests'
          'python-urllib3'
          'python-logbook-quantopian'
-         'cronie'
          'cryptsetup'
          'gnupg'
          'iptables'
@@ -53,5 +52,12 @@ package() {
     install -Dm554 ${file} "$install_dir/bin/${tail%.py}"
   done
 
-  PYTHONPATH=. python client/initialize.py --prefix=${pkgdir} --no-prompt
+  install -D client/qlmdm-client.service "$pkgdir/etc/systemd/system/qlmdm-client.service"
+  install -D client/qlmdm-client.timer "$pkgdir/etc/systemd/system/qlmdm-client.timer"
+}
+
+post_install() {
+    echo 'starting qlmdm-client.timer'
+    systemctl enable qlmdm-client.timer
+    systemctl start qlmdm-client.timer
 }
