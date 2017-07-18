@@ -52,6 +52,9 @@ if do_crontab:
         '''.format(top_dir)))
         temp_cron_file.flush()
         os.chmod(temp_cron_file.name, 0o644)
+
+        # ensure the etc/cron.d directory exists
+        os.makedirs(os.path.dirname(cron_file), exist_ok=True)
         shutil.copy(temp_cron_file.name, cron_file)
 
     print('Installed {}'.format(cron_file))
