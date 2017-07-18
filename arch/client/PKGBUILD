@@ -1,0 +1,47 @@
+# Maintainer: Quantopian Inc. <dev@quantopian.com>
+
+pkgname=qlmdm-client
+pkgver=1.0.0
+pkgrel=0
+pkgdesc="Quantopian Linux Mobile Device Management Client"
+arch=('x86_64')
+url="https://www.github.com/quantopian/qlmdm"
+depends=('python'
+         'python-certifi'
+         'python-chardet'
+         'python-idna'
+         'python-netifaces'
+         'python-psutil'
+         'python-pymongo'
+         'python-yaml'
+         'python-requests'
+         'python-urllib3'
+         'python-logbook-quantopian'
+         'cronie'
+         'cryptsetup'
+         'gnupg'
+         'iptables'
+         'lvm2'
+         'procps-ng'
+         'tar'
+         'wireless_tools'
+         'util-linux')
+source=("http://eraserver.dynoquant.com:5001/qlmdm/v1/download_release")
+# sha256sums=(953360c403fae868952b2d7112ee1a67cd91ffeba60c45d98060fac14ed44520)
+
+package() {
+  cd ${srcdir}
+
+  install -d . "$pkgdir/opt/qlmdm"
+
+  for file in client/*.py; do
+    tail=${file##*/}
+    if [ $tail = "initialize.py" ]; then
+      continue
+    fi
+    target=bin/${tail%.py}
+    install -Dm554 ${file} "$pkgdir/opt/qlmdm/bin/$file"
+  done
+
+  PYTHONPATH=. python client/initialize.py --prefix=${pkgdir} --no-prompt
+}
