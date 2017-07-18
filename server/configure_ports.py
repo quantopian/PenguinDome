@@ -308,9 +308,10 @@ def configure_port(args, add=False):
         print("\n"
               "WARNING: Don't forget to restart the server.\n")
 
-        print("\n"
-              "WARNING: Don't forget to configure client CA file\n"
-              "         (see help for 'configure-client').\n")
+        if args.ssl_self_signed and args.ssl:
+            print("\n"
+                  "WARNING: Don't forget to configure client CA file\n"
+                  "         (see help for 'configure-client').\n")
 
         show_configuration(args)
     else:
