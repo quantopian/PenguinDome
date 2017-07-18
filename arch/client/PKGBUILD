@@ -32,15 +32,15 @@ sha256sums=(SKIP)
 package() {
   cd ${srcdir}
 
-  install -d . "$pkgdir/opt/qlmdm"
+  install -d "$pkgdir/opt/qlmdm"
+  cp -r . "$pkgdir/opt/qlmdm"
 
   for file in client/*.py; do
     tail=${file##*/}
     if [ $tail = "initialize.py" ]; then
       continue
     fi
-    target=bin/${tail%.py}
-    install -Dm554 ${file} "$pkgdir/opt/qlmdm/bin/$file"
+    install -Dm554 ${file} "$pkgdir/opt/qlmdm/bin/${tail%.py}"
   done
 
   PYTHONPATH=. python client/initialize.py --prefix=${pkgdir} --no-prompt
