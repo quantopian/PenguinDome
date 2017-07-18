@@ -129,7 +129,10 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True):
 
 def load_settings(which):
     settings_file = os.path.join(top_dir, which, 'settings.yml')
-    mtime = os.stat(settings_file).st_mtime
+    try:
+        mtime = os.stat(settings_file).st_mtime
+    except:
+        mtime = 0
 
     if which in settingses and mtime <= settingses[which]['mtime']:
         return settingses[which]['settings']
