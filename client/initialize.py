@@ -51,7 +51,7 @@ if do_crontab:
             * * * * * root {}/bin/client-cron
         '''.format(top_dir)))
         temp_cron_file.flush()
-        os.chmod(temp_cron_file, 0o644)
+        os.chmod(temp_cron_file.name, 0o644)
         shutil.copy(temp_cron_file.name, cron_file)
 
     print('Installed {}'.format(cron_file))
