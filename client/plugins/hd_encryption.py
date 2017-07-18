@@ -28,7 +28,7 @@ for mount in open('/proc/mounts'):
     device, mountpoint, type, options, freq, passno = mount.split(' ')
     if type in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
                 'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
-                'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs'):
+                'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs'):
         continue
     if type.startswith('fuse'):
         continue
