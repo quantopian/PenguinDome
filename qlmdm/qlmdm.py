@@ -284,8 +284,8 @@ def get_logger(setting_getter, name):
 
     # We always do local debug logging, regardless of whether we're also
     # logging elsewhere.
-        logbook.RotatingFileHandler(
-            internal_log_file, bubble=True).push_application()
+    logbook.RotatingFileHandler(
+        internal_log_file, bubble=True).push_application()
 
     handler_name = setting_getter('logging:handler')
     if handler_name:
@@ -295,6 +295,8 @@ def get_logger(setting_getter, name):
                             if d.lower() == handler_name)
         handler = logbook.__dict__[handler_name]
         kwargs = {'bubble': True}
+        level = setting_getter('logging:level')
+        kwargs['level'] = logbook.__dict__[level.upper()]
         if handler_name == 'SyslogHandler':
             kwargs['facility'] = setting_getter('logging:syslog:facility')
             hostname = setting_getter('logging:syslog:host')
@@ -306,10 +308,8 @@ def get_logger(setting_getter, name):
                 kwargs['address'] = addrinfo[4]
         handler(**kwargs).push_application()
 
-    level = setting_getter('logging:level')
-    level = logbook.__dict__[level.upper()]
     logbook.compat.redirect_logging()
-    got_logger = logbook.Logger('qlmdm-' + name, level=level)
+    got_logger = logbook.Logger('qlmdm-' + name)
     return got_logger
 
 
