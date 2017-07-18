@@ -172,7 +172,7 @@ def get_setting(settings, setting, default=None, check_defaults=True):
     preconfigured default setting.
     """
     if check_defaults:
-        defaults = settings['defaults']
+        defaults = settings.get('defaults', {})
     for key in setting.split(':'):
         try:
             settings = settings[key]
@@ -186,13 +186,17 @@ def get_setting(settings, setting, default=None, check_defaults=True):
 
 def set_setting(settings, setting, value):
     keys = setting.split(':')
+    subsettings = settings
     while len(keys) > 1:
-        if keys[0] not in settings:
-            settings[keys[0]] = {}
-        settings = settings[keys[0]]
+        if keys[0] not in subsettings:
+            subsettings[keys[0]] = {}
+        subsettings = subsettings[keys[0]]
         keys.pop(0)
     if value is not None:
-        settings[keys[0]] = value
+        subsettings[keys[0]] = value
+    elif get_setting(settings, setting):
+        # It has a default, so we need to store an override.
+        subsettings[keys[0]] = None
     else:
         settings.pop(keys[0], None)
 
@@ -272,21 +276,36 @@ def get_logger(setting_getter, name):
         # that.
         return got_logger
 
-    handler_name = setting_getter('logging:handler').lower()
-    handler_name += 'handler'
-    handler_name = next(d for d in dir(logbook) if d.lower() == handler_name)
-    handler = logbook.__dict__[handler_name]
-    kwargs = {}
-    if handler_name == 'SyslogHandler':
-        kwargs['facility'] = setting_getter('logging:syslog:facility')
-        hostname = setting_getter('logging:syslog:host')
-        if hostname:
-            port = setting_getter('logging:syslog:port')
-            addrinfo = socket.getaddrinfo(hostname, port, socket.AF_INET,
-                                          socket.SOCK_STREAM)[0]
-            kwargs['socktype'] = addrinfo[1]
-            kwargs['address'] = addrinfo[4]
-    handler(**kwargs).push_application()
+    internal_log_dir = os.path.join(var_dir, 'log')
+    internal_log_file = os.path.join(internal_log_dir, 'qlmdm.log')
+
+    if not os.path.exists(internal_log_dir):
+        os.makedirs(internal_log_dir, 0x0700)
+
+    # We always do local debug logging, regardless of whether we're also
+    # logging elsewhere.
+        logbook.RotatingFileHandler(
+            internal_log_file, bubble=True).push_application()
+
+    handler_name = setting_getter('logging:handler')
+    if handler_name:
+        handler_name = handler_name.lower()
+        handler_name += 'handler'
+        handler_name = next(d for d in dir(logbook)
+                            if d.lower() == handler_name)
+        handler = logbook.__dict__[handler_name]
+        kwargs = {'bubble': True}
+        if handler_name == 'SyslogHandler':
+            kwargs['facility'] = setting_getter('logging:syslog:facility')
+            hostname = setting_getter('logging:syslog:host')
+            if hostname:
+                port = setting_getter('logging:syslog:port')
+                addrinfo = socket.getaddrinfo(hostname, port, socket.AF_INET,
+                                              socket.SOCK_STREAM)[0]
+                kwargs['socktype'] = addrinfo[1]
+                kwargs['address'] = addrinfo[4]
+        handler(**kwargs).push_application()
+
     level = setting_getter('logging:level')
     level = logbook.__dict__[level.upper()]
     logbook.compat.redirect_logging()

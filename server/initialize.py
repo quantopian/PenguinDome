@@ -39,6 +39,7 @@ server_user_id = 'qlmdm-server'
 client_user_id = 'qlmdm-client'
 
 entropy_warned = False
+get_string_none = partial(get_string, none_ok=True)
 
 
 def entropy_warning():
@@ -114,9 +115,11 @@ def configure_logging(which):
 
     while True:
         changed |= maybe_changed(
-            which2, 'logging:handler', get_string,
-            '{} logbook handler (e.g., stderr, syslog):'.format(which))
+            which2, 'logging:handler', get_string_none, '{} logbook handler '
+            '(e.g., stderr, syslog) (empty for none):'.format(which))
         handler = getter('logging:handler')
+        if not handler:
+            return
         full_handler = handler.lower() + 'handler'
         try:
             next(h for h in logbook.__dict__ if h.lower() == full_handler)
@@ -140,12 +143,11 @@ def configure_logging(which):
             break
 
     if handler.lower() == 'syslog':
-        none_ok = partial(get_string, none_ok=True)
         changed |= maybe_changed(
             which2, 'logging:syslog:facility', get_string,
             '{} syslog facility (e.g., user, daemon, auth):'.format(which))
         changed |= maybe_changed(
-            which2, 'logging:syslog:host', none_ok,
+            which2, 'logging:syslog:host', get_string_none,
             '{} syslog host (or none for localhost):'.format(which))
         if getter('logging:syslog:host'):
             changed |= maybe_changed(
@@ -217,15 +219,13 @@ if do_config:
                                     get_string_or_list,
                                     'Database host:port:')
     if get_server_setting('database:host'):
-        prompter = partial(get_string, none_ok=True)
         server_changed |= maybe_changed('server', 'database:replicaset',
-                                        prompter, 'Replicaset name:',
+                                        get_string_none, 'Replicaset name:',
                                         empty_ok=True)
     server_changed |= maybe_changed('server', 'database:name',
                                     get_string, 'Database name:')
-    prompter = partial(get_string, none_ok=True)
     server_changed |= maybe_changed('server', 'database:username',
-                                    prompter, 'Database username:',
+                                    get_string_none, 'Database username:',
                                     empty_ok=True)
     if get_server_setting('database:username'):
         server_changed |= maybe_changed('server', 'database:password',
