@@ -35,7 +35,7 @@ args = parser.parse_args()
 cron_file = os.path.join(args.prefix, 'etc/cron.d/qlmdm')
 cron_exists = os.path.exists(cron_file)
 
-if prompt:
+if args.prompt:
     if cron_exists:
         prompt = 'Do you want to replace the crontab?'
     else:
