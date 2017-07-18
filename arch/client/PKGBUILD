@@ -27,7 +27,7 @@ depends=('python'
          'wireless_tools'
          'util-linux')
 source=("http://eraserver.dynoquant.com:5001/qlmdm/v1/download_release")
-# sha256sums=(953360c403fae868952b2d7112ee1a67cd91ffeba60c45d98060fac14ed44520)
+sha256sums=(SKIP)
 
 package() {
   cd ${srcdir}
