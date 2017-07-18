@@ -2,7 +2,7 @@
 Description=Run the Quantopian Linux Mobile Device Management Client script every minute
 
 [Timer]
-OnCalendar=*
+OnUnitActiveSec=1m
 
 [Install]
 WantedBy=timers.target

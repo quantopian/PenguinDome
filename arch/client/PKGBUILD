@@ -37,6 +37,8 @@ package() {
   install -d ${install_dir}
   cp -r . ${install_dir}
 
+  chmod -R 700 "$install_dir/client/keyring"
+
   site=$(python -c "import site;print(site.getsitepackages()[0])")
 
   for dir in ${site}; do
@@ -57,7 +59,6 @@ package() {
 }
 
 post_install() {
-    echo 'starting qlmdm-client.timer'
     systemctl enable qlmdm-client.timer
     systemctl start qlmdm-client.timer
 }
