@@ -3,11 +3,13 @@
 from bson import ObjectId
 import datetime
 import dateutil.parser
-from flask import Flask, request
+from flask import Flask, request, Response
 from functools import wraps
+from ipaddress import IPv4Address, IPv6Address, IPv4Network, IPv6Network
 import json
 from multiprocessing import Process
 import os
+from passlib.hash import pbkdf2_sha256
 import signal
 import tempfile
 
@@ -54,6 +56,109 @@ def log_deprecated_port(f):
                 close_issue(hostname, 'deprecated-port')
         return f(*args, **kwargs)
     return wrapper
+
+
+def no_auth_needed(auth_name, mandatory=False):
+    auth_info = get_server_setting(auth_name)
+    if not auth_info:
+        if mandatory:
+            raise Exception('No authentication information configured in {}'.
+                            format(auth_name))
+        log.debug('Request permitted: authentication is not mandatory')
+        return True
+    return False
+
+
+def check_ip_auth(auth_name):
+    auth_info = get_server_setting(auth_name + ':ipranges')
+    if not auth_info:
+        log.debug('No auth: no IP ranges configured in {}', auth_name)
+        return False
+    try:
+        remote_addr = IPv4Address(request.remote_addr)
+    except:
+        try:
+            remote_addr = IPv6Address(request.remote_addr)
+        except:
+            log.debug("No auth: can't parse IP address {}",
+                      request.remote_addr)
+            return False
+    for range_string in auth_info:
+        try:
+            ip_range = IPv4Network(range_string)
+        except:
+            try:
+                ip_range = IPv6Network(range_string)
+            except:
+                raise Exception('Invalid address range {} in {}'.format(
+                    range_string, auth_name))
+        if remote_addr in ip_range:
+            log.debug('Auth success: {} is in {}', remote_addr, ip_range)
+            return True
+    log.debug('No auth: no matching IP ranges for {} in {}', remote_addr,
+              auth_name)
+
+
+def check_password(auth_name):
+    auth_info = get_server_setting(auth_name + ':passwords')
+    if not auth_info:
+        log.debug('No auth: no passwords configured in {}', auth_name)
+        return False
+    if not request.authorization:
+        log.debug('No auth: no username specified in request')
+        return False
+    try:
+        password_hash = auth_info[request.authorization.username]
+    except KeyError:
+        # N.B. One does not log usernames from authentication requests, in
+        # case the user accidentally typed the password in the username field,
+        # so that one doesn't accidentally log passwords.
+        log.debug('No auth: specified username not in {}', auth_name)
+        return False
+    if not pbkdf2_sha256.verify(request.authorization.password, password_hash):
+        # It's OK to log the username here, since we've already confirmed that
+        # it's a valid username, not a password.
+        log.debug('No auth: incorrect password for {} in {}',
+                  request.authorization.username, auth_name)
+        return False
+    return True
+
+
+def require_httpauth(auth_name, mandatory=True):
+    """Authenticate a request
+
+    `auth_setting` is the server configuration setting containing the
+    authentication information for the request. If it's empty and `mandatory`
+    is True, an exception is raised; otherwise, the request is allowed to
+    proceed (i.e., whether an endpoint with optional authentication has it is
+    enforced by the configuration file).
+
+    The authentication information can contain the subkey `passwords` and/or
+    `ipranges`.
+
+    `ipranges` is a list of IP ranges. If the remote address of the request
+    falls in any of the specified ranges, then the authentication succeeds with
+    no need for a username and password.
+
+    `passwords` is a dictionary of username / pbkdf2_sha256 hashes. If the
+    username specified by the user matches any of the usernames in the
+    dictionary, then the authentication succeeds if the password matches the
+    stored hash.
+    """
+
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not (no_auth_needed(auth_name, mandatory=mandatory) or
+                    check_ip_auth(auth_name) or check_password(auth_name)):
+                return Response(
+                    response='Login required',
+                    status=401,
+                    headers={
+                        'WWW-Authenticate': 'Basic realm="Login Required"'})
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def verify_signature(f):
@@ -253,6 +358,35 @@ def acknowledge_patch():
                                  '$pull': {'pending_hosts': hostname}})
     log.info('{} acknowledged patch {}', hostname, _id)
     return 'ok'
+
+
+@app.route('/qlmdm/v1/download_release', methods=('GET',))
+@require_httpauth('server_auth:download_release', mandatory=False)
+def download_release():
+    try:
+        all_files = os.listdir(releases_dir)
+        tar_files = (f for f in all_files if f.endswith('.tar'))
+        filename = sorted(tar_files, reverse=True)[0]
+        latest_tar_file = os.path.join(releases_dir, filename)
+    except Exception as e:
+        return Response(str(e), status=404)
+
+    def generate():
+        log.info('file={}', latest_tar_file)
+        with open(latest_tar_file, 'rb') as f:
+            log.info('opened')
+            while True:
+                log.info('yielding')
+                msg = f.read(8192)
+                if not msg:
+                    break
+                yield msg
+
+    return Response(response=generate(),
+                    status=200,
+                    mimetype='application/tar',
+                    headers={'Content-Disposition':
+                             'attachment; filename={}'.format(filename)})
 
 
 def datetimeify(d):
