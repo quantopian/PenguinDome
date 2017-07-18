@@ -251,10 +251,7 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
 def sign_file(file, top_dir=top_dir):
     signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
     file = os.path.join(top_dir, file)
-    try:
-        os.makedirs(os.path.dirname(signature_file))
-    except:
-        pass
+    os.makedirs(os.path.dirname(signature_file), exist_ok=True)
     gpg_command('--detach-sig', '-o', signature_file, file)
     return signature_file[len(top_dir)+1:]
 
@@ -279,8 +276,7 @@ def get_logger(setting_getter, name):
     internal_log_dir = os.path.join(var_dir, 'log')
     internal_log_file = os.path.join(internal_log_dir, 'qlmdm.log')
 
-    if not os.path.exists(internal_log_dir):
-        os.makedirs(internal_log_dir, 0x0700)
+    os.makedirs(internal_log_dir, 0x0700, exist_ok=True)
 
     # We always do local debug logging, regardless of whether we're also
     # logging elsewhere.

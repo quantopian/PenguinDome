@@ -297,8 +297,7 @@ def combine_secret_key():
     key_name = get_server_setting('secret_keeping:key_name')
     split_dir = os.path.join(var_dir, key_name)
     key_file = os.path.join(split_dir, 'private_key.asc')
-    if not os.path.exists(split_dir):
-        os.makedirs(split_dir)
+    os.makedirs(split_dir, exist_ok=True)
     split_files = [f for f in os.listdir(split_dir) if re.search(r'\.\d', f)]
     combine_threshold = get_server_setting('secret_keeping:combine_threshold')
     if len(split_files) < combine_threshold:

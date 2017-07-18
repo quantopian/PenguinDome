@@ -136,8 +136,7 @@ def main():
     if updates:
         log.info('Encrypted private data before transmission to server')
 
-    if not os.path.exists(collected_dir):
-        os.makedirs(collected_dir)
+    os.makedirs(collected_dir, exist_ok=True)
     collected_path = os.path.join(collected_dir, str(int(time.time())))
     with open(collected_path, 'w') as f:
         try:

@@ -56,8 +56,7 @@ def do_release(data):
         for file in recursive_list(unpack_dir):
             src = os.path.join(unpack_dir, file)
             target = os.path.join(top_dir, file)
-            if not os.path.exists(os.path.dirname(target)):
-                os.makedirs(os.path.dirname(target))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
             try:
                 if filecmp.cmp(src, target, shallow=False):
                     log.debug('Identical (not replaced): {}', file)
@@ -114,8 +113,7 @@ def do_patches(patches):
             log.info('Patching {} (id {}, mode {})', patch_path, patch_id,
                      patch_mode)
             patch_dir = os.path.dirname(os.path.join(top_dir, patch_path))
-            if not os.path.exists(patch_dir):
-                os.makedirs(patch_dir)
+            os.makedirs(patch_dir, exist_ok=True)
             open(patch_path, 'wb').write(patch_content)
             os.chmod(patch_path, patch_mode)
 

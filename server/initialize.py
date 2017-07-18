@@ -30,10 +30,8 @@ from qlmdm.prompts import get_bool, get_int, get_string, get_string_or_list
 
 os.chdir(top_dir)
 
-if not os.path.exists(gpg_private_home):
-    os.makedirs(gpg_private_home, 0o700)
-if not os.path.exists(gpg_public_home):
-    os.makedirs(gpg_public_home, 0o700)
+os.makedirs(gpg_private_home, 0o700, exist_ok=True)
+os.makedirs(gpg_public_home, 0o700, exist_ok=True)
 
 server_user_id = 'qlmdm-server'
 client_user_id = 'qlmdm-client'
