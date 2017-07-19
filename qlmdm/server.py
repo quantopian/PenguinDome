@@ -135,10 +135,64 @@ def open_issue(hostname, issue_name):
 def close_issue(hostname, issue_name):
     """Closes any open issues for the specified host and issue name"""
     db = get_db()
-    db.issues.update({'hostname': hostname,
-                      'name': issue_name,
-                      'closed_at': {'$exists': False}},
-                     {'$set': {'closed_at': datetime.datetime.utcnow()}})
+    db.issues.update_many({'hostname': hostname,
+                           'name': issue_name,
+                           'closed_at': {'$exists': False}},
+                          {'$set': {'closed_at': datetime.datetime.utcnow()}})
+
+
+def snooze_issue(hostname, issue_name, snooze_until):
+    """Snooze any open issues for the specified host and issue name
+
+    Returns the ids of the snoozed issues."""
+
+    db = get_db()
+
+    spec = {'closed_at': {'$exists': False},
+            '$or': [{'unsnooze_at': {'$exists': False}},
+                    {'unsnooze_at': {'$lt': snooze_until}}]}
+
+    if hostname:
+        spec['hostname'] = hostname
+
+    if issue_name:
+        spec['name'] = issue_name
+
+    ids = [d['_id'] for d in db.issues.find(spec, projection=['_id'])]
+    if not ids:
+        return []
+
+    db.issues.update_many(
+        {'_id': {'$in': ids}},
+        {'$set': {'snoozed_at': datetime.datetime.now(),
+                  'unsnooze_at': snooze_until}})
+    return ids
+
+
+def unsnooze_issue(hostname, issue_name):
+    """Unsnooze any snoozed issues for the specified host and issue name
+
+    Returns the ids of the unsnoozed issues."""
+
+    db = get_db()
+
+    now = datetime.datetime.utcnow()
+    spec = {'closed_at': {'$exists': False}, 'unsnooze_at': {'$gt': now}}
+
+    if hostname:
+        spec['hostname'] = hostname
+
+    if issue_name:
+        spec['name'] = issue_name
+
+    ids = [d['_id'] for d in db.issues.find(spec, projection=['_id'])]
+    if not ids:
+        return []
+
+    db.issues.update_many(
+        {'_id': {'$in': ids}},
+        {'$set': {'unsnoozed_at': now, 'unsnooze_at': now}})
+    return ids
 
 
 def get_open_issues(primary_key='host', hostname=None, issue_name=None):

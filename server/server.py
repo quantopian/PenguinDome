@@ -283,7 +283,7 @@ def submit():
         which.append('commands')
     if which:
         old = db['submissions'].find_one(spec)
-        db['submissions'].update(spec, update, upsert=True)
+        db['submissions'].update_one(spec, update, upsert=True)
         log.info('Successful submission of {} by {}',
                  ', '.join(which), hostname)
         new = db['submissions'].find_one(spec)
@@ -292,7 +292,7 @@ def submit():
             strip_dates(new)
             new, updates = encrypt_document(new)
             if updates:
-                db.submissions.update({'_id': new['_id']}, updates)
+                db.submissions.update_one({'_id': new['_id']}, updates)
                 log.info('Encrypted secret data for {} in document {}',
                          hostname, new['_id'])
             changes = dict_changes(old, new)
@@ -353,7 +353,7 @@ def acknowledge_patch():
     data = json.loads(request.form['data'])
     _id = data['id']
     hostname = data['hostname']
-    db['patches'].update(
+    db['patches'].update_one(
         {'_id': ObjectId(_id)}, {'$push': {'completed_hosts': hostname},
                                  '$pull': {'pending_hosts': hostname}})
     log.info('{} acknowledged patch {}', hostname, _id)
