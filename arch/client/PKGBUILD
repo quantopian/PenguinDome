@@ -49,12 +49,14 @@ package() {
     echo ${real_install_dir} > "$pkgdir/$dir/qlmdm.pth"
   done
 
+  install -d ${install_dir}/bin
   for file in client/*.py; do
     tail=${file##*/}
     if [ $tail = "initialize.py" ]; then
       continue
     fi
-    install -Dm554 ${file} "$install_dir/bin/${tail%.py}"
+    chmod 754 $file
+    ln -sf ../$file "$install_dir/bin/${tail%.py}"
   done
 
   install -Dm644 client/qlmdm-client.service "$pkgdir/etc/systemd/system/qlmdm-client.service"
