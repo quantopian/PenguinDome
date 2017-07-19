@@ -6,7 +6,7 @@
 
 pkgbase=python-logbook-quantopian
 pkgname=(python-logbook-quantopian python2-logbook-quantopian)
-pkgver=6be7a6f0f3f552ecdcb10759ca430c1f4f12626d
+pkgver=4185f20938065922ee1ef5e3b6e47839bf2cb5d5
 pkgrel=1
 pkgdesc="Logging sytem for Python that replaces the standard library’s logging module"
 arch=('i686' 'x86_64')
@@ -17,8 +17,8 @@ checkdepends=('redis' 'python-pytest' 'python2-pytest' 'python-sqlalchemy' 'pyth
               'python-mock' 'python2-mock' 'python-redis' 'python2-redis' 'python-pyzmq'
               'python2-pyzmq' 'python-execnet' 'python2-execnet' 'python-jinja' 'python2-jinja'
               'python-pifpaf')
-source=("$pkgbase-$pkgver.tar.gz::https://github.com/quantopian/logbook/archive/6be7a6f0f3f552ecdcb10759ca430c1f4f12626d.tar.gz")
-sha512sums=('e02c1ae5ff3e1668c5c818381e63b543f1105c373f0db95febd3c0571ffaff1549b7617e4bf57dcc8fc30f708517b8a3090a7e2a3a4ef15a46e542a9edbbcec3')
+source=("$pkgbase-$pkgver.tar.gz::https://github.com/quantopian/logbook/archive/4185f20938065922ee1ef5e3b6e47839bf2cb5d5.tar.gz")
+sha512sums=('851a439908ad929f841bc6c756df26e2f7837d20b774badfc918a3250fac283289e260373db4b30466ad3f6c25fe655cfa3c3d31182e78ae62fd15631663fbab')
 conflicts=('python-logbook' 'python2-logbook')
 
 prepare() {
