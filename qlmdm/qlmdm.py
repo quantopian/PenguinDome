@@ -1,13 +1,12 @@
 from base64 import b64encode
 from bson import BSON
 from collections import namedtuple
+from distutils.version import LooseVersion
 import glob
 from itertools import chain
-import json
 import logbook
 import os
 import re
-import requests
 import socket
 import stat
 import subprocess
@@ -29,6 +28,7 @@ signatures_dir = 'signatures'
 gpg_mode = None
 gpg_exe = None
 got_logger = None
+client_gpg_version = '2.1.11'
 
 SelectorVariants = namedtuple(
     'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
@@ -81,7 +81,8 @@ def set_gpg(mode):
     gpg_mode = mode
 
 
-def gpg_command(*cmd, with_trustdb=False, quiet=True):
+def gpg_command(*cmd, with_trustdb=False, quiet=True,
+                minimum_version='2.1.15'):
     global gpg_exe, gpg_exe
 
     if not gpg_mode:
@@ -98,18 +99,14 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True):
             gpg_exe = 'gpg'
         else:
             gpg_exe = 'gpg2'
-        match = re.match(r'^gpg.* ((\d+)(?:\.(\d+)(?:\.(\d+))?)?)', output)
+        match = re.match(r'^gpg.* (\d+(?:\.\d+(?:\.\d+)?)?)', output)
         if not match:
             raise Exception('Could not determine GnuPG version in output:\n{}'.
                             format(output))
-        groups = match.groups()
-        major = int(groups[1])
-        minor = int(groups[2]) if len(groups) > 2 else 0
-        patch = int(groups[3]) if len(groups) > 3 else 0
-        version = major * 1000000 + minor * 1000 + patch
-        if version < 2001015:
-            raise Exception('Qlmdm requires GnuPG version 2.1.15 or newer. '
-                            'You have version {}.'.format(groups[0]))
+        if LooseVersion(match.group(1)) < LooseVersion(minimum_version):
+            raise Exception('GnuPG version {} or newer is required. '
+                            'You have version {}.'.format(
+                                minimum_version, match.group(1)))
 
     if with_trustdb:
         trustdb_args = ()
@@ -201,68 +198,17 @@ def set_setting(settings, setting, value):
         settings.pop(keys[0], None)
 
 
-def server_request(cmd, data=None, data_path=None):
-    server_url = get_setting(load_settings('client'), 'server_url')
-    if data and data_path:
-        raise Exception('Both data and data_path specified')
-    with NamedTemporaryFile('w+') as temp_data_file, \
-            NamedTemporaryFile('w+') as signature_file:
-        if data:
-            data = json.dumps(data)
-            temp_data_file.write(data)
-            temp_data_file.flush()
-            data_path = temp_data_file.name
-        else:
-            data = open(data_path).read()
-        gpg_command('--armor', '--detach-sign', '-o', signature_file.name,
-                    data_path)
-        signature_file.seek(0)
-        post_data = {
-            'data': data,
-            'signature': signature_file.read(),
-        }
-
-    kwargs = {
-        'data': post_data,
-        'timeout': 60,
-    }
-    ca_path = get_setting(load_settings('client'), 'ssl:ca_path')
-    if ca_path:
-        if not ca_path.startswith('/'):
-            ca_path = os.path.join(top_dir, ca_path)
-        kwargs['verify'] = ca_path
-    response = requests.post('{}{}'.format(server_url, cmd), **kwargs)
-    response.raise_for_status()
-    return response
-
-
 def verify_signature(file, top_dir=top_dir, raise_errors=False):
     signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
     file = os.path.join(top_dir, file)
     try:
-        gpg_command('--verify', signature_file, file)
+        gpg_command('--verify', signature_file, file,
+                    minimum_version=client_gpg_version)
     except subprocess.CalledProcessError:
         if raise_errors:
             raise
         return None
     return signature_file[len(top_dir)+1:]
-
-
-def sign_file(file, top_dir=top_dir):
-    signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
-    file = os.path.join(top_dir, file)
-    os.makedirs(os.path.dirname(signature_file), exist_ok=True)
-    gpg_command('--detach-sig', '-o', signature_file, file)
-    return signature_file[len(top_dir)+1:]
-
-
-def sign_data(data):
-    with NamedTemporaryFile() as data_file, \
-         NamedTemporaryFile() as signature_file:
-        data_file.write(data)
-        data_file.flush()
-        gpg_command('--detach-sig', '-o', signature_file.name, data_file.name)
-        return signature_file.read()
 
 
 def get_logger(setting_getter, name):
@@ -332,7 +278,8 @@ def encrypt_document(getter, doc, log=None):
             unencrypted_file.flush()
             try:
                 gpg_command('--encrypt', '--recipient', key_id, '-o',
-                            encrypted_file.name, unencrypted_file.name)
+                            encrypted_file.name, unencrypted_file.name,
+                            minimum_version=client_gpg_version)
             except subprocess.CalledProcessError as e:
                 if log:
                     log.error('Gpg failed to encrypt. Output:\n{}',

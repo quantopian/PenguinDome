@@ -14,9 +14,9 @@ from qlmdm import (
     release_file,
     set_gpg,
     release_files_iter,
-    sign_file,
     gpg_command,
 )
+from qlmdm.server import sign_file
 
 set_gpg('server')
 os.chdir(top_dir)

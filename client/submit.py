@@ -3,7 +3,8 @@
 import glob
 import os
 
-from qlmdm import top_dir, collected_dir, set_gpg, server_request
+from qlmdm import top_dir, collected_dir, set_gpg
+from qlmdm.client import server_request
 
 os.chdir(top_dir)
 set_gpg('client')

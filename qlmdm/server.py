@@ -4,6 +4,7 @@ import datetime
 from mongo_proxy import MongoProxy
 import os
 from pymongo import MongoClient
+from tempfile import NamedTemporaryFile
 
 from qlmdm import (
     load_settings,
@@ -12,9 +13,10 @@ from qlmdm import (
     get_logger as main_get_logger,
     save_settings as main_save_settings,
     signatures_dir,
-    sign_data,
     get_selectors as main_get_selectors,
     encrypt_document as main_encrypt_document,
+    gpg_command,
+    top_dir,
 )
 
 db = None
@@ -229,3 +231,20 @@ def get_selectors():
 
 def encrypt_document(doc, log=None):
     return main_encrypt_document(get_setting, doc, log=log)
+
+
+def sign_file(file, top_dir=top_dir):
+    signature_file = os.path.join(top_dir, signatures_dir, file + '.sig')
+    file = os.path.join(top_dir, file)
+    os.makedirs(os.path.dirname(signature_file), exist_ok=True)
+    gpg_command('--detach-sig', '-o', signature_file, file)
+    return signature_file[len(top_dir)+1:]
+
+
+def sign_data(data):
+    with NamedTemporaryFile() as data_file, \
+         NamedTemporaryFile() as signature_file:
+        data_file.write(data)
+        data_file.flush()
+        gpg_command('--detach-sig', '-o', signature_file.name, data_file.name)
+        return signature_file.read()

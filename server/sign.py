@@ -12,9 +12,8 @@ from qlmdm import (
     release_files_iter,
     signatures_dir,
     verify_signature,
-    sign_file,
 )
-from qlmdm.server import get_logger
+from qlmdm.server import get_logger, sign_file
 
 os.chdir(top_dir)
 

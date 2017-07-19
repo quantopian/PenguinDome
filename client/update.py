@@ -14,12 +14,10 @@ from qlmdm import (
     top_dir,
     set_gpg,
     release_file,
-    server_request,
     var_dir,
     signatures_dir,
-    gpg_command,
 )
-from qlmdm.client import get_logger
+from qlmdm.client import get_logger, gpg_command, server_request
 
 log = get_logger('update')
 
