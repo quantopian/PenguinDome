@@ -1,0 +1,10 @@
+coreutils
+cronie # also needs to be enabled and started, obviously
+git
+gnupg
+https://aur.archlinux.org/libgfshare.git
+openssl
+python
+python-virtualenv
+systemd
+tar
