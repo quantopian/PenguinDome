@@ -422,8 +422,8 @@ def startServer(port):
 def main():
     ports = None
     port = get_server_setting('port')
-    if isinstance(port, list):
-        ports = port
+    if isinstance(port, int):
+        ports = [port]
     elif isinstance(port, dict):
         ports = list(port.keys())
     if len(ports) == 1:
