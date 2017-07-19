@@ -18,8 +18,7 @@ def arch_checker():
                 'security_patches': updates}
 
     try:
-        output = subprocess.check_output(('pacman', '-Sy'),
-                                         stderr=subprocess.STDOUT)
+        subprocess.check_output(('pacman', '-Sy'), stderr=subprocess.STDOUT)
     except FileNotFoundError:
         return None
     except subprocess.CalledProcessError as e:
@@ -28,7 +27,7 @@ def arch_checker():
         return status(False, 'unknown')
 
     try:
-        output = subprocess.check_output(
+        subprocess.check_output(
             ('pacman', '-Qu'), stderr=subprocess.STDOUT).decode('ascii')
     except subprocess.CalledProcessError as e:
         if e.returncode == 1 and not e.output:
@@ -38,8 +37,8 @@ def arch_checker():
         return status(True, 'unknown')
 
     return status(True, True)
-        
-        
+
+
 def ubuntu_checker():
     results = {}
 

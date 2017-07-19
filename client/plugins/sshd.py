@@ -38,7 +38,7 @@ else:
         sshd_config_command.extend(['-f', sshd_config_file])
     except:
         pass
-    
+
 try:
     sshd_config = subprocess.check_output(
         sshd_config_command, stderr=open('/dev/null', 'w')).decode('ascii')
