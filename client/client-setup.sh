@@ -7,12 +7,21 @@ venv=var/client-venv
 
 cd "$(dirname $0)/.."
 
-. /etc/lsb-release
-if [ "$DISTRIB_ID" = "Ubuntu" ]; then
+mkdir -p var
+
+. /etc/os-release
+
+if [ "$ID_LIKE" = "debian" ]; then
+    # Ubuntu setup will probably work on Debian, though not tested.
     apt-get -qq install $(sed 's/#.*//' client/ubuntu-packages.txt)
+elif [ "$ID_LIKE" = "archlinux" ]; then
+    if ! pacman -S --needed --noconfirm $(sed -e 's/#.*//' -e '/\.git$/d' \
+      client/arch-packages.txt) >| var/pacman.log 2>&1; then
+	echo "pacman -S failed. See var/pacman.log" 1>&2
+	exit 1
+    fi
 fi
 
-mkdir -p var
 if [ ! -d $venv ]; then
     virtualenv -p python3 $venv
 fi

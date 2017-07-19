@@ -1,0 +1,13 @@
+cronie
+cryptsetup
+dmidecode
+gnupg
+iptables
+lvm2
+procps-ng
+python
+python-virtualenv
+systemd
+tar
+util-linux
+wireless_tools
