@@ -5,7 +5,41 @@ import os
 import subprocess
 import time
 
+from qlmdm.client import get_logger
 
+log = get_logger('plugins/os_updates')
+
+
+def arch_checker():
+    def status(current, updates):
+        return {'current': current,
+                'release': updates,
+                'patches': updates,
+                'security_patches': updates}
+
+    try:
+        output = subprocess.check_output(('pacman', '-Sy'),
+                                         stderr=subprocess.STDOUT)
+    except FileNotFoundError:
+        return None
+    except subprocess.CalledProcessError as e:
+        log.error('Call to pacman -Sy failed. Output: {}',
+                  e.output.decode('ascii'))
+        return status(False, 'unknown')
+
+    try:
+        output = subprocess.check_output(
+            ('pacman', '-Qu'), stderr=subprocess.STDOUT).decode('ascii')
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 1 and not e.output:
+            return status(True, False)
+        log.error('Call to pacman -Qu failed. Output: {}',
+                  e.output.decode('ascii'))
+        return status(True, 'unknown')
+
+    return status(True, True)
+        
+        
 def ubuntu_checker():
     results = {}
 
@@ -42,7 +76,7 @@ def ubuntu_checker():
     return results
 
 
-checkers = (ubuntu_checker,)
+checkers = (ubuntu_checker, arch_checker)
 
 for checker in checkers:
     results = checker()
