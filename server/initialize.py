@@ -246,7 +246,7 @@ if do_config:
         sample_url = 'http://hostname'
     else:
         sample_url = 'http://hostname:{}'.format(port)
-    prompt = 'URL base, e.g., {}, for clients to research server:'.format(
+    prompt = 'URL base, e.g., {}, for clients to reach server:'.format(
         sample_url)
 
     client_changed |= maybe_changed('client', 'server_url', get_string, prompt)
