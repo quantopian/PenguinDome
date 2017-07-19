@@ -18,12 +18,12 @@ depends=('python'
          'python-urllib3'
          'python-logbook-quantopian'
          'cryptsetup'
-	 'dmidecode',
+	 'dmidecode'
          'gnupg'
          'iptables'
          'lvm2'
          'procps-ng'
-	 'systemd',
+	 'systemd'
          'tar'
          'wireless_tools'
          'util-linux')
