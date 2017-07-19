@@ -7,8 +7,6 @@ venv=var/server-venv
 
 cd "$(dirname $0)/.."
 
-. /etc/os-release
-
 # For the time being, this script needs to be run as root because
 # initialize.py installs files that only root can install, but
 # eventually we may want to fix that, so I've attempted to write this
@@ -47,6 +45,8 @@ arch_build() {
 }
 
 mkdir -p var
+
+. /etc/os-release
 
 if [ "$ID_LIKE" = "debian" ]; then
     # Ubuntu setup will probably work on Debian, though not tested.
