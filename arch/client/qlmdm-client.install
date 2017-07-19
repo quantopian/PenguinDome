@@ -1,0 +1,9 @@
+post_install() {
+    systemctl enable qlmdm-client.timer
+    systemctl start qlmdm-client.timer
+}
+
+pre_remove() {
+    systemctl stop qlmdm-client.timer
+    systemctl disable qlmdm-client.timer
+}

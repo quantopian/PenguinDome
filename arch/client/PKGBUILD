@@ -27,6 +27,7 @@ depends=('python'
          'util-linux')
 source=("http://eraserver.dynoquant.com:5001/qlmdm/v1/download_release")
 sha256sums=(SKIP)
+install=qlmdm-client.install
 
 package() {
   cd ${srcdir}
@@ -54,11 +55,6 @@ package() {
     install -Dm554 ${file} "$install_dir/bin/${tail%.py}"
   done
 
-  install -D client/qlmdm-client.service "$pkgdir/etc/systemd/system/qlmdm-client.service"
-  install -D client/qlmdm-client.timer "$pkgdir/etc/systemd/system/qlmdm-client.timer"
-}
-
-post_install() {
-    systemctl enable qlmdm-client.timer
-    systemctl start qlmdm-client.timer
+  install -Dm644 client/qlmdm-client.service "$pkgdir/etc/systemd/system/qlmdm-client.service"
+  install -Dm644 client/qlmdm-client.timer "$pkgdir/etc/systemd/system/qlmdm-client.timer"
 }
