@@ -29,7 +29,7 @@ for mount in open('/proc/mounts'):
     if type in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
                 'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
                 'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
-                'cgroup2', 'configfs', 'vboxsf'):
+                'cgroup2', 'configfs', 'vboxsf', 'efivarfs'):
         continue
     if type.startswith('fuse'):
         continue
