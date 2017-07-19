@@ -18,11 +18,19 @@ import subprocess
 
 sshd_name_re = re.compile(r'\bsshd\b|\bin\.sshd\b')
 
+results = {}
+
 try:
     sshd_process = next(p for p in psutil.process_iter()
                         if sshd_name_re.search(p.exe()) or
                         any(c for c in p.connections('tcp')
                             if c.laddr[1] == 22 and not len(c.raddr)))
+except:
+    sshd_process = None
+    results['status'] = 'stopped'
+    sshd_config_command = ['sshd', '-T']
+else:
+    results['status'] = 'running'
     sshd_config_command = [sshd_process.exe(), '-T']
     sshd_cmdline = sshd_process.cmdline()
     try:
@@ -30,27 +38,21 @@ try:
         sshd_config_command.extend(['-f', sshd_config_file])
     except:
         pass
-except:
-    sshd_process = None
-    sshd_config_command = ['sshd', '-T']
-
+    
 try:
-    sshd_config = subprocess.check_output(sshd_config_command).decode('ascii')
+    sshd_config = subprocess.check_output(
+        sshd_config_command, stderr=open('/dev/null', 'w')).decode('ascii')
+except FileNotFoundError:
+    if not sshd_process:
+        results['status'] = 'missing'
+    sshd_config = ''
 except:
     sshd_config = ''
 
-results = {}
-
-if sshd_process:
-    results['status'] = 'running'
-elif sshd_config:
-    results['status'] = 'stopped'
-else:
-    results['status'] = 'missing'
-
 results['config'] = {}
-for config in sshd_config.strip().split('\n'):
-    key, value = config.split(' ', 1)
-    results['config'][key] = value
+if sshd_config:
+    for config in sshd_config.strip().split('\n'):
+        key, value = config.split(' ', 1)
+        results['config'][key] = value
 
 print(json.dumps(results))
