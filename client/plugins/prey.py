@@ -5,10 +5,8 @@ import subprocess
 
 results = {}
 
-try:
-    subprocess.check_output(('systemctl', 'show', 'prey-agent'))
-    results['running'] = True
-except:
-    results['running'] = False
+output = subprocess.check_output(
+    ('systemctl', 'show', '--property=SubState', 'prey-agent')).decode('ascii')
+results['running'] = 'running' in output
 
 print(json.dumps(results))
