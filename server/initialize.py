@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import argparse
 from functools import partial
+import glob
 import logbook
 import os
 import subprocess
@@ -15,6 +17,7 @@ from qlmdm import (
     gpg_public_home,
     set_gpg,
     gpg_command,
+    releases_dir,
 )
 from qlmdm.client import (
     get_setting as get_client_setting,
@@ -80,7 +83,16 @@ def import_key(to_mode, user_id):
             gpg_command('--import', key_file.name)
 
 
-def maybe_changed(which, setting, prompter, prompt, empty_ok=False):
+def maybe_get_bool(prompt, default, use_default=False):
+    if use_default:
+        answer = 'yes' if default else 'no'
+        print('{} {}'.format(prompt, answer))
+        return default
+    return get_bool(prompt, default)
+
+
+def maybe_changed_extended(which, setting, prompter, prompt, empty_ok=False,
+                           use_default=False):
     if which == 'server':
         getter = get_server_setting
         setter = set_server_setting
@@ -93,6 +105,15 @@ def maybe_changed(which, setting, prompter, prompt, empty_ok=False):
     default = getter(setting)
     if empty_ok and not default:
         default = ''
+
+    if use_default:
+        if isinstance(default, bool):
+            answer = 'yes' if default else 'no'
+        else:
+            answer = default
+        print('{} {}'.format(prompt, answer))
+        return False
+
     new = prompter(prompt, default)
     if str(new) != str(default):
         setter(setting, new)
@@ -100,7 +121,7 @@ def maybe_changed(which, setting, prompter, prompt, empty_ok=False):
     return False
 
 
-def configure_logging(which):
+def configure_logging(which, maybe_changed):
     if which == 'Server':
         getter = get_server_setting
     elif which == 'Client':
@@ -155,134 +176,143 @@ def configure_logging(which):
     return changed
 
 
-generate_key('server', server_user_id)
-generate_key('client', client_user_id)
-import_key('server', client_user_id)
-import_key('client', server_user_id)
-
-default = not (get_client_setting('loaded') and get_server_setting('loaded'))
-
-do_config = get_bool('Do you want to configure things interactively?', default)
-
-server_changed = client_changed = False
-
-if do_config:
-    if isinstance(get_server_setting('port'), int):
-        # Otherwise, the settings file has been edited to make the port either
-        # a list of ports or a mapping, and we don't want to try to configure
-        # it here.
-        server_changed |= maybe_changed(
-            'server', 'port', get_int,
-            'What port should the server listen on?')
-
-    configure_ssl = True
-    port = get_server_setting('port')
-    if isinstance(port, dict):
-        for port_number, port_settings in port.items():
-            if 'ssl' in port_settings:
-                # If there are already port-specific SSL settings, then don't
-                # try to configure SSL in this script.
-                configure_ssl = False
-    if configure_ssl:
-        default = get_server_setting('ssl:certificate', None) or \
-            get_server_setting('ssl:key', None)
-        configure_ssl = get_bool('Do you want the server to use SSL?',
-                                 True if default else False)
-    if not configure_ssl:
-        if get_server_setting('ssl:certificate', None):
-            set_server_setting('ssl:certificate', None)
-            server_changed = True
-        if get_server_setting('ssl:key', None):
-            set_server_setting('ssl:key', None)
-            server_changed = True
+def main(args):
+    if args.yes:
+        maybe_changed = partial(maybe_changed_extended, use_default=True)
     else:
-        while True:
+        maybe_changed = maybe_changed_extended
+
+    generate_key('server', server_user_id)
+    generate_key('client', client_user_id)
+    import_key('server', client_user_id)
+    import_key('client', server_user_id)
+
+    default = not (get_client_setting('loaded') and
+                   get_server_setting('loaded'))
+
+    do_config = default if args.yes else \
+        get_bool('Do you want to configure things interactively?', default)
+
+    server_changed = client_changed = False
+
+    if do_config:
+        if isinstance(get_server_setting('port'), int):
+            # Otherwise, the settings file has been edited to make the port
+            # either a list of ports or a mapping, and we don't want to try to
+            # configure it here.
             server_changed |= maybe_changed(
-                'server', 'ssl:certificate', get_string,
-                'SSL certificate file path:')
-            if os.path.exists(get_server_setting('ssl:certificate')):
-                break
-            print('That file does not exist.')
+                'server', 'port', get_int,
+                'What port should the server listen on?')
 
-        while True:
-            server_changed |= maybe_changed('server', 'ssl:key', get_string,
-                                            'SSL key file path:')
-            if os.path.exists(get_server_setting('ssl:key')):
-                break
-            print('That file does not exist.')
+        configure_ssl = True
+        port = get_server_setting('port')
+        if isinstance(port, dict):
+            for port_number, port_settings in port.items():
+                if 'ssl' in port_settings:
+                    # If there are already port-specific SSL settings, then
+                    # don't try to configure SSL in this script.
+                    configure_ssl = False
+        if configure_ssl:
+            default = bool(get_server_setting('ssl:certificate', None) or
+                           get_server_setting('ssl:key', None))
+            configure_ssl = maybe_get_bool(
+                'Do you want the server to use SSL?', default, args.yes)
+        if not configure_ssl:
+            if get_server_setting('ssl:certificate', None):
+                set_server_setting('ssl:certificate', None)
+                server_changed = True
+            if get_server_setting('ssl:key', None):
+                set_server_setting('ssl:key', None)
+                server_changed = True
+        else:
+            while True:
+                server_changed |= maybe_changed(
+                    'server', 'ssl:certificate', get_string,
+                    'SSL certificate file path:')
+                if os.path.exists(get_server_setting('ssl:certificate')):
+                    break
+                print('That file does not exist.')
 
-    server_changed |= maybe_changed('server', 'threaded', get_bool,
-                                    'Should the server be multithreaded?')
-    server_changed |= maybe_changed('server', 'database:host',
-                                    get_string_or_list,
-                                    'Database host:port:')
-    if get_server_setting('database:host'):
-        server_changed |= maybe_changed('server', 'database:replicaset',
-                                        get_string_none, 'Replicaset name:',
+            while True:
+                server_changed |= maybe_changed(
+                    'server', 'ssl:key', get_string, 'SSL key file path:')
+                if os.path.exists(get_server_setting('ssl:key')):
+                    break
+                print('That file does not exist.')
+
+        server_changed |= maybe_changed('server', 'threaded', get_bool,
+                                        'Should the server be multithreaded?')
+        server_changed |= maybe_changed('server', 'database:host',
+                                        get_string_or_list,
+                                        'Database host:port:')
+        if get_server_setting('database:host'):
+            server_changed |= maybe_changed(
+                'server', 'database:replicaset', get_string_none,
+                'Replicaset name:', empty_ok=True)
+        server_changed |= maybe_changed('server', 'database:name',
+                                        get_string, 'Database name:')
+        server_changed |= maybe_changed('server', 'database:username',
+                                        get_string_none, 'Database username:',
                                         empty_ok=True)
-    server_changed |= maybe_changed('server', 'database:name',
-                                    get_string, 'Database name:')
-    server_changed |= maybe_changed('server', 'database:username',
-                                    get_string_none, 'Database username:',
-                                    empty_ok=True)
-    if get_server_setting('database:username'):
-        server_changed |= maybe_changed('server', 'database:password',
-                                        get_string, 'Database password:')
+        if get_server_setting('database:username'):
+            server_changed |= maybe_changed('server', 'database:password',
+                                            get_string, 'Database password:')
 
-    server_changed |= configure_logging('Server')
-    server_changed |= maybe_changed(
-        'server', 'audit_cron:enabled', get_bool,
-        'Do you want to enable the audit cron job?')
-
-    if get_server_setting('audit_cron:enabled'):
+        server_changed |= configure_logging('Server', maybe_changed)
         server_changed |= maybe_changed(
-            'server', 'audit_cron:email', get_string,
-            'What email address should get the audit output?')
+            'server', 'audit_cron:enabled', get_bool,
+            'Do you want to enable the audit cron job?')
 
-    port = get_server_setting('port')
-    if port == 443:
-        sample_url = 'https://hostname'
-    elif port == 80:
-        sample_url = 'http://hostname'
-    else:
-        sample_url = 'http://hostname:{}'.format(port)
-    prompt = 'URL base, e.g., {}, for clients to reach server:'.format(
-        sample_url)
+        if get_server_setting('audit_cron:enabled'):
+            server_changed |= maybe_changed(
+                'server', 'audit_cron:email', get_string,
+                'What email address should get the audit output?')
 
-    client_changed |= maybe_changed('client', 'server_url', get_string, prompt)
+        port = get_server_setting('port')
+        if port == 443:
+            sample_url = 'https://hostname'
+        elif port == 80:
+            sample_url = 'http://hostname'
+        else:
+            sample_url = 'http://hostname:{}'.format(port)
+        prompt = 'URL base, e.g., {}, for clients to reach server:'.format(
+            sample_url)
 
-    client_changed |= maybe_changed(
-        'client', 'geolocation_api_key', get_string,
-        'Google geolocation API key, if any:', empty_ok=True)
-    prompter = partial(get_int, minimum=1)
-    client_changed |= maybe_changed(
-        'client', 'schedule:collect_interval', prompter,
-        'How often (minutes) do you want to collect data?')
-    client_changed |= maybe_changed(
-        'client', 'schedule:submit_interval', prompter,
-        'How often (minutes) do you want re-try submits?')
+        client_changed |= maybe_changed(
+            'client', 'server_url', get_string, prompt)
 
-    client_changed |= configure_logging('Client')
+        client_changed |= maybe_changed(
+            'client', 'geolocation_api_key', get_string,
+            'Google geolocation API key, if any:', empty_ok=True)
+        prompter = partial(get_int, minimum=1)
+        client_changed |= maybe_changed(
+            'client', 'schedule:collect_interval', prompter,
+            'How often (minutes) do you want to collect data?')
+        client_changed |= maybe_changed(
+            'client', 'schedule:submit_interval', prompter,
+            'How often (minutes) do you want re-try submits?')
 
-    if server_changed:
+        client_changed |= configure_logging('Client', maybe_changed)
+
         save_server_settings()
-        print('Saved server settings.')
+        if server_changed:
+            print('Saved server settings.')
 
-    if client_changed:
         save_client_settings()
-        print('Saved client settings.')
+        if client_changed:
+            print('Saved client settings.')
 
-service_file = '/etc/systemd/system/qlmdm-server.service'
-service_exists = os.path.exists(service_file)
-default = not service_exists
+    service_file = '/etc/systemd/system/qlmdm-server.service'
+    service_exists = os.path.exists(service_file)
+    default = not service_exists
 
-if server_changed:
     if service_exists:
-        prompt = "Do you want to replace the server's systemd configuration?"
+        prompt = ("Do you want to replace the server's systemd "
+                  "configuration?")
     else:
         prompt = 'Do you want to add the server to systemd?'
 
-    do_service = get_bool(prompt, default)
+    do_service = maybe_get_bool(prompt, default, args.yes)
 
     if do_service:
         with NamedTemporaryFile('w+') as temp_service_file:
@@ -311,7 +341,8 @@ if server_changed:
                 ('systemctl', 'is-enabled', 'qlmdm-server'),
                 stderr=subprocess.STDOUT)
         except:
-            if get_bool('Do you want to enable the server?', True):
+            if maybe_get_bool('Do you want to enable the server?', True,
+                              args.yes):
                 subprocess.check_output(
                     ('systemctl', 'enable', 'qlmdm-server'),
                     stderr=subprocess.STDOUT)
@@ -325,50 +356,72 @@ if server_changed:
                     ('systemctl', 'status', 'qlmdm-server'),
                     stderr=subprocess.STDOUT)
             except:
-                if get_bool('Do you want to start the server?', True):
+                if maybe_get_bool('Do you want to start the server?', True,
+                                  args.yes):
                     subprocess.check_output(
                         ('systemctl', 'start', 'qlmdm-server'),
                         stderr=subprocess.STDOUT)
             else:
-                if get_bool('Do you want to restart the server?', True):
+                if maybe_get_bool('Do you want to restart the server?',
+                                  server_changed, args.yes):
                     subprocess.check_output(
                         ('systemctl', 'restart', 'qlmdm-server'),
                         stderr=subprocess.STDOUT)
 
-    if get_server_setting('audit_cron:enabled'):
-        cron_file = '/etc/cron.d/qlmdm-audit'
-        cron_exists = os.path.exists(cron_file)
+        if get_server_setting('audit_cron:enabled'):
+            cron_file = '/etc/cron.d/qlmdm-audit'
+            cron_exists = os.path.exists(cron_file)
 
-        if cron_exists:
-            prompt = 'Do you want to replace the audit crontab?'
+            if cron_exists:
+                prompt = 'Do you want to replace the audit crontab?'
+            else:
+                prompt = 'Do you want to install the audit crontab?'
+
+            if maybe_get_bool(prompt, not cron_exists, args.yes):
+                email = get_server_setting('audit_cron:email')
+
+                with NamedTemporaryFile('w+') as temp_cron_file:
+                    temp_cron_file.write(dedent('''\
+                        MAILTO={email}
+                        * * * * * root {top_dir}/bin/audit audit
+                    '''.format(email=email, top_dir=top_dir)))
+                    temp_cron_file.flush()
+                    os.chmod(temp_cron_file.name, 0o644)
+                    shutil.copy(temp_cron_file.name, cron_file)
+
+                print('Installed {}'.format(cron_file))
+
+    if client_changed or not glob.glob(os.path.join(releases_dir,
+                                                    '*.tar.asc')):
+        if client_changed:
+            prompt = ('Do you want to build a release with the new client '
+                      'settings?')
         else:
-            prompt = 'Do you want to install the audit crontab?'
+            prompt = 'Do you want to build a client release?'
 
-        if get_bool(prompt, not cron_exists):
-            email = get_server_setting('audit_cron:email')
-
-            with NamedTemporaryFile('w+') as temp_cron_file:
-                temp_cron_file.write(dedent('''\
-                    MAILTO={email}
-                    * * * * * root {top_dir}/bin/audit audit
-                '''.format(email=email, top_dir=top_dir)))
-                temp_cron_file.flush()
-                os.chmod(temp_cron_file.name, 0o644)
-                shutil.copy(temp_cron_file.name, cron_file)
-
-            print('Installed {}'.format(cron_file))
-
-if client_changed:
-    if get_bool('Do you want to build a release with the new client settings?',
-                True):
-        # Sometimes sign fails the first time because of GnuPG weirdness.
-        # The client_release script will call sign as well, but we call it
-        # first just in case it fails the first time.
-        try:
-            subprocess.check_output((os.path.join('bin', 'sign'),),
+        if maybe_get_bool(prompt, True, args.yes):
+            # Sometimes sign fails the first time because of GnuPG weirdness.
+            # The client_release script will call sign as well, but we call it
+            # first just in case it fails the first time.
+            try:
+                subprocess.check_output((os.path.join('bin', 'sign'),),
+                                        stderr=subprocess.STDOUT)
+            except:
+                pass
+            subprocess.check_output((os.path.join('bin', 'client_release'),),
                                     stderr=subprocess.STDOUT)
-        except:
-            pass
-        subprocess.check_output((os.path.join('bin', 'client_release'),))
 
-print('Done!')
+    print('Done!')
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--yes', '-y', '--noconfirm', action='store_true',
+                        help='Use default answers to all questions')
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)

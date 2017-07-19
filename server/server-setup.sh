@@ -91,6 +91,4 @@ EOF
     chmod +x $target
 done
 
-exec python server/initialize.py
-
-    
+exec python server/initialize.py "$@"
