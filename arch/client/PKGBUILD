@@ -55,7 +55,7 @@ package() {
     if [ $tail = "initialize.py" ]; then
       continue
     fi
-    chmod 754 $file
+    chmod 754 $install_dir/$file
     ln -sf ../$file "$install_dir/bin/${tail%.py}"
   done
 
