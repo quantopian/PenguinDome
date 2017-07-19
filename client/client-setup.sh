@@ -42,4 +42,5 @@ EOF
     chmod +x $target
 done
 
-exec python client/initialize.py
+exec python client/initialize.py "$@"
+
