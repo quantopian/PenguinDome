@@ -137,10 +137,18 @@ def open_issue(hostname, issue_name):
 def close_issue(hostname, issue_name):
     """Closes any open issues for the specified host and issue name"""
     db = get_db()
-    db.issues.update_many({'hostname': hostname,
-                           'name': issue_name,
-                           'closed_at': {'$exists': False}},
-                          {'$set': {'closed_at': datetime.datetime.utcnow()}})
+    spec = {'closed_at': {'$exists': False}}
+    if hostname:
+        spec['hostname'] = hostname
+    if issue_name:
+        spec['name'] = issue_name
+    ids = [d['_id'] for d in db.issues.find(spec)]
+    if not ids:
+        return ids
+    db.issues.update_many(
+        {'_id': {'$in': ids}},
+        {'$set': {'closed_at': datetime.datetime.utcnow()}})
+    return ids
 
 
 def snooze_issue(hostname, issue_name, snooze_until):

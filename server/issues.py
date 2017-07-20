@@ -127,6 +127,16 @@ def parse_args():
                                  help='Unsnooze the specified issue type(s)')
     unsnooze_parser.set_defaults(func=unsnooze_handler)
 
+    close_parser = subparsers.add_parser('close', help='Close issues')
+    close_parser.add_argument(
+        '--all', action='store_true', help='Close all issues (required if '
+        'neither --host nor --problem is specified')
+    close_parser.add_argument('--host', action='append', help='Close issues '
+                              'for the specified host(s)')
+    close_parser.add_argument('--issue-name', action='append', help='Close '
+                              'the specified issue type(s)')
+    close_parser.set_defaults(func=close_handler)
+
     args = parser.parse_args()
     if not args.func:
         parser.error('No subcommand specified.')
@@ -271,6 +281,28 @@ def unsnooze_handler(args):
         for doc in get_db().issues.find({'_id': {'$in': ids}}):
             log.info('Unsnoozed {} {} at {}', doc['hostname'], doc['name'],
                      doc['unsnoozed_at'])
+
+
+def close_handler(args):
+    if not (args.host or args.issue_name or args.all):
+        sys.exit('If you really want to close all issues for all hosts,\n'
+                 'you need to specify --all.')
+
+    hostname = (None if not args.host else
+                args.host[0] if len(args.host) == 1 else
+                {'$in': args.host})
+    issue_name = (None if not args.issue_name else
+                  args.issue_name[0] if len(args.issue_name) == 1
+                  else {'$in': args.issue_name})
+    ids = close_issue(hostname, issue_name)
+
+    if not ids:
+        print('No matching issues.')
+        return
+
+    with logbook.StreamHandler(sys.stdout, bubble=True):
+        for doc in get_db().issues.find({'_id': {'$in': ids}}):
+            log.info('Manually closed {} {}', doc['hostname'], doc['name'])
 
 
 def main():
