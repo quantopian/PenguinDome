@@ -8,6 +8,20 @@ import psutil
 import re
 
 
+def xinit_checker():
+    xinit = Xorg = None
+    for p in psutil.process_iter():
+        if p.exe().endswith('/xinit'):
+            xinit = p
+        elif p.exe().endswith('/Xorg'):
+            Xorg = p
+    if xinit and Xorg and Xorg.ppid() == xinit.pid and \
+       xinit.uids().real and Xorg.uids().real:  # Shouldn't be running as root
+        return False
+
+    return None
+
+
 def lightdm_checker():
     lightdm_re = re.compile(r'\blightdm\b')
     running_lightdm = any(p for p in psutil.process_iter()
@@ -32,7 +46,10 @@ def lightdm_checker():
     return status
 
 
-checkers = (lightdm_checker,)
+# Make sure xinit_checker is last. Just because somebody is running xinit
+# doesn't mean that they aren't _also_ running a display manager that has a
+# guest session, so xinit_checker should only be used as a last resort.
+checkers = (lightdm_checker, xinit_checker)
 
 for checker in checkers:
     results = checker()
