@@ -213,6 +213,7 @@ def audit_handler(args):
                     print(key1)
                     key1_printed = True
                 print('  {} since {}'.format(key2, issue['opened_at']))
+                log.warn('{} {} since {}', key1, key2, issue['opened_at'])
                 if not args.ignore_recent_alerts:
                     db.issues.update(
                         {'_id': issue['_id']}, {'$set': {'alerted_at': now}})
