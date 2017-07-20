@@ -44,14 +44,18 @@ do_collect = check_stamp(collect_stamp_file, collect_interval)
 do_submit = do_collect or (check_stamp(submit_stamp_file, submit_interval) and
                            glob.glob(os.path.join(collected_dir, '*')))
 
-if do_collect or do_submit:
-    try:
-        subprocess.check_output((bin_path('update'),),
-                                stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
+successful_update = False
+try:
+    subprocess.check_output((bin_path('update'),),
+                            stderr=subprocess.STDOUT)
+except subprocess.CalledProcessError as e:
+    if e.returncode == 42:
+        successful_update = do_collect = do_submit = True
+    else:
         log.error('update failed:\n{}', e.output.decode('ascii'))
 
-subprocess.check_output((bin_path('verify'),))
+if not successful_update:
+    subprocess.check_output((bin_path('verify'),))
 
 if do_collect:
     try:

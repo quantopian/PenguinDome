@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+"""Download and install updates from the server
+
+Exit status: 0 - no update
+             42 - yes update
+             anything else - error
+"""
+
 from base64 import b64decode
 import filecmp
 import os
@@ -153,6 +160,7 @@ def main():
     if changed:
         subprocess.check_output(os.path.join('bin', 'verify'))
         log.info('Successful update')
+        sys.exit(42)
 
 
 def recursive_list(top_dir):
