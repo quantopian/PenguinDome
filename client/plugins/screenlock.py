@@ -60,11 +60,11 @@ matches = (re.match(r'(\S+)\s+.*\((:\d[^\)]*)\)', l) for l in w_lines)
 matches = filter(None, matches)
 user_displays = [m.groups() for m in matches]
 
+results = {}
+
 if not user_displays:
     log.warn('Failed to identify any X users')
 else:
-    results = {}
-
     for user, display in user_displays:
         for checker in display_checkers:
             status = checker(user, display)
