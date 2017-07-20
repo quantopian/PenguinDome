@@ -382,7 +382,11 @@ def main(args):
             else:
                 prompt = 'Do you want to install the audit crontab?'
 
-            if maybe_get_bool(prompt, not cron_exists, args.yes):
+            do_crontab = maybe_get_bool(
+                prompt, args.audit_crontab or not cron_exists,
+                args.audit_crontab or args.yes)
+
+            if do_crontab:
                 email = get_server_setting('audit_cron:email')
                 minute = int(random.random() * 60)
                 minute2 = (minute + 1) % 60
@@ -446,6 +450,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--yes', '-y', '--noconfirm', action='store_true',
                         help='Use default answers to all questions')
+    parser.add_argument('--audit-crontab', action='store_true',
+                        help='Replace the audit crontab')
     args = parser.parse_args()
     return args
 
