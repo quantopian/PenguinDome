@@ -10,6 +10,37 @@ from qlmdm.client import get_logger
 log = get_logger('plugins/screenlock')
 
 
+def find_xinit_users():
+    xinits = []
+    for p in psutil.process_iter():
+        if p.exe().endswith('/xinit'):
+            xinits.append(p)
+    if not xinits:
+        return ()
+    Xorgs = []
+    for p in psutil.process_iter():
+        if p.exe().endswith('/Xorg'):
+            xinit = any(x for x in xinits if p.ppid() == x.pid)
+            if xinit:
+                Xorgs.append((xinit, p))
+    if not Xorgs:
+        return ()
+    users = []
+    for xinit, Xorg in Xorgs:
+        try:
+            display = next(a for a in Xorg.cmdline() if a[0] == ':')
+        except:
+            continue
+        try:
+            proc = min((p for p in psutil.process_iter() if 'DISPLAY' in
+                        p.environ() and p.environ()['DISPLAY'] == display),
+                       key=lambda p: p.pid)
+        except:
+            continue
+        users.append((proc.username(), display))
+    return users
+
+
 def gnome_xscreensaver_status(user, display):
     def user_command(cmd):
         return subprocess.check_output(('su', user, '-c', cmd),
@@ -32,6 +63,8 @@ def gnome_xscreensaver_status(user, display):
         if dbus_output.find('org.gnome.ScreenSaver') == -1:
             continue
         break
+    else:
+        return None
 
     def gsettings_get(app, setting):
         return user_command(
@@ -60,6 +93,9 @@ matches = (re.match(r'(\S+)\s+.*\((:\d[^\)]*)\)', l) for l in w_lines)
 matches = filter(None, matches)
 user_displays = [m.groups() for m in matches]
 
+if not user_displays:
+    user_displays = find_xinit_users()
+
 results = {}
 
 if not user_displays:
@@ -68,8 +104,8 @@ else:
     for user, display in user_displays:
         for checker in display_checkers:
             status = checker(user, display)
-            status['user'] = user
             if status:
+                status['user'] = user
                 results[user] = status
                 break
         else:
