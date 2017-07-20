@@ -282,17 +282,17 @@ def submit():
             update['$set']['commands.{}'.format(name)] = output
         which.append('commands')
     if which:
-        old = db['submissions'].find_one(spec)
-        db['submissions'].update_one(spec, update, upsert=True)
+        old = db.clients.find_one(spec)
+        db.clients.update_one(spec, update, upsert=True)
         log.info('Successful submission of {} by {}',
                  ', '.join(which), hostname)
-        new = db['submissions'].find_one(spec)
+        new = db.clients.find_one(spec)
         if old:
             strip_dates(old)
             strip_dates(new)
             new, updates = encrypt_document(new)
             if updates:
-                db.submissions.update_one({'_id': new['_id']}, updates)
+                db.clients.update_one({'_id': new['_id']}, updates)
                 log.info('Encrypted secret data for {} in document {}',
                          hostname, new['_id'])
             changes = dict_changes(old, new)

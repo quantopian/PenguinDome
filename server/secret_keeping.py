@@ -147,8 +147,8 @@ def select_handler(args):
     if not args.force:
         db = get_db()
         for selector in args.selector:
-            if not db.submissions.find_one({selector: {'$exists': True}},
-                                           projection=[]):
+            if not db.clients.find_one({selector: {'$exists': True}},
+                                       projection=[]):
                 sys.stderr.write('Selector {} does not match anything.\n'
                                  'Specify --force to save anyway.\n'.
                                  format(selector))
@@ -287,7 +287,7 @@ def encrypt_handler(args):
     db = get_db()
     selectors = get_selectors()
     spec = {'$or': [{s.plain_mongo: {'$exists': True}} for s in selectors]}
-    for doc in db.submissions.find(spec):
+    for doc in db.clients.find(spec):
         if encrypt_document(doc):
             print('Encrypted document {} (host {})'.format(
                 doc['_id'], doc['hostname']))
@@ -327,7 +327,7 @@ def decrypt_handler(args):
         selectors = get_selectors()
         spec = {'$or': [{s.enc_mongo: {'$exists': True}} for s in selectors]}
         update = {'$unset': {}, '$set': {}}
-        for doc in db.submissions.find(spec):
+        for doc in db.clients.find(spec):
             for s in selectors:
                 encrypted_data = get_setting(doc, s.enc_mem,
                                              check_defaults=False)
@@ -344,7 +344,7 @@ def decrypt_handler(args):
                 update['$unset'][s.enc_mongo] = True
                 update['$set'][s.plain_mongo] = BSON.decode(unencrypted_data)
             if update['$unset']:
-                db.submissions.update({'_id': doc['_id']}, update)
+                db.clients.update({'_id': doc['_id']}, update)
                 print('Decrypted document {} (host {})'.format(
                     doc['_id'], doc['hostname']))
     finally:
@@ -360,7 +360,7 @@ def access_handler(args):
         hostnames = args.hostname
         if hostnames:
             spec = {'$and': [spec, {'hostname': {'$in': hostnames}}]}
-        for doc in db.submissions.find(spec):
+        for doc in db.clients.find(spec):
             displayed = {'_id': doc['_id'], 'hostname': doc['hostname']}
             for s in selectors:
                 encrypted_data = get_setting(doc, s.enc_mem,

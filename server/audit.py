@@ -174,7 +174,7 @@ def audit_handler(args):
     for check_name, check in problem_checks.items():
         if 'spec' not in check:
             continue
-        problems = [d for d in db.submissions.find(check['spec'])]
+        problems = [d for d in db.clients.find(check['spec'])]
         for problem in problems:
             open_issue(problem['hostname'], check_name)
         problem_hosts = [d['hostname'] for d in problems]

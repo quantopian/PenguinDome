@@ -123,7 +123,7 @@ There are no indexes on the database yet. At some point we'll need to add some, 
 
 The database contains the following collections:
 
-* `submissions` contains all the data sent in by clients. Client hostnames are assumed to be unique, so if two computers with the same hostname are reporting to the server at the same time, bad things will happen.
+* `clients` contains all the data sent in by clients. Client hostnames are assumed to be unique, so if two computers with the same hostname are reporting to the server at the same time, bad things will happen.
 
 * `patches` contains patches that have been deployed to clients in the past and/or are still pending deployment.
 

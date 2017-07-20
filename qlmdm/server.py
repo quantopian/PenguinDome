@@ -83,7 +83,7 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
                 hosts=None):
     db = get_db()
     if hosts is None:
-        hosts = db['submissions'].distinct('hostname')
+        hosts = db.clients.distinct('hostname')
     if isinstance(hosts, str):
         hosts = [hosts]
     conflict = db['patches'].find_one({'path': patch_path,
