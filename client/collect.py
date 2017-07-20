@@ -122,15 +122,14 @@ def main():
     }
 
     if args.plugins:
-        results['plugins'] = run_dir('plugins')
+        results['plugins'] = run_dir('plugins', submit_failures=True)
 
     if args.commands:
         results['commands'] = run_dir('commands', parse_output=False,
                                       delete_after_success=True,
                                       submit_failures=True)
 
-    if not (results.get('plugins', False, submit_failures=True) or
-            results.get('commands', False)):
+    if not (results.get('plugins', False) or results.get('commands', False)):
         return
 
     results, updates = encrypt_document(results, log=log)
