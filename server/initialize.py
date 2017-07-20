@@ -400,11 +400,11 @@ def main(args):
                         'the mailmain server.\n'
 
                         '{minute} {hour} * * * root "{top_dir}/server/venv" '
-                        '"{top_dir}/server/plugin_managers/arch_os_updates.py '
-                        '--download\n'
+                        'python "{top_dir}/server/plugin_managers/'
+                        'arch_os_updates.py" --download\n'
 
                         '{minute2} * * * * root "{top_dir}/server/venv" '
-                        '"{top_dir}/server/plugin_managers/'
+                        'python "{top_dir}/server/plugin_managers/'
                         'arch_os_updates.py"\n')
 
                     crontab += template.format(
