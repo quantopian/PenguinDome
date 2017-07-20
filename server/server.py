@@ -10,6 +10,7 @@ import json
 from multiprocessing import Process
 import os
 from passlib.hash import pbkdf2_sha256
+from pymongo import ASCENDING
 import signal
 import tempfile
 
@@ -421,6 +422,12 @@ def startServer(port):
     app.run(**kwargs)
 
 
+def prepare_database():
+    db = get_db()
+
+    db.clients.create_index([('hostname', ASCENDING)], unique=True)
+
+
 def main():
     ports = None
     port = get_server_setting('port')
@@ -430,6 +437,8 @@ def main():
         ports = list(port.keys())
     if len(ports) == 1:
         port = ports.pop()
+
+    prepare_database()
 
     if ports:
         children = []
