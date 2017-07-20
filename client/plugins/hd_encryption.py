@@ -8,6 +8,7 @@ from qlmdm.client import get_logger
 results = {}
 log = get_logger('plugins/hd_encryption')
 
+
 def is_encrypted(device):
     try:
         subprocess.check_output(['cryptsetup', 'status', device])
