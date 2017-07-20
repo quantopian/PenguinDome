@@ -3,8 +3,10 @@
 import json
 import subprocess
 
-results = {}
+from qlmdm.client import get_logger
 
+results = {}
+log = get_logger('plugins/hd_encryption')
 
 def is_encrypted(device):
     try:
@@ -12,10 +14,15 @@ def is_encrypted(device):
         return True
     except:
         pass
-    # I hope it's a logical volume!
-    vg = subprocess.check_output(
-        ('lvs', '--noheadings', '-o', 'vg_name',
-         device), close_fds=True).decode('ascii').strip()
+    try:
+        # I hope it's a logical volume!
+        vg = subprocess.check_output(
+            ('lvs', '--noheadings', '-o', 'vg_name',
+             device), close_fds=True).decode('ascii').strip()
+    except:
+        log.info('Cryptsetup and lvs on {} failed, assuming not encrypted',
+                 device)
+        return False
     pv_output = subprocess.check_output(
         ('vgs', '--noheadings', '-o', 'pv_name', vg),
         close_fds=True).decode('ascii').strip()
