@@ -21,7 +21,7 @@ from qlmdm.server import (
 )
 
 os.chdir(top_dir)
-log = get_logger('audit')
+log = get_logger('issues')
 
 problem_checks = {
     'not-reporting': {
