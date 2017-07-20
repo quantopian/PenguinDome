@@ -70,11 +70,13 @@ def run_dir(dir_name, parse_output=True, delete_after_success=False,
                 log.exception('Failed to execute {}', run_path)
                 log.info('Output of failed script:\n{}',
                          e.output.decode('ascii'))
+                stderr_file.seek(0)
+                stderr = stderr_file.read()
+                log.info('Stderr of failed script:\n{}', stderr)
                 if submit_failures:
-                    stderr_file.seek(0)
                     results[run_name] = {
                         'stdout': e.output.decode('ascii'),
-                        'stderr': stderr_file.read(),
+                        'stderr': stderr,
                         'returncode': e.returncode,
                     }
                 else:
