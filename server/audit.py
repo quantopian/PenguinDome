@@ -189,7 +189,8 @@ def audit_handler(args):
     issues = get_open_issues()
 
     now = datetime.datetime.utcnow()
-    alert_threshold = now - datetime.timedelta(hours=1)
+    # Slightly less than an hour, to avoid race conditions when running hourly.
+    alert_threshold = now - datetime.timedelta(minutes=59)
 
     for key1, value1 in issues.items():
         key1_printed = False

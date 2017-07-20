@@ -384,15 +384,16 @@ def main(args):
 
             if maybe_get_bool(prompt, not cron_exists, args.yes):
                 email = get_server_setting('audit_cron:email')
+                minute = int(random.random() * 60)
+                minute2 = (minute + 1) % 60
+                minute3 = (minute2 + 1) % 60
 
                 crontab = dedent('''\
                     MAILTO={email}
-                    * * * * * root "{top_dir}/bin/audit" audit
-                '''.format(email=email, top_dir=top_dir))
+                    {minute3} * * * * root "{top_dir}/bin/audit" audit
+                '''.format(minute3=minute3, email=email, top_dir=top_dir))
 
                 if get_server_setting('support_arch_linux'):
-                    minute = int(random.random() * 60)
-                    minute2 = (minute + 1) % 60
                     hour = int(random.random() * 24)
                     template = (
                         '# Run daily at a random time, so as not to overload '
