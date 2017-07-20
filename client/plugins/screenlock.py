@@ -8,7 +8,8 @@ import subprocess
 
 def gnome_xscreensaver_status(user, display):
     def user_command(cmd):
-        return subprocess.check_output(('su', user, '-c', cmd)).decode('ascii')
+        return subprocess.check_output(('su', user, '-c', cmd),
+                                       env=environ).decode('ascii')
 
     # Find out the user's dbus settings.
     for proc in psutil.process_iter():
