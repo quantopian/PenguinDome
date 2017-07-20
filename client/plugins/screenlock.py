@@ -5,6 +5,10 @@ import psutil
 import re
 import subprocess
 
+from qlmdm.client import get_logger
+
+log = get_logger('plugins/screenlock')
+
 
 def gnome_xscreensaver_status(user, display):
     def user_command(cmd):
@@ -54,18 +58,21 @@ w_lines = subprocess.check_output(
     ('who',)).decode('ascii').strip().split('\n')
 matches = (re.match(r'(\S+)\s+.*\((:\d[^\)]*)\)', l) for l in w_lines)
 matches = filter(None, matches)
-user_displays = (m.groups() for m in matches)
+user_displays = [m.groups() for m in matches]
 
-results = {}
+if not user_displays:
+    log.warn('Failed to identify any X users')
+else:
+    results = {}
 
-for user, display in user_displays:
-    for checker in display_checkers:
-        status = checker(user, display)
-        status['user'] = user
-        if status:
-            results[user] = status
-            break
-    else:
-        results[user] = {'user': user, 'enabled': 'unknown'}
+    for user, display in user_displays:
+        for checker in display_checkers:
+            status = checker(user, display)
+            status['user'] = user
+            if status:
+                results[user] = status
+                break
+        else:
+            results[user] = {'user': user, 'enabled': 'unknown'}
 
 print(json.dumps(list(results.values())))
