@@ -7,6 +7,7 @@ client/keyring
 client/settings.yml
 server/keyring
 server/settings.yml
+server/venv
 signatures
 var
 
