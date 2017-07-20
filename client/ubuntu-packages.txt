@@ -1,3 +1,4 @@
+coreutils # for "who"
 cron
 cryptsetup-bin
 dmidecode
@@ -5,7 +6,6 @@ gnupg
 iptables
 login
 lvm2
-procps
 python-virtualenv
 python3
 systemd

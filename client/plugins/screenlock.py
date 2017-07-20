@@ -2,6 +2,7 @@
 
 import json
 import psutil
+import re
 import subprocess
 
 
@@ -49,10 +50,10 @@ display_checkers = (gnome_xscreensaver_status,)
 # Who is logged into an X display?
 
 w_lines = subprocess.check_output(
-    ('w', '-h', '-s')).decode('ascii').strip().split('\n')
-w_tuples = (l.split() for l in w_lines)
-w_xlogins = (t for t in w_tuples if t[2].startswith(':'))
-user_displays = ((t[0], t[2]) for t in w_xlogins)
+    ('who',)).decode('ascii').strip().split('\n')
+matches = (re.match(r'(\S+)\s+.*\((:\d[^\)]*)\)', l) for l in w_lines)
+matches = filter(None, matches)
+user_displays = (m.groups() for m in matches)
 
 results = {}
 
