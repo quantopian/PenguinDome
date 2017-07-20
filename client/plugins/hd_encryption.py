@@ -24,6 +24,11 @@ def is_encrypted(device):
         log.info('Cryptsetup and lvs on {} failed, assuming not encrypted',
                  device)
         return False
+    else:
+        if vg == '':
+            # https://bugs.launchpad.net/ubuntu/+source/lvm2/+bug/1705534
+            # *sigh*
+            return False
     pv_output = subprocess.check_output(
         ('vgs', '--noheadings', '-o', 'pv_name', vg),
         close_fds=True).decode('ascii').strip()
@@ -39,7 +44,16 @@ for mount in open('/proc/mounts'):
                 'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
                 'cgroup2', 'configfs', 'vboxsf', 'efivarfs'):
         continue
+    if any(True for r in results.values() if r['device'] == device):
+        # Bind mounting, probably.
+        # Don't need to check the same device twice.
+        continue
     if type.startswith('fuse'):
+        continue
+    if type == 'ecryptfs':
+        results[mountpoint] = {'mountpoint': mountpoint,
+                               'device': device,
+                               'encrypted': True}
         continue
     if mountpoint == '/boot':
         continue
