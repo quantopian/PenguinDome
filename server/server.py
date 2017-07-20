@@ -268,26 +268,28 @@ def submit():
     datetimeify(data)
     spec = {'hostname': hostname}
     update = {
-        '$set': {
-            'submitted_at': now,
-            'hostname': hostname,
-        }
+        'submitted_at': now,
+        'hostname': hostname,
     }
     if 'plugins' in data:
-        update['$set']['plugins'] = data['plugins']
+        data['plugins']['submitted_at'] = now
+        update['plugins'] = data['plugins']
         which.append('plugins')
     if data.get('commands', {}):
         for name, output in data['commands'].items():
             output['submitted_at'] = now
-            update['$set']['commands.{}'.format(name)] = output
+            update['commands.{}'.format(name)] = output
         which.append('commands')
     if which:
         old = db.clients.find_one(spec)
-        db.clients.update_one(spec, update, upsert=True)
+        update_result = db.clients.update_one(spec, {'$set': update})
+        if update_result.modified_count == 0:
+            db.clients.save(update)
+            log.info('Added new client: {}', hostname)
         log.info('Successful submission of {} by {}',
                  ', '.join(which), hostname)
-        new = db.clients.find_one(spec)
         if old:
+            new = db.clients.find_one(spec)
             strip_dates(old)
             strip_dates(new)
             new, updates = encrypt_document(new)
@@ -296,8 +298,8 @@ def submit():
                 log.info('Encrypted secret data for {} in document {}',
                          hostname, new['_id'])
             changes = dict_changes(old, new)
-            if changes:
-                log.info('Changes for {}: {}', hostname, ', '.join(changes))
+            for change in changes:
+                log.info('Change for {}: {}', hostname, change)
         return('ok')
     else:
         log.error('Empty submission from {}', hostname)
@@ -333,8 +335,8 @@ def update():
                 os.path.join(releases_dir, current_release_file)).read()
 
     patches = [{'id': str(d['_id']), 'files': d['files']}
-               for d in db['patches'].find({'pending_hosts': hostname},
-                                           projection=['files'])]
+               for d in db.patches.find({'pending_hosts': hostname},
+                                        projection=['files'])]
     if patches:
         log.info('Sending patches {} ({}) to {}',
                  ', '.join(p['id'] for p in patches),
@@ -353,7 +355,7 @@ def acknowledge_patch():
     data = json.loads(request.form['data'])
     _id = data['id']
     hostname = data['hostname']
-    db['patches'].update_one(
+    db.patches.update_one(
         {'_id': ObjectId(_id)}, {'$push': {'completed_hosts': hostname},
                                  '$pull': {'pending_hosts': hostname}})
     log.info('{} acknowledged patch {}', hostname, _id)

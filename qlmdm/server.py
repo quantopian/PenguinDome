@@ -86,8 +86,8 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
         hosts = db.clients.distinct('hostname')
     if isinstance(hosts, str):
         hosts = [hosts]
-    conflict = db['patches'].find_one({'path': patch_path,
-                                       'pending_hosts': {'$in': hosts}})
+    conflict = db.patches.find_one({'path': patch_path,
+                                    'pending_hosts': {'$in': hosts}})
     if conflict:
         conflicting_hosts = list(set(hosts) & set(conflict['pending_hosts']))
         conflicting_hosts.sort()
@@ -113,7 +113,7 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
             'content': b64encode(sign_data(patch_content)).decode('ascii'),
         })
 
-    result = db['patches'].insert_one({
+    result = db.patches.insert_one({
         'submitted_at': datetime.datetime.utcnow(),
         'pending_hosts': hosts,
         'completed_hosts': [],
