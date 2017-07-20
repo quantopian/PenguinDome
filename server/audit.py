@@ -58,8 +58,11 @@ problem_checks = {
         'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
     'os-security-patches-available': {
         'grace-period': datetime.timedelta(days=3),
-        'spec': {'plugins.os_updates.security_patches':
-                 {'$not': {'$eq': False}}}},
+        'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
+                          'plugins.os_updates.security_patches':
+                          {'$not': {'$eq': False}}},
+                         {'plugins.os_info.distname': 'arch',
+                          'arch_security_updates_at': {'$exists': True}}]}},
     'guest-session-enabled': {
         'spec': {'plugins.guest_session.enabled': {'$not': {'$eq': False}}}},
     'unencrypted-hard-drive': {

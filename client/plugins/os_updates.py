@@ -12,10 +12,23 @@ log = get_logger('plugins/os_updates')
 
 def arch_checker():
     def status(current, updates):
+        try:
+            output = subprocess.check_output(('pacman', '-Q'),
+                                             stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            if updates != 'unknown':  # i.e., pacman didn't already fail
+                log.error('Call to pacman -Q failed. Output: {}',
+                          e.output.decode('ascii'))
+            installed = []
+        else:
+            installed = [l.split(' ')[0]
+                         for l in output.decode('ascii').strip().split('\n')]
+
         return {'current': current,
-                'release': updates,
+                'release': False,
                 'patches': updates,
-                'security_patches': updates}
+                'security_patches': 'unknown',
+                'installed_packages': installed}
 
     try:
         subprocess.check_output(('pacman', '-Sy'), stderr=subprocess.STDOUT)

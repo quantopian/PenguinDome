@@ -5,6 +5,7 @@ from functools import partial
 import glob
 import logbook
 import os
+import random
 import subprocess
 import shutil
 import sys
@@ -196,6 +197,10 @@ def main(args):
     server_changed = client_changed = False
 
     if do_config:
+        server_changed |= maybe_changed(
+            'server', 'support_arch_linux', get_bool,
+            'Do you want to support Arch Linux clients?')
+
         if isinstance(get_server_setting('port'), int):
             # Otherwise, the settings file has been edited to make the port
             # either a list of ports or a mapping, and we don't want to try to
@@ -380,11 +385,33 @@ def main(args):
             if maybe_get_bool(prompt, not cron_exists, args.yes):
                 email = get_server_setting('audit_cron:email')
 
+                crontab = dedent('''\
+                    MAILTO={email}
+                    * * * * * root "{top_dir}/bin/audit" audit
+                '''.format(email=email, top_dir=top_dir))
+
+                if get_server_setting('support_arch_linux'):
+                    minute = int(random.random() * 60)
+                    minute2 = (minute + 1) % 60
+                    hour = int(random.random() * 24)
+                    template = (
+                        '# Run daily at a random time, so as not to overload '
+                        'the mailmain server.\n'
+
+                        '{minute} {hour} * * * root "{top_dir}/server/venv" '
+                        '"{top_dir}/server/plugin_managers/arch_os_updates.py '
+                        '--download\n'
+
+                        '{minute2} * * * * root "{top_dir}/server/venv" '
+                        '"{top_dir}/server/plugin_managers/'
+                        'arch_os_updates.py"\n')
+
+                    crontab += template.format(
+                        top_dir=top_dir, minute=minute, minute2=minute2,
+                        hour=hour)
+
                 with NamedTemporaryFile('w+') as temp_cron_file:
-                    temp_cron_file.write(dedent('''\
-                        MAILTO={email}
-                        * * * * * root {top_dir}/bin/audit audit
-                    '''.format(email=email, top_dir=top_dir)))
+                    temp_cron_file.write(crontab)
                     temp_cron_file.flush()
                     os.chmod(temp_cron_file.name, 0o644)
                     shutil.copy(temp_cron_file.name, cron_file)
