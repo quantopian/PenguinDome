@@ -129,7 +129,8 @@ def main():
                                       delete_after_success=True,
                                       submit_failures=True)
 
-    if not (results.get('plugins', False) or results.get('commands', False)):
+    if not (results.get('plugins', False, submit_failures=True) or
+            results.get('commands', False)):
         return
 
     results, updates = encrypt_document(results, log=log)
