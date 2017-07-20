@@ -36,7 +36,7 @@ for mount in open('/proc/mounts'):
     if mountpoint == '/boot':
         continue
     if device.find(':') > -1:
-        # Remove device
+        # Remote device
         continue
     results[mountpoint] = {'mountpoint': mountpoint,
                            'device': device,
