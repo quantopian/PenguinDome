@@ -26,6 +26,7 @@ from qlmdm.server import (
     save_settings as save_server_settings,
     get_selectors,
     encrypt_document,
+    get_logger,
 )
 from qlmdm.client import (
     set_setting as set_client_setting,
@@ -34,6 +35,7 @@ from qlmdm.client import (
 
 os.chdir(top_dir)
 set_gpg('server')
+log = get_logger('secret_keeping')
 
 selectors_setting = 'secret_keeping:selectors'
 restart_note = (
@@ -156,6 +158,9 @@ def select_handler(args):
         if errors:
             sys.exit(1)
 
+    for selector in args.selector:
+        log.info('Adding secret-keeping selector {}', selector)
+
     selectors.extend(args.selector)
     save_server_settings()
 
@@ -184,6 +189,9 @@ def deselect_handler(args):
             errors = True
     if errors:
         sys.exit(1)
+
+    for selector in args.selector:
+        log.info('Removing secret-keeping selector {}', selector)
 
     save_server_settings()
 
@@ -267,6 +275,8 @@ def enable_handler(args):
         m=args.shares, n=args.combine_threshold, split_dir=split_dir))
     print(restart_note)
 
+    log.info('Enabled secret-keeping')
+
 
 def disable_handler(args):
     if not get_server_setting('secret_keeping:enabled'):
@@ -280,6 +290,8 @@ def disable_handler(args):
 
     print(restart_note)
 
+    log.info('Disabled secret-keeping')
+
 
 def encrypt_handler(args):
     if not get_server_setting('secret_keeping:enabled'):
@@ -289,6 +301,8 @@ def encrypt_handler(args):
     spec = {'$or': [{s.plain_mongo: {'$exists': True}} for s in selectors]}
     for doc in db.clients.find(spec):
         if encrypt_document(doc):
+            log.info('Encrypted data in document {} (host {})',
+                     doc['_id'], doc['hostname'])
             print('Encrypted document {} (host {})'.format(
                 doc['_id'], doc['hostname']))
 
@@ -318,6 +332,7 @@ def delete_secret_key():
     key_fingerprint = get_server_setting('secret_keeping:key_fingerprint')
     gpg_command('--delete-secret-keys', key_fingerprint)
     print("\nDon't forget to 'shred -u' the secret-keeper files!\n")
+    log.warn("Don't forget to 'shred -u' the secret-keeper files!")
 
 
 def decrypt_handler(args):
@@ -345,6 +360,8 @@ def decrypt_handler(args):
                 update['$set'][s.plain_mongo] = BSON.decode(unencrypted_data)
             if update['$unset']:
                 db.clients.update({'_id': doc['_id']}, update)
+                log.info('Decrypted data in document {} (host {})',
+                         doc['_id'], doc['hostname'])
                 print('Decrypted document {} (host {})'.format(
                     doc['_id'], doc['hostname']))
     finally:
@@ -379,6 +396,8 @@ def access_handler(args):
                             BSON.decode(encrypted_data))
             if len(displayed) > 2:
                 pprint.pprint(displayed)
+                log.info('Displayed encrypted data in document {} (host {})',
+                         doc['_id'], doc['hostname'])
     finally:
         delete_secret_key()
 
