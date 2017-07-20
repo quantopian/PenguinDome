@@ -189,7 +189,8 @@ def audit_handler(args):
             continue
         problems = [d for d in db.clients.find(check['spec'])]
         for problem in problems:
-            open_issue(problem['hostname'], check_name)
+            open_issue(problem['hostname'], check_name,
+                       as_of=problem['plugins']['submitted_at'])
         problem_hosts = [d['hostname'] for d in problems]
         close_issue({'$not': {'$in': problem_hosts}}, check_name)
 

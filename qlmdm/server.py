@@ -122,12 +122,19 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
     return result.inserted_id
 
 
-def open_issue(hostname, issue_name):
+def open_issue(hostname, issue_name, as_of=None):
     """Opens an issue for the specified hostname if there isn't one"""
     db = get_db()
-    existing = db.issues.find_one({'hostname': hostname,
-                                   'name': issue_name,
-                                   'closed_at': {'$exists': False}})
+    spec = {'hostname': hostname, 'name': issue_name}
+    if as_of:
+        # Don't reopen an issue that was closed manually after we last
+        # received data about it.
+        spec['$or'] = [{'closed_at': {'$exists': False}},
+                       {'closed_at': {'$gt': as_of}}]
+    else:
+        spec['closed_at'] = {'$exists': False}
+
+    existing = db.issues.find_one(spec)
     if not existing:
         db.issues.insert_one({'hostname': hostname,
                               'name': issue_name,
