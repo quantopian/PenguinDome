@@ -64,4 +64,4 @@ for mount in open('/proc/mounts'):
                            'device': device,
                            'encrypted': is_encrypted(device)}
 
-print(json.dumps(list(results.values())))
+print(json.dumps(list(results[k] for k in sorted(results.keys()))))
