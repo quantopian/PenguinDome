@@ -16,9 +16,7 @@ This isn't a big, fancy MDM solution. There's no fancy Web UI, no system tray ap
 Requirements
 ------------
 
-Currently this works on recent Ubuntu versions. It needs some pretty standard Linux utilities, most notably GnuPG. If you're missing something it needs, it'll let you know, by failing catastrophically. It's written in Python, so it obviously needs that as well. It installs itself in its own virtualenv and installs the Python packages it needs in the virtualenv, so you don't need to worry about that (though you do need to have virtualenv installed!). You need Cron on the clients, as well as on the server if you want to run the audit script periodically.
-
-I'm also planning on adding support for Arch Linux, though I haven't gotten there yet.
+Currently this works on recent Ubuntu versions and on Arch. It needs some pretty standard Linux utilities, most notably GnuPG. If you're missing something it needs, it'll let you know, by failing catastrophically. It's written in Python, so it obviously needs that as well. It installs itself in its own virtualenv and installs the Python packages it needs in the virtualenv, so you don't need to worry about that (though you do need to have virtualenv installed!). You need Cron on the clients, as well as on the server if you want to run the audit script periodically.
 
 You need a MongoDB database server -- running on the same machine as the qlmdm server or elsewhere -- to store the data.
 
