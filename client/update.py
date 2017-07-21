@@ -11,6 +11,7 @@ from base64 import b64decode
 import filecmp
 import os
 import re
+from requests.exceptions import ConnectionError
 import shutil
 import socket
 import subprocess
@@ -138,7 +139,12 @@ def main():
 
     log.debug('Sending: {}', data)
 
-    response = server_request('/qlmdm/v1/update', data=data)
+    try:
+        response = server_request('/qlmdm/v1/update', data=data)
+    except ConnectionError:
+        log.error('Connection failure sending request to server')
+        sys.exit(1)
+
     data = response.json()
 
     changed = False
