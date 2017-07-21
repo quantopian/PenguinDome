@@ -68,7 +68,7 @@ def server_request(cmd, data=None, data_path=None):
 
     kwargs = {
         'data': post_data,
-        'timeout': 60,
+        'timeout': 30,
     }
     ca_path = get_setting('ssl:ca_path')
     if ca_path:
