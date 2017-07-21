@@ -11,7 +11,6 @@ from base64 import b64decode
 import filecmp
 import os
 import re
-from requests.exceptions import ConnectionError
 import shutil
 import socket
 import subprocess
@@ -125,7 +124,8 @@ def do_patches(patches):
 
         server_request('/qlmdm/v1/acknowledge_patch',
                        data={'id': patch_id,
-                             'hostname': socket.gethostname()})
+                             'hostname': socket.gethostname()},
+                       exit_on_connection_error=True)
 
 
 def main():
@@ -139,11 +139,8 @@ def main():
 
     log.debug('Sending: {}', data)
 
-    try:
-        response = server_request('/qlmdm/v1/update', data=data)
-    except ConnectionError:
-        log.error('Connection failure sending request to server')
-        sys.exit(1)
+    response = server_request('/qlmdm/v1/update', data=data,
+                              exit_on_connection_error=True)
 
     data = response.json()
 

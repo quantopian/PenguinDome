@@ -10,5 +10,6 @@ os.chdir(top_dir)
 set_gpg('client')
 
 for collected in sorted(glob.glob(os.path.join(collected_dir, '*[0-9]'))):
-    server_request('/qlmdm/v1/submit', data_path=collected)
+    server_request('/qlmdm/v1/submit', data_path=collected,
+                   exit_on_connection_error=True)
     os.unlink(collected)

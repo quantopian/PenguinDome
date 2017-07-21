@@ -2,6 +2,7 @@ from functools import partial
 import json
 import os
 import requests
+import sys
 from tempfile import NamedTemporaryFile
 
 from qlmdm import (
@@ -45,7 +46,8 @@ def encrypt_document(doc, log=None):
     return main_encrypt_document(get_setting, doc, log=log)
 
 
-def server_request(cmd, data=None, data_path=None):
+def server_request(cmd, data=None, data_path=None,
+                   exit_on_connection_error=False):
     server_url = get_setting('server_url')
     if data and data_path:
         raise Exception('Both data and data_path specified')
@@ -75,6 +77,12 @@ def server_request(cmd, data=None, data_path=None):
         if not ca_path.startswith('/'):
             ca_path = os.path.join(top_dir, ca_path)
         kwargs['verify'] = ca_path
-    response = requests.post('{}{}'.format(server_url, cmd), **kwargs)
-    response.raise_for_status()
+    try:
+        response = requests.post('{}{}'.format(server_url, cmd), **kwargs)
+        response.raise_for_status()
+    except requests.exceptions.ConnectionError:
+        if exit_on_connection_error:
+            sys.exit('Connection error posting to {}'.format(server_url))
+        raise
+
     return response
