@@ -146,6 +146,7 @@ def main():
         except:
             os.unlink(collected_path)
             raise
+        log.debug('Saved collected data to {}', collected_path)
 
 
 if __name__ == '__main__':
