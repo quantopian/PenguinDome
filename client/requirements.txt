@@ -1,3 +1,4 @@
+fasteners==0.14.1
 -e git://github.com/quantopian/logbook.git#egg=Logbook
 netifaces==0.10.6
 psutil==5.2.2
