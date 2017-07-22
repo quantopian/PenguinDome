@@ -14,6 +14,7 @@ import re
 import subprocess
 import socket
 import stat
+import sys
 from tempfile import NamedTemporaryFile
 import time
 
@@ -112,6 +113,16 @@ def parse_args():
     return args
 
 
+def runlevel_info():
+    try:
+        output = subprocess.check_output(
+            'systemctl list-units --type target; runlevel; who -r', shell=True)
+    except subprocess.CalledProcessError as e:
+        output = e.output
+    output = output.decode('ascii')
+    return output
+
+
 def main():
     args = parse_args()
 
@@ -123,6 +134,8 @@ def main():
         'collected_at': datetime.datetime.utcnow().isoformat(),
     }
 
+    before_runlevel = runlevel_info()
+
     if args.plugins:
         results['plugins'] = run_dir('plugins', submit_failures=True)
 
@@ -131,8 +144,17 @@ def main():
                                       delete_after_success=True,
                                       submit_failures=True)
 
+    after_runlevel = runlevel_info()
+
     if not (results.get('plugins', False) or results.get('commands', False)):
         return
+
+    if before_runlevel != after_runlevel:
+        # If the runlevel changes while we are running, it's probaby because
+        # the machine is in the process of rebooting, in which case the odds
+        # are that some of the plugins returned bad data and we shouldn't send
+        # anything to the server.
+        sys.exit('Aborting because runlevel changed')
 
     results, updates = encrypt_document(results, log=log)
     if updates:
