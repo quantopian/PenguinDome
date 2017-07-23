@@ -2,10 +2,12 @@
 
 from configparser import SafeConfigParser
 import glob
-import json
 import os
 import psutil
 import re
+
+from qlmdm import cached_data
+import qlmdm.json as json
 
 
 def xinit_checker():
@@ -59,4 +61,7 @@ for checker in checkers:
 if results is None:
     results = 'unknown'
 
-print(json.dumps({'enabled': results}))
+results = {'enabled': results}
+results = cached_data('guest_session', results, add_timestamp=True,
+                      check_logged_in=True)
+print(json.dumps(results))
