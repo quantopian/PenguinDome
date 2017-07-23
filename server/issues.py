@@ -23,9 +23,10 @@ from qlmdm.server import (
 
 os.chdir(top_dir)
 log = get_logger('issues')
-now = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+now = datetime.datetime.utcnow()
 
-workday_now = now.astimezone(pytz.timezone('US/Eastern'))
+workday_now = now.replace(tzinfo=pytz.utc).astimezone(
+    pytz.timezone('US/Eastern'))
 if workday_now.hour < 9:
     workday_now = workday_now.replace(hour=9, minute=0)
 if workday_now.hour > 16:
