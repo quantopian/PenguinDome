@@ -178,6 +178,9 @@ def check_pending_patches():
 
 
 def audit_handler(args):
+    def d(dt):
+        return dt.strftime('%m/%d %H:%M')
+
     if args.full:
         args.ignore_grace_period = args.ignore_recent_alerts = \
             args.ignore_snoozed = True
@@ -219,11 +222,16 @@ def audit_handler(args):
             snooze_ok = (args.ignore_snoozed or
                          'unsnooze_at' not in issue or
                          issue['unsnooze_at'] < now)
+            if issue.get('unsnooze_at', now) > now:
+                snoozed = ' [snoozed until {}]'.format(d(issue['unsnooze_at']))
+            else:
+                snoozed = ''
             if alert_ok and grace_ok and snooze_ok:
                 if not key1_printed:
                     print(key1)
                     key1_printed = True
-                print('  {} since {}'.format(key2, issue['opened_at']))
+                print('  {} since {}{}'.format(key2, d(issue['opened_at']),
+                                               snoozed))
                 if not os.isatty(sys.stderr.fileno()):
                     log.warn('{} {} since {}', key1, key2, issue['opened_at'])
                 if not args.ignore_recent_alerts:
