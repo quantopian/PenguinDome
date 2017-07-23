@@ -24,8 +24,9 @@ from qlmdm.server import (
 os.chdir(top_dir)
 log = get_logger('issues')
 now = datetime.datetime.utcnow()
+now_aware = now.replace(tzinfo=pytz.utc)
 
-workday_now = now.replace(tzinfo=pytz.utc).astimezone(
+workday_now = now_aware.astimezone(
     pytz.timezone('US/Eastern'))
 if workday_now.hour < 9:
     workday_now = workday_now.replace(hour=9, minute=0)
@@ -35,7 +36,7 @@ if workday_now.hour > 16:
 if workday_now.weekday() > 4:
     workday_now += datetime.timedelta(days=7 - workday_now.weekday())
 
-workday_offset = workday_now - now
+workday_offset = workday_now - now_aware
 
 problem_checks = {
     'not-reporting': {
