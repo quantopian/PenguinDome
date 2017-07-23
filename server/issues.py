@@ -262,6 +262,7 @@ def snooze_handler(args):
     ids = snooze_issue(hostname, issue_name, then)
 
     if not ids:
+        print('No matching issues.')
         return
 
     with logbook.StreamHandler(sys.stdout, bubble=True):
@@ -284,6 +285,7 @@ def unsnooze_handler(args):
     ids = unsnooze_issue(hostname, issue_name)
 
     if not ids:
+        print('No matching issues.')
         return
 
     with logbook.StreamHandler(sys.stdout, bubble=True):
