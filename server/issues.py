@@ -24,27 +24,14 @@ from qlmdm.server import (
 os.chdir(top_dir)
 log = get_logger('issues')
 now = datetime.datetime.utcnow()
-now_aware = now.replace(tzinfo=pytz.utc)
-
-workday_now = now_aware.astimezone(
-    pytz.timezone('US/Eastern'))
-if workday_now.hour < 9:
-    workday_now = workday_now.replace(hour=9, minute=0)
-if workday_now.hour > 16:
-    workday_now = workday_now.replace(hour=9, minute=0)
-    workday_now += datetime.timedelta(days=1)
-if workday_now.weekday() > 4:
-    workday_now += datetime.timedelta(days=7 - workday_now.weekday())
-
-workday_offset = workday_now - now_aware
 
 problem_checks = {
     'not-reporting': {
-        'grace-period': workday_offset + datetime.timedelta(hours=4),
+        'grace-period': datetime.timedelta(hours=4),
         'spec': {'submitted_at':
                  {'$lt': now - datetime.timedelta(days=1)}}},
     'no-location': {
-        'grace-period': workday_offset + datetime.timedelta(days=1),
+        'grace-period': datetime.timedelta(days=1),
         'spec': {'plugins.geolocation': 'unknown'}},
     'ssh-password-authentication': {
         'spec': {'$and': [
@@ -57,21 +44,21 @@ problem_checks = {
     'eraagent-absent': {
         'spec': {'plugins.eraagent.installed': {'$not': {'$eq': True}}}},
     'eraagent-stopped': {
-        'grace-period': workday_offset + datetime.timedelta(hours=4),
+        'grace-period': datetime.timedelta(hours=4),
         'spec': {'plugins.eraagent.running': {'$not': {'$eq': True}}}},
     'eset-absent': {
         'spec': {'plugins.eset.installed': {'$not': {'$eq': True}}}},
     'eset-out-of-date': {
-        'grace-period': workday_offset + datetime.timedelta(hours=4),
+        'grace-period': datetime.timedelta(hours=4),
         'spec': {'plugins.eset.recent': {'$not': {'$eq': True}}}},
     'eset-stopped': {
-        'grace-period': workday_offset + datetime.timedelta(hours=4),
+        'grace-period': datetime.timedelta(hours=4),
         'spec': {'plugins.eset.running': {'$not': {'$eq': True}}}},
     'os-update-available': {
         'grace-period': datetime.timedelta(days=90),
         'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
     'os-security-patches-available': {
-        'grace-period': workday_offset + datetime.timedelta(days=1),
+        'grace-period': datetime.timedelta(days=1),
         'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
                           'plugins.os_updates.security_patches':
                           {'$not': {'$eq': False}}},
@@ -84,14 +71,77 @@ problem_checks = {
     'firewall-disabled': {
         'spec': {'plugins.firewall.status': {'$not': {'$eq': 'on'}}}},
     'screenlock-disabled': {
-        'grace-period': workday_offset + datetime.timedelta(hours=4),
+        'grace-period': datetime.timedelta(hours=4),
         'spec': {'plugins.screenlock.enabled': {'$not': {'$eq': True}}}},
     'deprecated-port': {
-        'grace-period': workday_offset + datetime.timedelta(hours=1)},
+        'grace-period': datetime.timedelta(hours=1)},
     'pending-patches': {
-        'grace-period': workday_offset + datetime.timedelta(hours=4)},
+        'grace-period': datetime.timedelta(hours=4)},
     'expiring-certificate': {}
 }
+
+
+# Yeah, this should really use pytest or something, whatevs.
+#
+# td = datetime.timedelta
+# bh = business_hours
+#
+# testcases = (
+#     (p('2017-07-23T11:00:00Z'), p('2017-07-23T12:00:00Z'), td(0)),
+#     (p('2017-07-23T11:00:00Z'), p('2017-07-24T14:00:00Z'), td(hours=1)),
+#     (p('2017-07-21T20:00:00Z'), p('2017-07-24T14:00:00Z'), td(hours=2)),
+#     (p('2017-07-21T16:00:00Z'), p('2017-07-21T18:30:00Z'),
+#      td(hours=2, minutes=30)),
+#     (p('2017-07-19T18:15:00Z'), p('2017-07-21T14:20:00Z'),
+#      td(hours=12, minutes=5)),
+#     (p('2017-07-20T16:00:00Z'), p('2017-07-25T18:00:00Z'), td(hours=26)),
+# )
+# for t1, t2, expected in testcases:
+#     assert bh(t1, t2) == expected
+
+def to_local_time(dt):
+    return dt.replace(tzinfo=pytz.utc).astimezone(
+        pytz.timezone('US/Eastern'))
+
+
+def business_hours(t1, t2):
+    """Calculate timedelta of business hours from UTC times t1 to t2
+
+    Very rough -- doesn't take into account holidays. This doesn't need to be
+    perfect since it's OK for us to get occasional premature alerts. It's just
+    meant to eliminate most of them.
+    """
+
+    td = datetime.timedelta  # makes things cleaner below
+    # First, convert both times to local time
+    t1 = to_local_time(t1)
+    t2 = to_local_time(t2)
+
+    if t2.hour > 16:
+        t2 = t2.replace(hour=17, minute=0)
+
+    accumulator = td(0)
+    while t1 < t2:
+        if t1.weekday() > 4:  # weekend
+            t1 = t1.replace(hour=9, minute=0)
+            t1 += td(days=7 - t1.weekday())
+            continue
+        if t1.hour < 9:
+            t1 = t1.replace(hour=9, minute=0)
+            continue
+        if t1.hour > 16:
+            t1 = t1.replace(hour=9, minute=0)
+            t1 += td(days=1)
+            continue
+        if t1.date() < t2.date():
+            accumulator += t1.replace(hour=17, minute=0) - t1
+            t1 = t1.replace(hour=9, minute=0)
+            t1 += td(days=1)
+            continue
+        accumulator += t2 - t1
+        break
+
+    return accumulator
 
 
 def parse_args():
@@ -224,14 +274,13 @@ def audit_handler(args):
         for key2, issue in value1.items():
             try:
                 grace_period = problem_checks[issue['name']]['grace-period']
-                grace_threshold = now - grace_period
             except KeyError:
-                grace_threshold = now
+                grace_period = datetime.timedelta(0)
             alert_ok = (args.ignore_recent_alerts or
                         'alerted_at' not in issue or
                         issue['alerted_at'] < alert_threshold)
             grace_ok = (args.ignore_grace_period or
-                        issue['opened_at'] < grace_threshold)
+                        business_hours(issue['opened_at'], now) > grace_period)
             snooze_ok = (args.ignore_snoozed or
                          'unsnooze_at' not in issue or
                          issue['unsnooze_at'] < now)
