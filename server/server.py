@@ -2,9 +2,11 @@
 
 from bson import ObjectId
 import datetime
+import dateutil.parser
 from flask import Flask, request, Response
 from functools import wraps
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, IPv6Network
+import json
 from multiprocessing import Process
 import os
 from passlib.hash import pbkdf2_sha256
@@ -18,7 +20,6 @@ from qlmdm import (
     releases_dir,
     gpg_command,
 )
-import qlmdm.json as json
 from qlmdm.server import (
     get_logger,
     get_setting as get_server_setting,
@@ -265,6 +266,7 @@ def submit():
     now = datetime.datetime.utcnow()
     data = json.loads(request.form['data'])
     hostname = data['hostname']
+    datetimeify(data)
     spec = {'hostname': hostname}
     update = {
         'submitted_at': now,
@@ -385,6 +387,18 @@ def download_release():
                     mimetype='application/tar',
                     headers={'Content-Disposition':
                              'attachment; filename={}'.format(filename)})
+
+
+def datetimeify(d):
+    for key, value in d.items():
+        if isinstance(value, dict):
+            datetimeify(value)
+        elif key.endswith('_at'):
+            try:
+                dt = dateutil.parser.parse(value)
+                d[key] = dt
+            except:
+                pass
 
 
 def startServer(port):

@@ -8,6 +8,7 @@
 
 import argparse
 import datetime
+import json
 import os
 import re
 import subprocess
@@ -19,7 +20,6 @@ import time
 
 from qlmdm import top_dir, collected_dir, set_gpg
 from qlmdm.client import get_logger, encrypt_document
-import qlmdm.json as json
 
 os.chdir(top_dir)
 set_gpg('client')
@@ -131,7 +131,7 @@ def main():
 
     results = {
         'hostname': socket.gethostname(),
-        'collected_at': datetime.datetime.utcnow(),
+        'collected_at': datetime.datetime.utcnow().isoformat(),
     }
 
     before_runlevel = runlevel_info()
