@@ -9,6 +9,7 @@ url="https://www.github.com/quantopian/qlmdm"
 depends=('python'
          'python-certifi'
          'python-chardet'
+         'python-dateutil',
          'python-fasteners'
          'python-idna'
          'python-netifaces'
