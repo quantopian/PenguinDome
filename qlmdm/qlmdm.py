@@ -1,13 +1,11 @@
 from base64 import b64encode
 from bson import BSON
 from collections import namedtuple
-import datetime
 from distutils.version import LooseVersion
 import glob
 from itertools import chain
 import logbook
 import os
-import pickle
 import re
 import socket
 import stat
@@ -296,41 +294,3 @@ def encrypt_document(getter, doc, log=None):
     if update['$unset']:
         return doc, update
     return doc, None
-
-
-def cached_data(key, data=None, add_timestamp=False, check_logged_in=False):
-    """Return or save cached data for the specified key
-
-    If data is None and there is no cached data for the specified key, raises
-    FileNotFoundError.
-
-    If add_timestamp is true, then adds a cached_at timestamp to data (which
-    must be a dict or dict-like object) before saving it.
-
-    If check_logged_in is true, then checks if any users are currently logged
-    in before saving or returning the data, and if not, then assumes that data
-    is None even if it actually isn't.
-    """
-
-    if os.sep in key:
-        raise Exception('Cache keys cannot have {} in them'.format(os.sep))
-
-    cache_file = os.path.join(var_dir, 'data_cache', key)
-
-    if check_logged_in and subprocess.check_output('who') == b'':
-        # No one is logged in
-        data = None
-
-    if data is None:
-        return pickle.load(open(cache_file, 'rb'))
-
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-
-    if add_timestamp and isinstance(data, dict):
-        save_data = data.copy()
-        save_data['cached_at'] = datetime.datetime.utcnow()
-    else:
-        save_data = data
-
-    pickle.dump(save_data, open(cache_file, 'wb'))
-    return data

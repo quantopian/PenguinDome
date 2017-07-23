@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
+import json
 import psutil
 import re
 import subprocess
 
-from qlmdm import cached_data
 from qlmdm.client import get_logger
-import qlmdm.json as json
 
 log = get_logger('plugins/screenlock')
 
@@ -112,7 +111,4 @@ else:
         else:
             results[user] = {'user': user, 'enabled': 'unknown'}
 
-results = {'users': list(results.values())}
-results = cached_data('screenlock', results, add_timestamp=True,
-                      check_logged_in=True)
-print(json.dumps(results))
+print(json.dumps(list(results.values())))
