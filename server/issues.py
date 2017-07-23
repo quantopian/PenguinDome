@@ -4,6 +4,7 @@ import argparse
 import datetime
 import logbook
 import os
+import pytz
 import subprocess
 import sys
 
@@ -22,15 +23,26 @@ from qlmdm.server import (
 
 os.chdir(top_dir)
 log = get_logger('issues')
+now = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+
+workday_now = now.astimezone(pytz.timezone('US/Eastern'))
+if workday_now.hour < 9:
+    workday_now = workday_now.replace(hour=9, minute=0)
+if workday_now.hour > 16:
+    workday_now = workday_now.replace(hour=9, minute=0)
+    workday_now += datetime.timedelta(days=1)
+if workday_now.weekday() > 4:
+    workday_now += datetime.timedelta(days=7 - workday_now.weekday())
+
+workday_offset = workday_now - now
 
 problem_checks = {
     'not-reporting': {
-        'grace-period': datetime.timedelta(days=2),
+        'grace-period': workday_offset + datetime.timedelta(hours=4),
         'spec': {'submitted_at':
-                 {'$lt': datetime.datetime.utcnow() -
-                  datetime.timedelta(days=1)}}},
+                 {'$lt': now - datetime.timedelta(days=1)}}},
     'no-location': {
-        'grace-period': datetime.timedelta(days=3),
+        'grace-period': workday_offset + datetime.timedelta(days=1),
         'spec': {'plugins.geolocation': 'unknown'}},
     'ssh-password-authentication': {
         'spec': {'$and': [
@@ -43,21 +55,21 @@ problem_checks = {
     'eraagent-absent': {
         'spec': {'plugins.eraagent.installed': {'$not': {'$eq': True}}}},
     'eraagent-stopped': {
-        'grace-period': datetime.timedelta(days=1),
+        'grace-period': workday_offset + datetime.timedelta(hours=4),
         'spec': {'plugins.eraagent.running': {'$not': {'$eq': True}}}},
     'eset-absent': {
         'spec': {'plugins.eset.installed': {'$not': {'$eq': True}}}},
     'eset-out-of-date': {
-        'grace-period': datetime.timedelta(days=1),
+        'grace-period': workday_offset + datetime.timedelta(hours=4),
         'spec': {'plugins.eset.recent': {'$not': {'$eq': True}}}},
     'eset-stopped': {
-        'grace-period': datetime.timedelta(days=1),
+        'grace-period': workday_offset + datetime.timedelta(hours=4),
         'spec': {'plugins.eset.running': {'$not': {'$eq': True}}}},
     'os-update-available': {
         'grace-period': datetime.timedelta(days=90),
         'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
     'os-security-patches-available': {
-        'grace-period': datetime.timedelta(days=3),
+        'grace-period': workday_offset + datetime.timedelta(days=1),
         'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
                           'plugins.os_updates.security_patches':
                           {'$not': {'$eq': False}}},
@@ -70,12 +82,12 @@ problem_checks = {
     'firewall-disabled': {
         'spec': {'plugins.firewall.status': {'$not': {'$eq': 'on'}}}},
     'screenlock-disabled': {
-        'grace-period': datetime.timedelta(days=1),
+        'grace-period': workday_offset + datetime.timedelta(hours=4),
         'spec': {'plugins.screenlock.enabled': {'$not': {'$eq': True}}}},
     'deprecated-port': {
-        'grace-period': datetime.timedelta(hours=1)},
+        'grace-period': workday_offset + datetime.timedelta(hours=1)},
     'pending-patches': {
-        'grace-period': datetime.timedelta(hours=1)},
+        'grace-period': workday_offset + datetime.timedelta(hours=4)},
     'expiring-certificate': {}
 }
 
@@ -202,7 +214,6 @@ def audit_handler(args):
 
     issues = get_open_issues()
 
-    now = datetime.datetime.utcnow()
     # Slightly less than an hour, to avoid race conditions when running hourly.
     alert_threshold = now - datetime.timedelta(minutes=59)
 
@@ -247,7 +258,6 @@ def snooze_handler(args):
     if not (args.days or args.hours):
         args.days = 1
 
-    now = datetime.datetime.utcnow()
     if args.days:
         then = now + datetime.timedelta(days=args.days)
     else:
