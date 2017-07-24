@@ -35,7 +35,7 @@ def save_settings():
 
 
 def get_logger(name):
-    return main_get_logger(get_setting, name)
+    return main_get_logger(get_setting, name, fail_to_local=True)
 
 
 def get_selectors():

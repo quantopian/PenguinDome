@@ -9,6 +9,7 @@ import os
 import re
 import socket
 import stat
+from stopit import ThreadingTimeout
 import subprocess
 from tempfile import NamedTemporaryFile
 import yaml
@@ -211,13 +212,15 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
     return signature_file[len(top_dir)+1:]
 
 
-def get_logger(setting_getter, name):
+def get_logger(setting_getter, name, fail_to_local=False):
     global got_logger
     if got_logger:
         # Yes, this means that if you try to change your logging within an
         # application, it won't work. This is intentional. You shouldn't do
         # that.
         return got_logger
+
+    logger = logbook.Logger('qlmdm-' + name)
 
     internal_log_dir = os.path.join(var_dir, 'log')
     internal_log_file = os.path.join(internal_log_dir, 'qlmdm.log')
@@ -248,10 +251,21 @@ def get_logger(setting_getter, name):
                                               socket.SOCK_STREAM)[0]
                 kwargs['socktype'] = addrinfo[1]
                 kwargs['address'] = addrinfo[4]
-        handler(**kwargs).push_application()
+
+        if fail_to_local:
+            try:
+                with ThreadingTimeout(5):
+                    handler = handler(**kwargs)
+            except:
+                logger.warn('Failed to create {}, falling back to local-only '
+                            'logging', handler_name)
+            else:
+                handler.push_application()
+        else:
+            handler(**kwargs).push_application()
 
     logbook.compat.redirect_logging()
-    got_logger = logbook.Logger('qlmdm-' + name)
+    got_logger = logger
     return got_logger
 
 
