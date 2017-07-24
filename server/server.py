@@ -432,6 +432,11 @@ def download_release():
 def startServer(port):
     app.config['deprecated_port'] = get_port_setting(port, 'deprecated', False)
 
+    # Logbook will handle all logging, via the root handler installed by
+    # `get_logger` when it alls `logbook.compat.redirect_logging()`.
+    del app.logger.handlers[:]
+    app.logger.propagate = True
+
     kwargs = {
         'host': '0.0.0.0',
         'port': port,
@@ -457,11 +462,6 @@ def prepare_database():
 
 
 def main():
-    # Logbook will handle all logging, via the root handler installed by
-    # `get_logger` when it alls `logbook.compat.redirect_logging()`.
-    del app.logger.handlers[:]
-    app.logger.propagate = True
-
     ports = None
     port = get_server_setting('port')
     if isinstance(port, int):
