@@ -1,5 +1,4 @@
 from base64 import b64encode
-from bson import BSON
 from collections import namedtuple
 import datetime
 from distutils.version import LooseVersion
@@ -15,6 +14,8 @@ from stopit import ThreadingTimeout
 import subprocess
 from tempfile import NamedTemporaryFile
 import yaml
+
+import qlmdm.json as json
 
 top_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 gpg_private_dir = os.path.join('server', 'keyring')
@@ -288,9 +289,10 @@ def encrypt_document(getter, doc, log=None):
             doc, s.plain_mem, check_defaults=False)
         if not decrypted_data:
             continue
+        decrypted_data = json.dumps(decrypted_data).encode('utf-8')
         with NamedTemporaryFile('w+b') as unencrypted_file, \
                 NamedTemporaryFile('w+b') as encrypted_file:
-            unencrypted_file.write(BSON.encode(decrypted_data))
+            unencrypted_file.write(decrypted_data)
             unencrypted_file.flush()
             try:
                 gpg_command('--encrypt', '--recipient', key_id, '-o',

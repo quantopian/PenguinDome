@@ -2,7 +2,6 @@
 
 import argparse
 from base64 import b64decode
-from bson import BSON
 import os
 import pprint
 import re
@@ -19,6 +18,7 @@ from qlmdm import (
     set_setting,
     gpg_command,
 )
+import qlmdm.json as json
 from qlmdm.server import (
     get_db,
     get_setting as get_server_setting,
@@ -357,7 +357,8 @@ def decrypt_handler(args):
                     unencrypted_file.seek(0)
                     unencrypted_data = unencrypted_file.read()
                 update['$unset'][s.enc_mongo] = True
-                update['$set'][s.plain_mongo] = BSON.decode(unencrypted_data)
+                update['$set'][s.plain_mongo] = json.loads(
+                    unencrypted_data.decode('utf-8'))
             if update['$unset']:
                 db.clients.update({'_id': doc['_id']}, update)
                 log.info('Decrypted data in document {} (host {})',
@@ -393,7 +394,7 @@ def access_handler(args):
                     unencrypted_file.seek(0)
                     encrypted_data = unencrypted_file.read()
                 set_setting(displayed, s.plain_mem,
-                            BSON.decode(encrypted_data))
+                            json.loads(encrypted_data.decode('utf-8')))
             if len(displayed) > 2:
                 pprint.pprint(displayed)
                 log.info('Displayed encrypted data in document {} (host {})',

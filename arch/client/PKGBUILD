@@ -14,7 +14,6 @@ depends=('python'
          'python-idna'
          'python-netifaces'
          'python-psutil'
-         'python-pymongo'
          'python-yaml'
          'python-requests'
          # 'python-stopit' also needed, but doesn't exist
