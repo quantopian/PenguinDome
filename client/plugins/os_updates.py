@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+from tempfile import TemporaryFile
 import time
 
 from qlmdm.client import get_logger
@@ -55,17 +56,20 @@ def arch_checker():
 def ubuntu_checker():
     results = {}
 
-    try:
-        output = subprocess.check_output(
-            ('do-release-upgrade', '-c')).decode(ascii)
-        results['release'] = True
-    except OSError:
-        return None
-    except subprocess.CalledProcessError as e:
-        if e.returncode == 1:
-            results['release'] = False
-        else:
-            results['release'] = 'unknown'
+    with TemporaryFile() as f:
+        try:
+            subprocess.check_output(('do-release-upgrade', '-c'), stderr=f)
+            results['release'] = True
+        except OSError:
+            return None
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 1:
+                # If there was stderr, then something is wrong.
+                results['release'] = ('unknown'
+                                      if os.fstat(f.fileno()).st_size > 0
+                                      else False)
+            else:
+                results['release'] = 'unknown'
 
     try:
         update_stamp = os.stat(
