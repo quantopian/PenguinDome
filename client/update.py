@@ -148,7 +148,6 @@ def main():
 
     if data['status'] == 'current':
         log.debug('Current')
-        pass
     elif data['status'] == 'out-of-date':
         do_release(data)
         changed = True
