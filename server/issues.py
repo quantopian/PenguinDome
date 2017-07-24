@@ -67,7 +67,9 @@ problem_checks = {
     'guest-session-enabled': {
         'spec': {'plugins.guest_session.enabled': {'$not': {'$eq': False}}}},
     'unencrypted-hard-drive': {
-        'spec': {'plugins.hd_encryption.encrypted': {'$not': {'$eq': True}}}},
+        'spec': {'$or': [
+            {'plugins.hd_encryption.encrypted': {'$eq': False}},
+            {'plugins.hd_encryption.encrypted': {'$exists': False}}]}},
     'firewall-disabled': {
         'spec': {'plugins.firewall.status': {'$not': {'$eq': 'on'}}}},
     'screenlock-disabled': {
