@@ -110,8 +110,8 @@ if access_points:
 
 url = 'https://www.googleapis.com/geolocation/v1/geolocate?key={}'.format(
     api_key)
-response = requests.post(url, data=json.dumps(data))
 try:
+    response = requests.post(url, data=json.dumps(data), timeout=5)
     response.raise_for_status()
 except:
     unknown()
