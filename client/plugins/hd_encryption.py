@@ -42,7 +42,7 @@ for mount in open('/proc/mounts'):
     if type in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
                 'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
                 'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
-                'cgroup2', 'configfs', 'vboxsf', 'efivarfs'):
+                'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs'):
         continue
     if any(True for r in results.values() if r['device'] == device):
         # Bind mounting, probably.
@@ -55,11 +55,15 @@ for mount in open('/proc/mounts'):
                                'device': device,
                                'encrypted': True}
         continue
-    if mountpoint == '/boot':
+    if mountpoint in ('/boot', '/boot/efi'):
         continue
-    if device.find(':') > -1:
+    if device.find(':') > -1 or device.startswith('//'):
         # Remote device
         continue
+    if mountpoint.startswith('/media/'):
+        # We don't enforce encryption of removable devices with MDM.
+        continue
+
     results[mountpoint] = {'mountpoint': mountpoint,
                            'device': device,
                            'encrypted': is_encrypted(device)}
