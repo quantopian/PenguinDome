@@ -9,4 +9,5 @@ pymongo==3.4.0
 python-dateutil==2.6.1
 PyYAML==3.12
 requests==2.18.1
+stopit==1.1.1
 urllib3==1.21.1

@@ -17,6 +17,7 @@ depends=('python'
          'python-pymongo'
          'python-yaml'
          'python-requests'
+         # 'python-stopit' also needed, but doesn't exist
          'python-urllib3'
          'python-logbook-quantopian'
          'coreutils'
