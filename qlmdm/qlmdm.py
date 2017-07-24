@@ -1,8 +1,9 @@
 from base64 import b64encode
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import datetime
 from distutils.version import LooseVersion
 import glob
+from hashlib import md5
 from itertools import chain
 import logbook
 import os
@@ -278,6 +279,24 @@ def get_selectors(getter):
                  for s in getter('secret_keeping:selectors', []))
 
 
+def orderify(obj):
+    """Convert dicts (recursively) to ordered dicts with sorted keys"""
+
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if isinstance(value, dict):
+                obj[key] = orderify(value)
+                continue
+            if isinstance(value, (tuple, list)):
+                obj[key] = orderify(value)
+        obj = OrderedDict((key, obj[key]) for key in sorted(obj.keys()))
+    elif isinstance(obj, (tuple, list)):
+        obj = type(obj)(sorted((orderify(v) for v in obj),
+                               key=str))
+
+    return obj
+
+
 def encrypt_document(getter, doc, log=None):
     if not getter('secret_keeping:enabled'):
         return doc, None
@@ -289,6 +308,11 @@ def encrypt_document(getter, doc, log=None):
             doc, s.plain_mem, check_defaults=False)
         if not decrypted_data:
             continue
+        # This assures that the same decrypted data will always end up with the
+        # same md5 hash by ensuring that the data are always encoded in the
+        # same order.
+        if isinstance(decrypted_data, dict):
+            decrypted_data = orderify(decrypted_data)
         decrypted_data = json.dumps(decrypted_data).encode('utf-8')
         with NamedTemporaryFile('w+b') as unencrypted_file, \
                 NamedTemporaryFile('w+b') as encrypted_file:
@@ -304,7 +328,9 @@ def encrypt_document(getter, doc, log=None):
                               e.output.decode('ascii'))
                 raise
             encrypted_file.seek(0)
-            encrypted_data = b64encode(encrypted_file.read()).decode('ascii')
+            encrypted_data = {
+                'hash': md5(decrypted_data).hexdigest(),
+                'data': b64encode(encrypted_file.read()).decode('ascii')}
         update['$unset'][s.plain_mongo] = True
         update['$set'][s.enc_mongo] = encrypted_data
         set_setting(doc, s.plain_mem, None)

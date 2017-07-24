@@ -350,7 +350,7 @@ def decrypt_handler(args):
                     continue
                 with NamedTemporaryFile('w+b') as unencrypted_file, \
                         NamedTemporaryFile('w+b') as encrypted_file:
-                    encrypted_file.write(b64decode(encrypted_data))
+                    encrypted_file.write(b64decode(encrypted_data['data']))
                     encrypted_file.flush()
                     gpg_command('--decrypt', '-o', unencrypted_file.name,
                                 encrypted_file.name)
@@ -387,7 +387,7 @@ def access_handler(args):
                     continue
                 with NamedTemporaryFile('w+b') as unencrypted_file, \
                         NamedTemporaryFile('w+b') as encrypted_file:
-                    encrypted_file.write(encrypted_data)
+                    encrypted_file.write(encrypted_data['data'])
                     encrypted_file.flush()
                     gpg_command('--decrypt', '-o', unencrypted_file.name,
                                 encrypted_file.name)
