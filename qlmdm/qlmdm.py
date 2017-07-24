@@ -193,13 +193,13 @@ def set_setting(settings, setting, value):
             subsettings[keys[0]] = {}
         subsettings = subsettings[keys[0]]
         keys.pop(0)
-    if value is not None:
-        subsettings[keys[0]] = value
-    elif get_setting(settings, setting):
-        # It has a default, so we need to store an override.
-        subsettings[keys[0]] = None
+    if value is None:
+        subsettings.pop(keys[0], None)
+        if get_setting(settings, setting):
+            # It has a default, so we need to store an override.
+            subsettings[keys[0]] = None
     else:
-        settings.pop(keys[0], None)
+        subsettings[keys[0]] = value
 
 
 def verify_signature(file, top_dir=top_dir, raise_errors=False):
