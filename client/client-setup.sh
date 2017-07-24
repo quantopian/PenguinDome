@@ -17,7 +17,8 @@ if [ "$ID_LIKE" = "debian" ]; then
 elif [ "$ID_LIKE" = "archlinux" ]; then
     if ! pacman -S --needed --noconfirm $(sed -e 's/#.*//' -e '/\.git$/d' \
       client/arch-packages.txt) >| var/pacman.log 2>&1; then
-	echo "pacman -S failed. See var/pacman.log" 1>&2
+	echo "pacman -S failed:" 1>&2
+        cat var/pacman.log 1>&2
 	exit 1
     fi
 fi
