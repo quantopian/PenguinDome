@@ -17,7 +17,14 @@ import sys
 from tempfile import NamedTemporaryFile
 import time
 
-from qlmdm import top_dir, collected_dir, plugins_dir, commands_dir, set_gpg
+from qlmdm import (
+    top_dir,
+    collected_dir,
+    plugins_dir,
+    commands_dir,
+    signatures_dir,
+    set_gpg,
+)
 from qlmdm.client import get_logger, encrypt_document
 import qlmdm.json as json
 
@@ -93,6 +100,12 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
                 if delete_after_success:
                     try:
                         os.remove(run_path)
+                        sig_file = os.path.join(signatures_dir,
+                                                run_path + '.sig')
+                        try:
+                            os.remove(sig_file)
+                        except:
+                            log.warn('Failed to remove {}', sig_file)
                     except:
                         log.exception('Failed to remove {}', run_path)
                     else:
