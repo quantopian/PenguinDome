@@ -300,7 +300,9 @@ def encrypt_handler(args):
     selectors = get_selectors()
     spec = {'$or': [{s.plain_mongo: {'$exists': True}} for s in selectors]}
     for doc in db.clients.find(spec):
-        if encrypt_document(doc):
+        doc, update = encrypt_document(doc)
+        if update:
+            db.clients.update({'_id': doc['_id']}, update)
             log.info('Encrypted data in document {} (host {})',
                      doc['_id'], doc['hostname'])
             print('Encrypted document {} (host {})'.format(
