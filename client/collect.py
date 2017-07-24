@@ -17,7 +17,7 @@ import sys
 from tempfile import NamedTemporaryFile
 import time
 
-from qlmdm import top_dir, collected_dir, set_gpg
+from qlmdm import top_dir, collected_dir, plugins_dir, commands_dir, set_gpg
 from qlmdm.client import get_logger, encrypt_document
 import qlmdm.json as json
 
@@ -33,9 +33,8 @@ for d in ('/sbin', '/usr/sbin'):
 log = get_logger('collect')
 
 
-def run_dir(dir_name, parse_output=True, delete_after_success=False,
+def run_dir(dir_path, parse_output=True, delete_after_success=False,
             submit_failures=False):
-    dir_path = os.path.join('client', dir_name)
     results = {}
     if not os.path.exists(dir_path):
         log.debug('Skipping nonexistent directory {}', dir_path)
@@ -137,10 +136,10 @@ def main():
     before_runlevel = runlevel_info()
 
     if args.plugins:
-        results['plugins'] = run_dir('plugins', submit_failures=True)
+        results['plugins'] = run_dir(plugins_dir, submit_failures=True)
 
     if args.commands:
-        results['commands'] = run_dir('commands', parse_output=False,
+        results['commands'] = run_dir(commands_dir, parse_output=False,
                                       delete_after_success=True,
                                       submit_failures=True)
 

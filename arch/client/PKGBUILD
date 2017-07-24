@@ -40,6 +40,7 @@ package() {
   install_dir="$pkgdir/$real_install_dir"
 
   install -d ${install_dir}
+  install -d ${install_dir}/client/commands
   cp -r . ${install_dir}
 
   chmod -R 700 "$install_dir/client/keyring"

@@ -11,6 +11,7 @@ from qlmdm import (
     top_dir,
     releases_dir,
     var_dir,
+    commands_dir,
     release_file,
     set_gpg,
     release_files_iter,
@@ -37,13 +38,18 @@ try:
     with NamedTemporaryFile('w+') as file_list, \
             NamedTemporaryFile('w+') as staging_file_list:
         release_files = release_files_iter(with_signatures=True)
-        release_files = chain.from_iterable(release_files)
+        release_files = tuple(chain.from_iterable(release_files))
         file_list.write('\n'.join(release_files) + '\n')
         file_list.flush()
 
         staging_files = release_files_iter(with_signatures=True,
                                            top_dir=staging_dir)
-        staging_files = chain.from_iterable(staging_files)
+        staging_files = list(chain.from_iterable(staging_files))
+
+        if not any(f.startswith(commands_dir) for f in release_files):
+            os.makedirs(os.path.join(staging_dir, commands_dir))
+            staging_files.append(commands_dir)
+
         staging_file_list.write('\n'.join(staging_files) + '\n')
         staging_file_list.flush()
 
