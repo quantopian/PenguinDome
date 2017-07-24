@@ -42,8 +42,8 @@ def get_selectors():
     return main_get_selectors(get_setting)
 
 
-def encrypt_document(doc, log=None):
-    return main_encrypt_document(get_setting, doc, log=log)
+def encrypt_document(*args, **kwargs):
+    return main_encrypt_document(get_setting, *args, **kwargs)
 
 
 def server_request(cmd, data=None, data_path=None,

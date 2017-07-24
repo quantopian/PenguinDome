@@ -27,6 +27,7 @@ from qlmdm.server import (
     open_issue,
     close_issue,
     encrypt_document,
+    audit_trail_write,
 )
 
 log = get_logger('server')
@@ -208,52 +209,90 @@ def short_value(value):
     return '...' if len(value) > 40 else value
 
 
-def dict_changes(old, new, prefix=None, changes=None):
+def dict_changes(old, new, prefix=None, changes=None, audit_trail=None):
     if changes is None:
         changes = []
+        audit_trail = []
     keys = sorted(list(set(old.keys()) | set(new.keys())))
-    for key in keys:
+    for key, name in ((key, key_name(key, prefix)) for key in keys):
         if key not in new:
             changes.append('deleted {} ({})'.format(
-                key_name(key, prefix),
-                short_value(old[key])))
+                name, short_value(old[key])))
+            audit_trail.append({
+                'key': name,
+                'action': 'delete',
+                'old': old[key]})
         elif key not in old:
-            changes.append('added {} ({})'.format(
-                key_name(key, prefix),
-                short_value(new[key])))
+            changes.append('added {} ({})'.format(name, short_value(new[key])))
+            audit_trail.append({
+                'key': name,
+                'type': 'add',
+                'new': new[key]})
         elif type(old[key]) != type(new[key]):  # noqa
             changes.append('type change {} ({} -> {}, new value {})'.format(
-                key_name(key, prefix),
-                type(old[key]), type(new[key]),
-                short_value(new[key])))
+                name, type(old[key]), type(new[key]), short_value(new[key])))
+            audit_trail.append({
+                'key': name,
+                'type': 'change',
+                'old': old[key],
+                'new': new[key]})
+        elif key.endswith('-encrypted'):
+            # Backward compatibility until all clients are submitting encrypted
+            # data with hashes.
+            if not (isinstance(old[key], dict) and
+                    isinstance(new[key], dict)):
+                continue
+            if old[key]['hash'] == new[key]['hash']:
+                continue
+            changes.append('changed {} (encrypted)'.format(name))
+            audit_trail.append({
+                'key': name,
+                'type': 'change',
+                'old': old[key],
+                'new': new[key]})
         elif isinstance(old[key], dict):
-            dict_changes(old[key], new[key], key_name(key, prefix), changes)
+            dict_changes(old[key], new[key], name, changes, audit_trail)
         elif isinstance(old[key], list):
-            # This will work much better of plugins maintain consistent
+            # This will work much better if plugins maintain consistent
             # ordering in lists.
+            list_changed = False
             if len(old[key]) != len(new[key]):
                 changes.append(
                     'length change {}[] ({} -> {}, new value {})'.format(
-                        key_name(key, prefix), len(old[key]), len(new[key]),
+                        name, len(old[key]), len(new[key]),
                         short_value(str(new[key]))))
+                list_changed = True
             else:
                 for i in range(len(old[key])):
                     if isinstance(old[key][i], dict):
-                        dict_changes(old[key][i], new[key][i],
-                                     '{}[{}]'.format(key_name(key, prefix), i),
-                                     changes)
+                        this_changes, _ = dict_changes(
+                            old[key][i], new[key][i],
+                            '{}[{}]'.format(name, i),
+                            [], {})
+                        if this_changes:
+                            changes.extend(this_changes)
+                            list_changed = True
                     elif str(old[key][i]) != str(new[key][i]):
                         changes.append('changed {}[{}] ({} -> {})'.format(
-                            key_name(key, prefix), i,
+                            name, i,
                             short_value(old[key][i]),
                             short_value(new[key][i])))
-        elif key.endswith('-encrypted'):
-            continue
+                        list_changed = True
+            if list_changed:
+                audit_trail.append({
+                    'key': name,
+                    'type': 'change',
+                    'old': old[key],
+                    'new': new[key]})
         elif str(old[key]) != str(new[key]):
             changes.append('changed {} ({} -> {})'.format(
-                key_name(key, prefix),
-                short_value(old[key]), short_value(new[key])))
-    return changes
+                name, short_value(old[key]), short_value(new[key])))
+            audit_trail.append({
+                'key': name,
+                'type': 'change',
+                'old': old[key],
+                'new': new[key]})
+    return changes, audit_trail
 
 
 @app.route('/qlmdm/v1/submit', methods=('POST',))
@@ -296,9 +335,12 @@ def submit():
                 db.clients.update_one({'_id': new['_id']}, updates)
                 log.info('Encrypted secret data for {} in document {}',
                          hostname, new['_id'])
-            changes = dict_changes(old, new)
+            changes, audit_trail = dict_changes(old, new)
             for change in changes:
                 log.info('Change for {}: {}', hostname, change)
+            if audit_trail:
+                audit_trail_write({'audited_at': now, 'hostname': hostname},
+                                  audit_trail)
         return('ok')
     else:
         log.error('Empty submission from {}', hostname)

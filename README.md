@@ -123,6 +123,8 @@ The database contains the following collections:
 
 * `clients` contains all the data sent in by clients. Client hostnames are assumed to be unique, so if two computers with the same hostname are reporting to the server at the same time, bad things will happen.
 
+* `audit_trail` contains an audit trail of changes to client data.
+
 * `patches` contains patches that have been deployed to clients in the past and/or are still pending deployment.
 
 * `issues` is used to keep track of current and previous issues with clients, including the bookkeeping information necessary to determine when to alert about them.

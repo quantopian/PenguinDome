@@ -4,6 +4,7 @@ import argparse
 from base64 import b64decode
 import os
 import pprint
+from pymongo import DESCENDING
 import re
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from qlmdm import (
     get_setting,
     set_setting,
     gpg_command,
+    SelectorVariants,
 )
 import qlmdm.json as json
 from qlmdm.server import (
@@ -49,6 +51,8 @@ Please distribute these files securely to the secret-keepers and then remove
 them with "shred -u". At least {n} of these files will need to be provided to
 reconstruct the key so that secret data can be decrypted.
 '''
+audit_trail_selectors = (SelectorVariants('old', 'old', 'old', 'old'),
+                         SelectorVariants('new', 'new', 'new', 'new'))
 
 
 def parse_args():
@@ -116,6 +120,10 @@ def parse_args():
         'access', help='Decrypt secret data in memory and display it')
     access_parser.add_argument('--hostname', action='append',
                                help='Host name(s) to display data for')
+    access_parser.add_argument('--full', action='store_true', help='Display '
+                               'full documents, not just decrypted fields')
+    access_parser.add_argument('--audit-trail', action='store_true',
+                               help='Also display audit trail')
     access_parser.set_defaults(func=access_handler)
 
     args = parser.parse_args()
@@ -303,9 +311,20 @@ def encrypt_handler(args):
         doc, update = encrypt_document(doc)
         if update:
             db.clients.update({'_id': doc['_id']}, update)
-            log.info('Encrypted data in document {} (host {})',
+            log.info('Encrypted data in client document {} (host {})',
                      doc['_id'], doc['hostname'])
-            print('Encrypted document {} (host {})'.format(
+            print('Encrypted client document {} (host {})'.format(
+                doc['_id'], doc['hostname']))
+    spec = {'key': {'$in': [s.plain_mongo for s in selectors]}}
+    for doc in db.audit_trail.find(spec):
+        doc, update = encrypt_document(doc, selectors=audit_trail_selectors)
+        if update:
+            update['$set']['key'] = next(s.enc_mongo for s in selectors if
+                                         s.plain_mongo == doc['key'])
+            db.audit_trail.update({'_id': doc['_id']}, update)
+            log.info('Encrypted data in audit trail document {} (host {})',
+                     doc['_id'], doc['hostname'])
+            print('Encrypted audit trail document {} (host {})'.format(
                 doc['_id'], doc['hostname']))
 
 
@@ -337,70 +356,132 @@ def delete_secret_key():
     log.warn("Don't forget to 'shred -u' the secret-keeper files!")
 
 
+def decrypt_iterator(document_iterator, document_keys=None, selectors=None,
+                     full_documents=False):
+    """Decrypt documents and return decrypted data
+
+    `selectors` defaults to `get_selectors()`
+
+    Each yield is a tuple of a document containing the document keys, a
+    document containing the decrypted data in the same structure as the
+    original document, and a list of tuples of selectors that were decrypted
+    and the decrypted datum for each selector. I.e., the same decrypted data is
+    returned in two different forms, to simplify the use of the data by the
+    caller.
+
+    if `full_documents` is true, then the document in each yield will be the
+    full document returned by the iterator with encrypted fields replaced,
+    rather than a document containing just the decrypted fields.
+
+    Assumes that the secret key has already been combined _before_ this
+    function is called.
+
+    Note: There is a yield for every document that is returned by
+    document_iterator, even if nothing was decrypted. If that's the case, then
+    the document keys in the yield will be populated, but the decrypted data
+    document and list will be empty.
+    """
+    if selectors is None:
+        selectors = get_selectors()
+    for doc in document_iterator:
+        document_keys = {k: doc[k] for k in document_keys or ()}
+        output_dict = doc if full_documents else {}
+        output_tuples = []
+        for s in selectors:
+            encrypted_data = get_setting(doc, s.enc_mem,
+                                         check_defaults=False)
+            if not encrypted_data:
+                continue
+            with NamedTemporaryFile('w+b') as unencrypted_file, \
+                    NamedTemporaryFile('w+b') as encrypted_file:
+                encrypted_file.write(b64decode(encrypted_data['data']))
+                encrypted_file.flush()
+                gpg_command('--decrypt', '-o', unencrypted_file.name,
+                            encrypted_file.name)
+                unencrypted_file.seek(0)
+                unencrypted_data = json.loads(
+                    unencrypted_file.read().decode('utf-8'))
+            # Order is important here. We unset before we set because the
+            # selector key may be the same for both unencrypted and encrypted
+            # fields.
+            if full_documents:
+                set_setting(output_dict, s.enc_mem, None)
+            set_setting(output_dict, s.plain_mem, unencrypted_data)
+            output_tuples.append((s, unencrypted_data))
+        yield (document_keys, output_dict if output_tuples else {},
+               output_tuples)
+
+
 def decrypt_handler(args):
     combine_secret_key()
+    selectors = get_selectors()
     try:
         db = get_db()
-        selectors = get_selectors()
         spec = {'$or': [{s.enc_mongo: {'$exists': True}} for s in selectors]}
-        update = {'$unset': {}, '$set': {}}
-        for doc in db.clients.find(spec):
-            for s in selectors:
-                encrypted_data = get_setting(doc, s.enc_mem,
-                                             check_defaults=False)
-                if not encrypted_data:
-                    continue
-                with NamedTemporaryFile('w+b') as unencrypted_file, \
-                        NamedTemporaryFile('w+b') as encrypted_file:
-                    encrypted_file.write(b64decode(encrypted_data['data']))
-                    encrypted_file.flush()
-                    gpg_command('--decrypt', '-o', unencrypted_file.name,
-                                encrypted_file.name)
-                    unencrypted_file.seek(0)
-                    unencrypted_data = unencrypted_file.read()
-                update['$unset'][s.enc_mongo] = True
-                update['$set'][s.plain_mongo] = json.loads(
-                    unencrypted_data.decode('utf-8'))
-            if update['$unset']:
-                db.clients.update({'_id': doc['_id']}, update)
-                log.info('Decrypted data in document {} (host {})',
-                         doc['_id'], doc['hostname'])
-                print('Decrypted document {} (host {})'.format(
-                    doc['_id'], doc['hostname']))
+        for keys, dct, tuples in decrypt_iterator(db.clients.find(spec),
+                                                  ('_id', 'hostname'),
+                                                  selectors=selectors):
+            if dct:
+                spec = {'_id': keys['_id']}
+                update = {'$set': {s.plain_mongo: u for s, u in tuples},
+                          '$unset': {s.enc_mongo: True for s, u in tuples}}
+                db.clients.update(spec, update)
+                log.info('Decrypted data in client document {} (host {})',
+                         keys['_id'], keys['hostname'])
+                print('Decrypted client document {} (host {})'.format(
+                    keys['_id'], keys['hostname']))
+
+        spec = {'key': {'$in': [s.enc_mongo for s in selectors]}}
+        for keys, dct, tuples in decrypt_iterator(
+                db.audit_trail.find(spec), selectors=audit_trail_selectors,
+                full_documents=True):
+            if dct:
+                dct['key'] = next(s.plain_mongo for s in selectors if
+                                  s.enc_mongo == dct['key'])
+                spec = {'_id': dct['_id']}
+                db.audit_trail.update(spec, dct)
+                log.info('Decrypted data in audit trail document {} (host {})',
+                         dct['_id'], dct['hostname'])
+                print('Decrypted audit trail document {} (host {})'.format(
+                    dct['_id'], dct['hostname']))
     finally:
         delete_secret_key()
 
 
 def access_handler(args):
     combine_secret_key()
+    selectors = get_selectors()
     try:
         db = get_db()
-        selectors = get_selectors()
         spec = {'$or': [{s.enc_mongo: {'$exists': True}} for s in selectors]}
-        hostnames = args.hostname
-        if hostnames:
-            spec = {'$and': [spec, {'hostname': {'$in': hostnames}}]}
-        for doc in db.clients.find(spec):
-            displayed = {'_id': doc['_id'], 'hostname': doc['hostname']}
-            for s in selectors:
-                encrypted_data = get_setting(doc, s.enc_mem,
-                                             check_defaults=False)
-                if not encrypted_data:
-                    continue
-                with NamedTemporaryFile('w+b') as unencrypted_file, \
-                        NamedTemporaryFile('w+b') as encrypted_file:
-                    encrypted_file.write(encrypted_data['data'])
-                    encrypted_file.flush()
-                    gpg_command('--decrypt', '-o', unencrypted_file.name,
-                                encrypted_file.name)
-                    unencrypted_file.seek(0)
-                    encrypted_data = unencrypted_file.read()
-                set_setting(displayed, s.plain_mem,
-                            json.loads(encrypted_data.decode('utf-8')))
-            if len(displayed) > 2:
-                pprint.pprint(displayed)
+        printed_header = not args.audit_trail
+        for keys, dct, tuples in decrypt_iterator(
+                db.clients.find(spec), ('_id', 'hostname'),
+                full_documents=args.full, selectors=selectors):
+            if dct:
+                if not printed_header:
+                    print('Clients:\n')
+                    printed_header = True
+                pprint.pprint({**keys, **dct})
                 log.info('Displayed encrypted data in document {} (host {})',
-                         doc['_id'], doc['hostname'])
+                         keys['_id'], keys['hostname'])
+        if args.audit_trail:
+            if printed_header:
+                print('')
+            spec = {'key': {'$in': [s.enc_mongo for s in selectors]}}
+            printed_header = False
+            for keys, dct, tuples in decrypt_iterator(
+                    db.audit_trail.find(spec, sort=(('_id', DESCENDING),)),
+                    selectors=audit_trail_selectors, full_documents=True):
+                if dct:
+                    if not printed_header:
+                        print('Audit trail:\n')
+                        printed_header = True
+                    dct['key'] = next(s.plain_mongo for s in selectors if
+                                      s.enc_mongo == dct['key'])
+                    pprint.pprint(dct)
+                    log.info('Displayed encrypted audit trail in document {} '
+                             '(host {})', dct['_id'], dct['hostname'])
     finally:
         delete_secret_key()
 

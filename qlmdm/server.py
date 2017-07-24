@@ -244,8 +244,8 @@ def get_selectors():
     return main_get_selectors(get_setting)
 
 
-def encrypt_document(doc, log=None):
-    return main_encrypt_document(get_setting, doc, log=log)
+def encrypt_document(*args, **kwargs):
+    return main_encrypt_document(get_setting, *args, **kwargs)
 
 
 def sign_file(file, top_dir=top_dir):
@@ -263,3 +263,29 @@ def sign_data(data):
         data_file.flush()
         gpg_command('--detach-sig', '-o', signature_file.name, data_file.name)
         return signature_file.read()
+
+
+def audit_trail_write(tags, records):
+    """Write records to the audit trail
+
+    `tags` is a dictionary of key/value tags that should be added to every
+    record. If `audited_at` isn't in the dictionary, it is added with a current
+    timestamp.
+
+    `records` is an iterator of records to write, or (if a dict) a single
+    record.
+    """
+
+    if 'audited_at' not in tags:
+        tags['audited_at'] = datetime.datetime.utcnow()
+
+    if isinstance(records, dict):
+        records = (records,)
+
+    records = ({**tags, **r} for r in records)
+
+    # This could potentially cause duplicate audit records to be inserted into
+    # the database if there is an AutoReconnect error in the middle of
+    # inserting, but that's an acceptable risk, since duplicate records can be
+    # distinguished after the fact, for the sake of making this run faster.
+    get_db().audit_trail.insert_many(records, ordered=False)

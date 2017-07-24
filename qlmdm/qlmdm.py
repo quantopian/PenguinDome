@@ -297,11 +297,12 @@ def orderify(obj):
     return obj
 
 
-def encrypt_document(getter, doc, log=None):
+def encrypt_document(getter, doc, log=None, selectors=None):
     if not getter('secret_keeping:enabled'):
         return doc, None
     key_id = getter('secret_keeping:key_id')
-    selectors = get_selectors(getter)
+    if selectors is None:
+        selectors = get_selectors(getter)
     update = {'$unset': {}, '$set': {}}
     for s in selectors:
         decrypted_data = get_setting(
@@ -331,11 +332,14 @@ def encrypt_document(getter, doc, log=None):
             encrypted_data = {
                 'hash': md5(decrypted_data).hexdigest(),
                 'data': b64encode(encrypted_file.read()).decode('ascii')}
-        update['$unset'][s.plain_mongo] = True
+        if s.plain_mongo != s.enc_mongo:
+            update['$unset'][s.plain_mongo] = True
         update['$set'][s.enc_mongo] = encrypted_data
         set_setting(doc, s.plain_mem, None)
         set_setting(doc, s.enc_mem, encrypted_data)
-    if update['$unset']:
+    if update['$set']:
+        if not update['$unset']:
+            update.pop('$unset')
         return doc, update
     return doc, None
 
