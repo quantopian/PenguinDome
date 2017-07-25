@@ -144,7 +144,7 @@ def check_password(auth_name):
 def require_httpauth(auth_name, mandatory=True):
     """Authenticate a request
 
-    `auth_setting` is the server configuration setting containing the
+    `auth_name` is the server configuration setting containing the
     authentication information for the request. If it's empty and `mandatory`
     is True, an exception is raised; otherwise, the request is allowed to
     proceed (i.e., whether an endpoint with optional authentication has it is
