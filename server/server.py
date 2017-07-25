@@ -266,9 +266,8 @@ def dict_changes(old, new, prefix=None, changes=None, audit_trail=None):
                 for i in range(len(old[key])):
                     if isinstance(old[key][i], dict):
                         this_changes, _ = dict_changes(
-                            old[key][i], new[key][i],
-                            '{}[{}]'.format(name, i),
-                            [], {})
+                            old[key][i], new[key][i], '{}[{}]'.format(name, i),
+                            [], [])
                         if this_changes:
                             changes.extend(this_changes)
                             list_changed = True
