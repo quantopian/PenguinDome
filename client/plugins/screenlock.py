@@ -42,33 +42,53 @@ def find_xinit_users():
     return users
 
 
+class DBusUser(object):
+    found_users = {}
+
+    def __init__(self, user, display):
+        # Find out the user's dbus settings.
+        self.user = user
+        self.display = display
+        which = (user, display)
+        try:
+            self.environ = self.found_users[which]
+            return
+        except KeyError:
+            pass
+        for proc in psutil.process_iter():
+            if proc.username() != user:
+                continue
+            environ = proc.environ()
+            if environ.get('DISPLAY', None) != display:
+                continue
+            if 'DBUS_SESSION_BUS_ADDRESS' not in environ:
+                continue
+            self.found_users[which] = environ
+            break
+        self.environ = self.found_users[which]
+
+    def __str__(self):
+        return("<DBusUser('{}', '{}')>".format(self.user, self.display))
+
+    def command(self, cmd):
+        return subprocess.check_output(('su', self.user, '-c', cmd),
+                                       env=self.environ).decode('ascii')
+
+
 def gnome_xscreensaver_status(user, display):
-    def user_command(cmd):
-        return subprocess.check_output(('su', user, '-c', cmd),
-                                       env=environ).decode('ascii')
+    try:
+        dbus_user = DBusUser(user, display)
+    except KeyError:
+        return None
 
-    # Find out the user's dbus settings.
-    for proc in psutil.process_iter():
-        if proc.username() != user:
-            continue
-        environ = proc.environ()
-        if environ.get('DISPLAY', None) != display:
-            continue
-        if 'DBUS_SESSION_BUS_ADDRESS' not in environ:
-            continue
-
-        dbus_output = user_command(
-            'dbus-send --session --dest=org.freedesktop.DBus '
-            '--type=method_call --print-reply /org/freedesktop/Dbus '
-            'org.freedesktop.DBus.ListNames')
-        if dbus_output.find('org.gnome.ScreenSaver') == -1:
-            continue
-        break
-    else:
+    dbus_output = dbus_user.command(
+        'dbus-send --session --dest=org.freedesktop.DBus --type=method_call '
+        '--print-reply /org/freedesktop/Dbus org.freedesktop.DBus.ListNames')
+    if dbus_output.find('org.gnome.ScreenSaver') == -1:
         return None
 
     def gsettings_get(app, setting):
-        return user_command(
+        return dbus_user.command(
             'gsettings get org.gnome.desktop.{} {}'.format(
                 app, setting)).strip()
 
