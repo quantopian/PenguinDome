@@ -319,7 +319,9 @@ def submit():
         which.append('commands')
     if which:
         old = db.clients.find_one(spec)
-        update_result = db.clients.update_one(spec, {'$set': update})
+        update_result = db.clients.update_one(
+            spec, {'$set': update,
+                   '$unset': {'suspended': True}})
         if update_result.modified_count == 0:
             db.clients.save(update)
             log.info('Added new client: {}', hostname)

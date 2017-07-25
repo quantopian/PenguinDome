@@ -15,6 +15,8 @@ from qlmdm.server import (
     close_issue,
     snooze_issue,
     unsnooze_issue,
+    suspend_host,
+    unsuspend_host,
     get_open_issues,
     get_setting,
     get_port_setting,
@@ -164,9 +166,11 @@ def parse_args():
         "report, and don't record the alert for checking this later")
     audit_parser.add_argument('--ignore-snoozed', action='store_true',
                               help='Show alerts that are snoozed')
+    audit_parser.add_argument('--ignore-suspended', action='store_true',
+                              help='Show alerts for suspended hosts')
     audit_parser.add_argument(
         '--full', action='store_true', help='Same as --ignore-grace-period '
-        '--ignore-recent-alerts --ignore-snoozed')
+        '--ignore-recent-alerts --ignore-snoozed (but NOT --ignore-suspended)')
     audit_parser.set_defaults(func=audit_handler)
 
     snooze_parser = subparsers.add_parser('snooze', help='Snooze alerts')
@@ -192,6 +196,16 @@ def parse_args():
     unsnooze_parser.add_argument('--issue-name', action='append',
                                  help='Unsnooze the specified issue type(s)')
     unsnooze_parser.set_defaults(func=unsnooze_handler)
+
+    suspend_parser = subparsers.add_parser('suspend', help='Suspend hosts')
+    suspend_parser.add_argument('host', nargs='+', help='Host(s) to suspend')
+    suspend_parser.set_defaults(func=suspend_handler)
+
+    unsuspend_parser = subparsers.add_parser('unsuspend',
+                                             help='Unsuspend hosts')
+    unsuspend_parser.add_argument('host', nargs='+',
+                                  help='Hosts(s) to unsuspend')
+    unsuspend_parser.set_defaults(func=unsuspend_handler)
 
     close_parser = subparsers.add_parser('close', help='Close issues')
     close_parser.add_argument(
@@ -266,7 +280,7 @@ def audit_handler(args):
     check_pending_patches()
     check_ssl_certificates()
 
-    issues = get_open_issues()
+    issues = get_open_issues(include_suspended=args.ignore_suspended)
 
     # Slightly less than an hour, to avoid race conditions when running hourly.
     alert_threshold = now - datetime.timedelta(minutes=59)
@@ -355,6 +369,26 @@ def unsnooze_handler(args):
         for doc in get_db().issues.find({'_id': {'$in': ids}}):
             log.info('Unsnoozed {} {} at {}', doc['hostname'], doc['name'],
                      doc['unsnoozed_at'])
+
+
+def suspend_handler(args):
+    matches = suspend_host(args.host)
+    if not matches:
+        print('No matching, unsuspended hosts.')
+        return
+    with logbook.StreamHandler(sys.stdout, bubble=True):
+        for host in matches:
+            log.info('Suspended {}', host)
+
+
+def unsuspend_handler(args):
+    matches = unsuspend_host(args.host)
+    if not matches:
+        print('No matching, suspended hosts.')
+        return
+    with logbook.StreamHandler(sys.stdout, bubble=True):
+        for host in matches:
+            log.info('Unsuspended {}', host)
 
 
 def close_handler(args):

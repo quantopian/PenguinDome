@@ -158,6 +158,74 @@ def close_issue(hostname, issue_name):
     return ids
 
 
+def suspend_host(hostname):
+    """Suspend client(s) until their next submission to the server
+
+    `hostname` should be a single host name or an iterable of multiple host
+    names.
+
+    Returns the hostnames of the suspended clients, i.e., the clients that have
+    records in the database and weren't already suspended."""
+
+    db = get_db()
+
+    if not hostname:
+        raise Exception('Must specify hostname or list of hostnames')
+
+    if isinstance(hostname, str):
+        hostname_spec = hostname
+    else:
+        hostname_spec = {'$in': list(hostname)}
+
+    spec = {'hostname': hostname_spec,
+            '$or': [{'suspended': False},
+                    {'suspended': {'$exists': False}}]}
+
+    matches = {d['_id']: d['hostname'] for d in
+               db.clients.find(spec, projection=['hostname'])}
+
+    if not matches:
+        return []
+
+    db.clients.update_many(
+        {'_id': {'$in': list(matches.keys())}},
+        {'$set': {'suspended': True}})
+    return list(matches.values())
+
+
+def unsuspend_host(hostname):
+    """Unsuspend client(s)
+
+    `hostname` should be a single host name or an iterable of multiple host
+    names.
+
+    Returns the hostnames of the unsuspended clients.
+    """
+
+    db = get_db()
+
+    if not hostname:
+        raise Exception('Must specify hostname or list of hostnames')
+
+    if isinstance(hostname, str):
+        hostname_spec = hostname
+    else:
+        hostname_spec = {'$in': list(hostname)}
+
+    spec = {'hostname': hostname_spec, 'suspended': True}
+
+    matches = {d['_id']: d['hostname'] for d in
+               db.clients.find(spec, projection=['hostname'])}
+
+    if not matches:
+        return []
+
+    db.clients.update_many(
+        {'_id': {'$in': list(matches.keys())}},
+        {'$unset': {'suspended': True}})
+    return list(matches.values())
+
+
 def snooze_issue(hostname, issue_name, snooze_until):
     """Snooze any open issues for the specified host and issue name
 
@@ -212,7 +280,8 @@ def unsnooze_issue(hostname, issue_name):
     return ids
 
 
-def get_open_issues(primary_key='host', hostname=None, issue_name=None):
+def get_open_issues(primary_key='host', hostname=None, issue_name=None,
+                    include_suspended=False):
     """Returns a dictionary of matching open issues
 
     You can specify 'host' or 'issue' as the primary key. The secondary key is
@@ -234,7 +303,17 @@ def get_open_issues(primary_key='host', hostname=None, issue_name=None):
         spec['hostname'] = hostname
     if issue_name:
         spec['name'] = issue_name
-    for issue in db.issues.find(spec):
+
+    open_issues = db.issues.find(spec)
+    if not include_suspended:
+        suspended = {d['hostname'] for d in
+                     db.clients.find({'suspended': True},
+                                     projection={'_id': False,
+                                                 'hostname': True})}
+        open_issues = (i for i in open_issues
+                       if i['hostname'] not in suspended)
+
+    for issue in open_issues:
         issues[issue[primary_key]][issue[secondary_key]] = issue
 
     return dict(issues)
