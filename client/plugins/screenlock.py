@@ -12,12 +12,13 @@ log = get_logger('plugins/screenlock')
 
 
 def find_xinit_users():
+    users = []
     xinits = []
     for p in psutil.process_iter():
         if p.exe().endswith('/xinit'):
             xinits.append(p)
     if not xinits:
-        return ()
+        return users
     Xorgs = []
     for p in psutil.process_iter():
         if p.exe().endswith('/Xorg'):
@@ -25,8 +26,7 @@ def find_xinit_users():
             if xinit:
                 Xorgs.append((xinit, p))
     if not Xorgs:
-        return ()
-    users = []
+        return users
     for xinit, Xorg in Xorgs:
         try:
             display = next(a for a in Xorg.cmdline() if a[0] == ':')
@@ -92,10 +92,7 @@ w_lines = subprocess.check_output(
     ('who',)).decode('ascii').strip().split('\n')
 matches = (re.match(r'(\S+)\s+.*\((:\d[^\)]*)\)', l) for l in w_lines)
 matches = filter(None, matches)
-user_displays = [m.groups() for m in matches]
-
-if not user_displays:
-    user_displays = find_xinit_users()
+user_displays = [m.groups() for m in matches] + find_xinit_users()
 
 results = {}
 
