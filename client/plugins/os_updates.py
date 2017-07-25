@@ -2,7 +2,9 @@
 
 import json
 import os
+from psutil import process_iter, Process
 import subprocess
+from signal import SIGHUP
 from tempfile import TemporaryFile
 import time
 
@@ -12,6 +14,38 @@ log = get_logger('plugins/os_updates')
 
 
 def arch_checker():
+    def ancestors(p):
+        ancestors = []
+        while p.ppid():
+            p = Process(p.ppid())
+            ancestors.append(p)
+        return ancestors
+
+    def clear_eset_lock():
+        # Identify pacman processes that are descendants of ERAAgent and
+        # kill them if they have been running for more than 60 seconds.
+        procs = process_iter()
+        # All pacman processes
+        procs = (p for p in procs
+                 if p.cmdline() and p.cmdline()[0] == 'pacman')
+        # Pacman processes with the command-line options that ERAAgent uses
+        procs = (p for p in procs
+                 if len(p.cmdline()) > 1 and p.cmdline()[1] in
+                 ('-Syq', '--version', '--Quq'))
+        # Pacman processes which are descendants of ERAAgent
+        eraagent_cmd = '/opt/eset/RemoteAdministrator/Agent/ERAAgent'
+        procs = (p for p in procs
+                 if any(a.cmdline() and a.cmdline()[0] == eraagent_cmd
+                        for a in ancestors(p)))
+        # Pacman processes which were launched more than 60 seconds ago
+        procs = [p for p in procs if time.time() - p.create_time() > 60]
+        if procs:
+            log.info('Killing stale ERAAgent pacman process(es): {}',
+                     ', '.join('{} (PID {})'.format(
+                         ' '.join(p.cmdline()), p.pid) for p in procs))
+            for p in procs:
+                os.kill(p.pid, SIGHUP)
+
     def clear_lock():
         """Break stale pacman lock file
 
@@ -77,6 +111,7 @@ def arch_checker():
                 'security_patches': 'unknown',
                 'installed_packages': installed}
 
+    clear_eset_lock()
     clear_lock()
 
     try:
