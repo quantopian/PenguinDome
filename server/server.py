@@ -59,6 +59,22 @@ def log_deprecated_port(f):
     return wrapper
 
 
+def set_werkzeug_hostname(f):
+    """Put client hostname in werkzeug logs"""
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            hostname = json.loads(request.form['data'])['hostname']
+        except:
+            hostname = None
+        ret = f(*args, **kwargs)
+        if hostname:
+            request.environ['REMOTE_ADDR'] = hostname
+        return ret
+    return wrapper
+
+
 def no_auth_needed(auth_name, mandatory=False):
     auth_info = get_server_setting(auth_name)
     if not auth_info:
@@ -297,6 +313,7 @@ def dict_changes(old, new, prefix=None, changes=None, audit_trail=None):
 @app.route('/qlmdm/v1/submit', methods=('POST',))
 @verify_signature
 @log_deprecated_port
+@set_werkzeug_hostname
 def submit():
     db = get_db()
     which = []
@@ -351,6 +368,7 @@ def submit():
 @app.route('/qlmdm/v1/update', methods=('POST',))
 @verify_signature
 @log_deprecated_port
+@set_werkzeug_hostname
 def update():
     db = get_db()
     data = json.loads(request.form['data'])
@@ -392,6 +410,7 @@ def update():
 @app.route('/qlmdm/v1/acknowledge_patch', methods=('POST',))
 @verify_signature
 @log_deprecated_port
+@set_werkzeug_hostname
 def acknowledge_patch():
     db = get_db()
     data = json.loads(request.form['data'])
