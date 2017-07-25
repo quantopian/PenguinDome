@@ -12,6 +12,52 @@ log = get_logger('plugins/os_updates')
 
 
 def arch_checker():
+    def clear_lock():
+        """Break stale pacman lock file
+
+        Stat file to get inode number, check if it is in use, stat again to
+        make sure the inode number is the same. If so and no one is using the
+        file, then remove it.
+        """
+        lock_path = '/var/lib/pacman/db.lck'
+
+        try:
+            before = os.stat(lock_path).st_ino
+        except FileNotFoundError:
+            log.debug('clear_lock: not found before')
+            return
+        log.debug('clear_lock: found before')
+
+        try:
+            subprocess.check_output(('fuser', lock_path),
+                                    stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+            # No one is using the file, so proceed with unlocking if the inode
+            # matches.
+            log.debug('clear_lock: fuser says not in use')
+            pass
+        else:
+            log.debug('clear_lock: fuser says in use')
+            return
+
+        try:
+            after = os.stat(lock_path).st_ino
+        except FileNotFoundError:
+            # Oh, good, it's gone now!
+            log.debug('clear_lock: lock cleared after')
+            return
+
+        if before == after:
+            try:
+                os.unlink(lock_path)
+            except FileNotFoundError:
+                # Yet another race condition.
+                log.debug('clear_lock: Deleted out from under us')
+                return
+            log.warn('Cleared stale lock file {}', lock_path)
+        else:
+            log.debug('clear_lock: inode changed')
+
     def status(current, updates):
         try:
             output = subprocess.check_output(('pacman', '-Q'),
@@ -30,6 +76,8 @@ def arch_checker():
                 'patches': updates,
                 'security_patches': 'unknown',
                 'installed_packages': installed}
+
+    clear_lock()
 
     try:
         subprocess.check_output(('pacman', '-Sy'), stderr=subprocess.STDOUT)

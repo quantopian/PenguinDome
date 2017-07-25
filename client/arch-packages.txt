@@ -5,6 +5,7 @@ dmidecode
 gnupg
 iptables
 lvm2
+psmisc
 python
 python-virtualenv
 systemd
