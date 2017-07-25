@@ -104,7 +104,39 @@ def gnome_xscreensaver_status(user, display):
     return results
 
 
-display_checkers = (gnome_xscreensaver_status,)
+def xautolock_status(user, display):
+    procs = (p for p in psutil.process_iter()
+             if p.username() == user)
+    procs = (p for p in procs if p.environ().get('DISPLAY', None) == display)
+    procs = (p for p in procs if p.exe().endswith('/xautolock'))
+    for proc in procs:
+        _time = locker = nowlocker = None
+        args = proc.cmdline()
+        try:
+            while args:
+                if args[0] == '-time':
+                    _time = int(args[1]) * 60
+                    del args[0:2]
+                elif args[0] == '-locker':
+                    locker = args[1]
+                    del args[0:2]
+                elif args[0] == '-nowlocker':
+                    nowlocker = args[1]
+                    del args[0:2]
+                else:
+                    args.pop(0)
+                if _time and locker and nowlocker:
+                    break
+        except:
+            continue
+        if not nowlocker:
+            nowlocker = locker
+        if _time and locker == 'slock' and nowlocker == 'slock':
+            return {'enabled': True, 'delay': _time}
+    return None
+
+
+display_checkers = (gnome_xscreensaver_status, xautolock_status)
 
 # Who is logged into an X display?
 
