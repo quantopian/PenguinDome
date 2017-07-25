@@ -260,7 +260,7 @@ def get_logger(setting_getter, name, fail_to_local=False):
 
         if fail_to_local:
             try:
-                with ThreadingTimeout(5):
+                with ThreadingTimeout(5, swallow_exc=False):
                     handler = handler(**kwargs)
             except:
                 logger.warn('Failed to create {}, falling back to local-only '
