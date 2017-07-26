@@ -9,6 +9,10 @@ _x_users = None
 
 
 def find_who_x_users():
+    """Return users logged into X, based on `who` output
+
+    The list items are (username, $DISPLAY).
+    """
     global _who_x_users
     if _who_x_users is not None:
         return _who_x_users
@@ -21,6 +25,10 @@ def find_who_x_users():
 
 
 def find_xinit_users():
+    """Return users logged into X via `xinit`
+
+    The list items are (username, $DISPLAY).
+    """
     global _xinit_users
     if _xinit_users is not None:
         return _xinit_users
@@ -62,6 +70,10 @@ def find_xinit_users():
 
 
 def find_x_users():
+    """Return best guess of all users logged into X
+
+    The list items are (username, $DISPLAY).
+    """
     global _x_users
     if _x_users is not None:
         return _x_users
@@ -70,9 +82,17 @@ def find_x_users():
 
 
 class DBusUser(object):
+    """Class for executing shell commands in a user's DBus context"""
+
     found_users = {}
 
     def __init__(self, user, display):
+        """`user` should be a username, `display` an X $DISPLAY setting
+
+        Raises `KeyError` if an active DBus session for the specified user and
+        display can't be located.
+        """
+
         # Find out the user's dbus settings.
         self.user = user
         self.display = display
@@ -100,6 +120,13 @@ class DBusUser(object):
         return("<DBusUser('{}', '{}')>".format(self.user, self.display))
 
     def command(self, cmd, stderr=None):
+        """Executes the specified shell command in the user's DBus context
+
+        `cmd` is interpreted by the shell, so be careful about special
+        characters.
+
+        `stderr` is passed on to `subprocess.check_command`.
+        """
         return subprocess.check_output(
             ('su', self.user, '-m', '-c', cmd),
             env=self.environ, stderr=stderr).decode('ascii')
