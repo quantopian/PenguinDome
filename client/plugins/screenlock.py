@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import psutil
+import re
 import subprocess
 from tempfile import TemporaryFile
 
@@ -10,6 +11,9 @@ import qlmdm.json as json
 from qlmdm.plugin_tools import find_x_users, DBusUser
 
 valid_lockers = ('slock', 'i3lock')
+valid_lockers_re = re.compile(r'^(?:' +
+                              '|'.join(re.escape(l) for l in valid_lockers) +
+                              r')(?:\s|$)')
 log = get_logger('plugins/screenlock')
 
 
@@ -88,7 +92,8 @@ def xautolock_status(user, display):
             continue
         if not nowlocker:
             nowlocker = locker
-        if _time and locker in valid_lockers and nowlocker in valid_lockers:
+        if _time and valid_lockers_re.search(locker) and \
+           valid_lockers_re.search(nowlocker):
             return {'enabled': True, 'delay': _time}
     return None
 
