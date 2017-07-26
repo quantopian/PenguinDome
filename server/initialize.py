@@ -340,7 +340,7 @@ def main(args):
         with NamedTemporaryFile('w+') as temp_service_file:
             temp_service_file.write(dedent('''\
                 [Unit]
-                Description=Quantopian Linux MDM Server
+                Description=PenguinDome Server
                 After=network.target
 
                 [Service]
