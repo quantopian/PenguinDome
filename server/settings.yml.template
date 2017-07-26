@@ -57,3 +57,9 @@ secret_keeping:
   selectors: [One or more MongoDB field selectors indicating which data should be secret]
   num_shares: [default 2, number of pieces to split the private key into]
   combine_threshold: [default 2, number of pieces required to reconstruct the private key]
+server_auth:
+  # Authentication info for the download_release endpoint; if none is
+  # specified, then the endpoint does not require authentication
+  download_release:
+    ipranges: [IP addresses or ranges to allow, IPv4 and IPv6 are OK]
+    passwords: [hash of username/password pairs to accept]
