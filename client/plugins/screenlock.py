@@ -73,7 +73,7 @@ class DBusUser(object):
 
     def command(self, cmd, stderr=None):
         return subprocess.check_output(
-            ('su', self.user, '-c', cmd),
+            ('su', self.user, '-m', '-c', cmd),
             env=self.environ, stderr=stderr).decode('ascii')
 
 

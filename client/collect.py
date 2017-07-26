@@ -75,11 +75,13 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
                     stderr=stderr_file.fileno()).decode('ascii')
             except subprocess.CalledProcessError as e:
                 log.exception('Failed to execute {}', run_path)
-                log.info('Output of failed script:\n{}',
-                         e.output.decode('ascii'))
+                output = e.output.decode('ascii').strip()
+                if output:
+                    log.info('Output of failed script:\n{}', output)
                 stderr_file.seek(0)
-                stderr = stderr_file.read()
-                log.info('Stderr of failed script:\n{}', stderr)
+                stderr = stderr_file.read().strip()
+                if stderr:
+                    log.info('Stderr of failed script:\n{}', stderr)
                 if submit_failures:
                     results[run_name] = {
                         'stdout': e.output.decode('ascii'),
