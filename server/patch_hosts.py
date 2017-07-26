@@ -15,8 +15,8 @@ def parse_args():
                                      'file on one or more hosts')
     subparsers = parser.add_subparsers()
 
-    parser.add_argument('--host', action='append', help='Host(s) to '
-                        'patch (default is all)')
+    parser.add_argument('--host', action='append', default=[], help='Host(s) '
+                        'to patch (default is all)')
 
     patch_parser = subparsers.add_parser('patch', help='Add or replace a file',
                                          aliases=('add', 'cp'))
@@ -46,6 +46,8 @@ def parse_args():
                                'destination')
 
     args = parser.parse_args()
+    # Uniquify
+    args.host = list(set(args.host))
 
     if 'func' not in args:
         parser.error('No subcommand specified')
