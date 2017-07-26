@@ -17,6 +17,7 @@ import datetime
 from flask import Flask, request, Response
 from functools import wraps
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, IPv6Network
+import logging  # Only so we can replace werkzeug's logger
 from multiprocessing import Process
 import os
 from passlib.hash import pbkdf2_sha256
@@ -24,6 +25,7 @@ from pymongo import ASCENDING
 from pymongo.operations import IndexModel
 import signal
 import tempfile
+import werkzeug._internal  # To replace its logger to nix "werkzeug" in logs
 
 from penguindome import (
     top_dir,
@@ -472,6 +474,7 @@ def download_release():
 
 
 def startServer(port):
+    werkzeug._internal._logger = logging.getLogger(log.name)
     app.config['deprecated_port'] = get_port_setting(port, 'deprecated', False)
 
     # Logbook will handle all logging, via the root handler installed by
