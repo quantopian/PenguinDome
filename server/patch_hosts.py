@@ -10,7 +10,7 @@ set_gpg('server')
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Queue a patch for one or '
-                                     'more  hosts')
+                                     'more hosts')
     parser.add_argument('--host', action='append', help='Host(s) on which to '
                         'execute command (default is all)')
     parser.add_argument('--mode', type=lambda m: int(m, 8), help='Mode for '
