@@ -53,18 +53,46 @@ from pymongo import ASCENDING
 from pymongo.errors import DuplicateKeyError
 import re
 import requests
+import xml.etree.ElementTree as ET
 
 from penguindome.server import get_db, get_logger, arch_security_flag
 
 log = get_logger('plugin_managers/arch_os_updates')
 
 
-def download_arch_security():
-    db = get_db()
-    collection = db.arch_security_updates
-    collection.create_index([('package', ASCENDING),
-                             ('announced_at', ASCENDING)], unique=True)
+def rss_feed():
+    url = 'https://security.archlinux.org/advisory/feed.atom'
+    response = requests.get(url)
+    response.raise_for_status()
+    root = ET.fromstring(response.content)
+    ns_string = re.match(r'({.*})', root.tag).group(1)
 
+    def ns(tag):
+        return '{}{}'.format(ns_string, tag)
+
+    package_re = re.compile(r'^.*\] ([^:]+):')
+
+    matched_one = False
+    for entry in root.findall(ns('entry')):
+        title = entry.find(ns('title')).text
+        published = dateutil.parser.parse(entry.find(ns('published')).text)
+        match = package_re.search(title)
+        if not match:
+            log.warn("Can't find package name in \"{}\"", title)
+            continue
+        package = match.group(1)
+        yield (package, published, url)
+        matched_one = True
+
+    if not matched_one:
+        log.warn('Did not match any security patches in {}', url)
+
+
+# Mailing list archive only updated once per day, so the RSS feed is a better
+# choice, but preserving this code for posterity.
+
+def mailing_list_feed():
+    matched_one = False
     this_month = datetime.datetime.now().replace(day=1)
 
     def month_url(dt):
@@ -84,8 +112,8 @@ def download_arch_security():
     date_re = re.compile(r'^From .*\s(\S+\s+\d+)\s+(\d+:\d+:\d+)\s+(\d+)$')
     package_re = re.compile(r'^Subject: .*\] ([^:]+):')
 
-    updates = []
-    matched_one = False
+    matches = []
+
     for line in (l.decode('utf-8') for l in
                  gzip.open(BytesIO(response.content), 'r')):
         match = date_re.match(line)
@@ -99,20 +127,31 @@ def download_arch_security():
             package = match.group(1)
             matched_one = True
 
-            try:
-                collection.insert_one({'package': package,
-                                       'announced_at': dt})
-            except DuplicateKeyError:
-                pass
-            else:
-                log.info('Identified Arch security update for {}, '
-                         'announced at {}', package, dt)
-                updates.append((package, dt))
+            matches.append((package, dt, archive_file))
 
     if not matched_one:
         log.warn('Did not match any packages in {}', archive_file)
 
-    return updates
+    return reversed(matches)
+
+
+def download_arch_security():
+    db = get_db()
+    collection = db.arch_security_updates
+    collection.create_index([('package', ASCENDING),
+                             ('announced_at', ASCENDING)], unique=True)
+
+    for package, dt, source in rss_feed():
+        try:
+            collection.insert_one({'package': package,
+                                   'announced_at': dt,
+                                   'source': source})
+        except DuplicateKeyError:
+            return
+        else:
+            log.info('Identified Arch security update for {}, '
+                     'announced at {}', package, dt)
+            yield (package, dt)
 
 
 def flag_impacted_clients(package, dt):

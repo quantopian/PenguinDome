@@ -407,30 +407,22 @@ def main(args):
                 email = get_server_setting('audit_cron:email')
                 minute = int(random.random() * 60)
                 minute2 = (minute + 1) % 60
-                minute3 = (minute2 + 1) % 60
 
                 crontab = dedent('''\
                     MAILTO={email}
-                    {minute3} * * * * root "{top_dir}/bin/issues" audit
-                '''.format(minute3=minute3, email=email, top_dir=top_dir))
+                    {minute2} * * * * root "{top_dir}/bin/issues" audit
+                '''.format(minute2=minute2, email=email, top_dir=top_dir))
 
                 if get_server_setting('support_arch_linux'):
-                    hour = int(random.random() * 24)
                     template = (
-                        '# Run daily at a random time, so as not to overload '
-                        'the mailmain server.\n'
+                        '# Run hourly at a random time, so as not to overload '
+                        'the Arch server.\n'
 
-                        '{minute} {hour} * * * root "{top_dir}/server/venv" '
+                        '{minute} * * * * root "{top_dir}/server/venv" '
                         'python "{top_dir}/server/plugin_managers/'
-                        'arch_os_updates.py" --download\n'
+                        'arch_os_updates.py" --download\n')
 
-                        '{minute2} * * * * root "{top_dir}/server/venv" '
-                        'python "{top_dir}/server/plugin_managers/'
-                        'arch_os_updates.py"\n')
-
-                    crontab += template.format(
-                        top_dir=top_dir, minute=minute, minute2=minute2,
-                        hour=hour)
+                    crontab += template.format(top_dir=top_dir, minute=minute)
 
                 with NamedTemporaryFile('w+') as temp_cron_file:
                     temp_cron_file.write(crontab)
