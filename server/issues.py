@@ -160,17 +160,29 @@ def parse_args():
     audit_parser.add_argument(
         '--ignore-grace-period', action='store_true',
         help='Ignore alert grace period when deciding what to report')
-    audit_parser.add_argument(
-        '--ignore-recent-alerts', action='store_true', help="Ignore whether "
-        "we have already alerted in the past hour when deciding what to "
-        "report, and don't record the alert for checking this later")
+    group = audit_parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '--display-recent', action='store_true', default=None, help='Display '
+        'recently displayed alerts (defaults to yes when running in a '
+        'terminal, no otherwise)')
+    group.add_argument(
+        '--nodisplay-recent', dest='display_recent', action='store_false',
+        default=None, help="Don't display recently displayed alerts")
+    group = audit_parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '--update-recent', action='store_true', default=None, help="Tag "
+        "displayed alerts so they won't be displayed again for the next hour "
+        "(defaults to tagging when run interactively, not otherwise)")
+    group.add_argument(
+        '--noupdate-recent', dest='update_recent', action='store_false',
+        default=None, help="Don't tag displayed alerts")
     audit_parser.add_argument('--ignore-snoozed', action='store_true',
                               help='Show alerts that are snoozed')
     audit_parser.add_argument('--ignore-suspended', action='store_true',
                               help='Show alerts for suspended hosts')
     audit_parser.add_argument(
         '--full', action='store_true', help='Same as --ignore-grace-period '
-        '--ignore-recent-alerts --ignore-snoozed (but NOT --ignore-suspended)')
+        '--display-recent --ignore-snoozed (but NOT --ignore-suspended)')
     audit_parser.set_defaults(func=audit_handler)
 
     snooze_parser = subparsers.add_parser('snooze', help='Snooze alerts')
@@ -261,8 +273,14 @@ def audit_handler(args):
     def d(dt):
         return dt.strftime('%m/%d %H:%M')
 
+    in_a_terminal = os.isatty(sys.stderr.fileno())
+    if args.update_recent is None:
+        args.update_recent = not in_a_terminal
+    if args.display_recent is None:
+        args.display_recent = in_a_terminal
+
     if args.full:
-        args.ignore_grace_period = args.ignore_recent_alerts = \
+        args.ignore_grace_period = args.display_recent = \
             args.ignore_snoozed = True
 
     db = get_db()
@@ -292,7 +310,7 @@ def audit_handler(args):
                 grace_period = problem_checks[issue['name']]['grace-period']
             except KeyError:
                 grace_period = datetime.timedelta(0)
-            alert_ok = (args.ignore_recent_alerts or
+            alert_ok = (args.display_recent or
                         'alerted_at' not in issue or
                         issue['alerted_at'] < alert_threshold)
             grace_ok = (args.ignore_grace_period or
@@ -310,9 +328,9 @@ def audit_handler(args):
                     key1_printed = True
                 print('  {} since {}{}'.format(key2, d(issue['opened_at']),
                                                snoozed))
-                if not os.isatty(sys.stderr.fileno()):
+                if not in_a_terminal:
                     log.warn('{} {} since {}', key1, key2, issue['opened_at'])
-                if not args.ignore_recent_alerts:
+                if args.update_recent:
                     db.issues.update(
                         {'_id': issue['_id']}, {'$set': {'alerted_at': now}})
 
