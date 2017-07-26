@@ -29,14 +29,14 @@ import subprocess
 import sys
 from tempfile import mkdtemp
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     set_gpg,
     release_file,
     var_dir,
     signatures_dir,
 )
-from qlmdm.client import get_logger, gpg_command, server_request
+from penguindome.client import get_logger, gpg_command, server_request
 
 log = get_logger('update')
 
@@ -134,7 +134,7 @@ def do_patches(patches):
             open(patch_path, 'wb').write(patch_content)
             os.chmod(patch_path, patch_mode)
 
-        server_request('/qlmdm/v1/acknowledge_patch',
+        server_request('/penguindome/v1/acknowledge_patch',
                        data={'id': patch_id,
                              'hostname': socket.gethostname()},
                        exit_on_connection_error=True)
@@ -151,7 +151,7 @@ def main():
 
     log.debug('Sending: {}', data)
 
-    response = server_request('/qlmdm/v1/update', data=data,
+    response = server_request('/penguindome/v1/update', data=data,
                               exit_on_connection_error=True)
 
     data = response.json()

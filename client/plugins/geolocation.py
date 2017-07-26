@@ -20,8 +20,8 @@ import requests
 import subprocess
 import sys
 
-from qlmdm import top_dir, var_dir
-from qlmdm.client import get_setting
+from penguindome import top_dir, var_dir
+from penguindome.client import get_setting
 
 cache_file = os.path.join(var_dir, 'geolocation.cache')
 

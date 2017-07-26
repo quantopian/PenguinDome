@@ -38,7 +38,7 @@ threaded: [whether to run multithreaded server, optional, defaults to true]
 database:
   host: [either a single host[:port] or a list, optional, defaults to localhost:27017]
   replicaset: [replicaset name, optional]
-  name: [MongoDB database name, optional, defaults to "qlmdm"]
+  name: [MongoDB database name, optional, defaults to "penguindome"]
   username: [username to authenticate to database, optional]
   password: [password to authenticate to database, required if username specified]
 logging:

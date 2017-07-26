@@ -18,7 +18,7 @@ import os
 from pymongo import MongoClient
 from tempfile import NamedTemporaryFile
 
-from qlmdm import (
+from penguindome import (
     load_settings,
     get_setting as main_get_setting,
     set_setting as main_set_setting,

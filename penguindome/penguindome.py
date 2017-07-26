@@ -28,14 +28,14 @@ import subprocess
 from tempfile import NamedTemporaryFile
 import yaml
 
-import qlmdm.json as json
+import penguindome.json as json
 
 top_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 gpg_private_dir = os.path.join('server', 'keyring')
 gpg_public_dir = os.path.join('client', 'keyring')
 gpg_private_home = os.path.join(top_dir, gpg_private_dir)
 gpg_public_home = os.path.join(top_dir, gpg_public_dir)
-release_subdirs = ('client', 'qlmdm')
+release_subdirs = ('client', 'penguindome')
 settingses = {}
 var_dir = os.path.join(top_dir, 'var')
 releases_dir = os.path.join(var_dir, 'client_releases')
@@ -238,10 +238,10 @@ def get_logger(setting_getter, name, fail_to_local=False):
         # that.
         return got_logger
 
-    logger = logbook.Logger('qlmdm-' + name)
+    logger = logbook.Logger('penguindome-' + name)
 
     internal_log_dir = os.path.join(var_dir, 'log')
-    internal_log_file = os.path.join(internal_log_dir, 'qlmdm.log')
+    internal_log_file = os.path.join(internal_log_dir, 'penguindome.log')
 
     os.makedirs(internal_log_dir, 0x0700, exist_ok=True)
 

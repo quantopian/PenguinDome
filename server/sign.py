@@ -18,14 +18,14 @@ import shutil
 import subprocess
 import sys
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     set_gpg,
     release_files_iter,
     signatures_dir,
     verify_signature,
 )
-from qlmdm.server import get_logger, sign_file
+from penguindome.server import get_logger, sign_file
 
 os.chdir(top_dir)
 

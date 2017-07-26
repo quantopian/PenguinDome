@@ -1,4 +1,4 @@
-qlmdm -- Quantopian Linux Mobile Device Management
+PenguinDome -- Quantopian Linux Mobile Device Management
 ==================================================
 
 There aren't that many Mobile Device Management (MDM) offerings for Linux laptops and desktops, and most of the ones that are available don't seem to be very good.
@@ -18,7 +18,7 @@ Requirements
 
 Currently this works on recent Ubuntu versions and on Arch. It needs some pretty standard Linux utilities, most notably GnuPG. If you're missing something it needs, it'll let you know, by failing catastrophically. It's written in Python, so it obviously needs that as well. It installs itself in its own virtualenv and installs the Python packages it needs in the virtualenv, so you don't need to worry about that (though you do need to have virtualenv installed!). You need Cron on the clients, as well as on the server if you want to run the audit script periodically.
 
-You need a MongoDB database server -- running on the same machine as the qlmdm server or elsewhere -- to store the data.
+You need a MongoDB database server -- running on the same machine as the PenguinDome server or elsewhere -- to store the data.
 
 Deployment
 ----------
@@ -37,7 +37,7 @@ Changing the client settings after the initial deployment, especially the server
 
 ### Client
 
-Take the aforementioned tar file, copy it to a client, untar it anywhere you want (`/opt/qlmdm`, `/usr/local/qlmdm`, whatever you want), and run `client/client-setup.sh` as root. It'll prompt you for what it needs to know. When it's done, the client should immediately start reporting to the server, assuming that you configured and started the server successfully before.
+Take the aforementioned tar file, copy it to a client, untar it anywhere you want (`/opt/penguindome`, `/usr/local/penguindome`, whatever you want), and run `client/client-setup.sh` as root. It'll prompt you for what it needs to know. When it's done, the client should immediately start reporting to the server, assuming that you configured and started the server successfully before.
 
 Architecture
 ------------
@@ -71,11 +71,11 @@ Client-server API
 
 The server supports the following queries from clients:
 
-* `/qlmdm/v1/submit` for submitting plugin or command results (called by `bin/submit` on the client)
+* `/penguindome/v1/submit` for submitting plugin or command results (called by `bin/submit` on the client)
 
-* `/qlmdm/v1/update` for downloading a new release and/or patches as needed (called by `bin/update` on the client)
+* `/penguindome/v1/update` for downloading a new release and/or patches as needed (called by `bin/update` on the client)
 
-* `/qlmdm/v1/acknowledge_patch` for acknowledging that a particular patch has been applied successfully on the client so it can be unqueued on the server (also called by `bin/update` on the client)
+* `/penguindome/v1/acknowledge_patch` for acknowledging that a particular patch has been applied successfully on the client so it can be unqueued on the server (also called by `bin/update` on the client)
 
 That's it. It's a very simple API.
 
@@ -100,7 +100,7 @@ There's room in the architecture for rotating either the server or the client ke
 
 One of the concerns with any MDM platform is "Quis custodiet ipsos custodes?" When private information such as a device's current location is accessible to administrators, then how does one prevent a malicious administrator -- who by necessity needs to have access to the MDM data to do their job -- from accessing private information without a legitimate business need?
 
-Qlmdm solves this problem as follows:
+PenguinDome solves this problem as follows:
 
 * MongoDB field selectors are used to designate certain data submitted by clients as private.
 

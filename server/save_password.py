@@ -15,7 +15,7 @@
 import argparse
 from passlib.hash import pbkdf2_sha256
 
-from qlmdm.server import set_setting, save_settings
+from penguindome.server import set_setting, save_settings
 
 
 def parse_args():

@@ -19,7 +19,7 @@ import subprocess
 from tempfile import NamedTemporaryFile, mkdtemp
 import time
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     releases_dir,
     var_dir,
@@ -29,7 +29,7 @@ from qlmdm import (
     release_files_iter,
     gpg_command,
 )
-from qlmdm.server import sign_file
+from penguindome.server import sign_file
 
 set_gpg('server')
 os.chdir(top_dir)

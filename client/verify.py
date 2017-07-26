@@ -16,7 +16,7 @@ import os
 import subprocess
 import sys
 
-from qlmdm import top_dir, set_gpg, release_files_iter, verify_signature
+from penguindome import top_dir, set_gpg, release_files_iter, verify_signature
 
 os.chdir(top_dir)
 set_gpg('client')

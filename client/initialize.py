@@ -18,15 +18,15 @@ from tempfile import NamedTemporaryFile
 from textwrap import dedent
 import shutil
 
-from qlmdm import top_dir
-from qlmdm.prompts import get_bool
+from penguindome import top_dir
+from penguindome.prompts import get_bool
 
 
 os.chdir(top_dir)
 
 
 parser = argparse.ArgumentParser(
-    description='Finalize installation of the qlmdm client.',
+    description='Finalize installation of the PenguinDome client.',
 )
 parser.add_argument(
     '--prefix',
@@ -44,7 +44,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-cron_file = os.path.join(args.prefix, 'etc/cron.d/qlmdm')
+cron_file = os.path.join(args.prefix, 'etc/cron.d/penguindome')
 cron_exists = os.path.exists(cron_file)
 
 if args.prompt:

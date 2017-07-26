@@ -18,9 +18,9 @@ import os
 import psutil
 import re
 
-from qlmdm import cached_data
-import qlmdm.json as json
-from qlmdm.plugin_tools import find_xinit_users, find_x_users
+from penguindome import cached_data
+import penguindome.json as json
+from penguindome.plugin_tools import find_xinit_users, find_x_users
 
 
 def xinit_checker():

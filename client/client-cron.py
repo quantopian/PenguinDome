@@ -20,12 +20,12 @@ import subprocess
 import sys
 import time
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     var_dir,
     collected_dir,
 )
-from qlmdm.client import get_setting, get_logger
+from penguindome.client import get_setting, get_logger
 
 log = get_logger('client-cron')
 

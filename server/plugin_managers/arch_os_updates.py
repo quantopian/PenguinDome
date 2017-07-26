@@ -54,7 +54,7 @@ from pymongo.errors import DuplicateKeyError
 import re
 import requests
 
-from qlmdm.server import get_db, get_logger, arch_security_flag
+from penguindome.server import get_db, get_logger, arch_security_flag
 
 log = get_logger('plugin_managers/arch_os_updates')
 

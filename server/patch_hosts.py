@@ -16,8 +16,8 @@ import argparse
 import os
 import sys
 
-from qlmdm import set_gpg, signatures_dir
-from qlmdm.server import patch_hosts, get_db, get_logger
+from penguindome import set_gpg, signatures_dir
+from penguindome.server import patch_hosts, get_db, get_logger
 
 log = get_logger('patch_hosts')
 set_gpg('server')

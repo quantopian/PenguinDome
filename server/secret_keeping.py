@@ -23,7 +23,7 @@ import sys
 from tempfile import NamedTemporaryFile
 import uuid
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     var_dir,
     set_gpg,
@@ -32,8 +32,8 @@ from qlmdm import (
     gpg_command,
     SelectorVariants,
 )
-import qlmdm.json as json
-from qlmdm.server import (
+import penguindome.json as json
+from penguindome.server import (
     get_db,
     get_setting as get_server_setting,
     set_setting as set_server_setting,
@@ -42,7 +42,7 @@ from qlmdm.server import (
     encrypt_document,
     get_logger,
 )
-from qlmdm.client import (
+from penguindome.client import (
     set_setting as set_client_setting,
     save_settings as save_client_settings,
 )
@@ -68,14 +68,15 @@ audit_trail_selectors = (SelectorVariants('old', 'old', 'old', 'old'),
 
 
 def parse_args():
-    description = """QLMDM secret-keeping allows certain data submitted by
-    clients to the server to be protected. The data are securely encrypted with
-    a public key and can only be accessed if the corresponding private key is
-    provided to the application. The data can then be protected from
+    description = """PenguinDome secret-keeping allows certain data submitted
+    by clients to the server to be protected. The data are securely encrypted
+    with a public key and can only be accessed if the corresponding private key
+    is provided to the application. The data can then be protected from
     unauthorized, unaudited access by a single person, by using using "gfshare"
     or some other secret sharing mechanism to distribute pieces of the private
     key among multiple people and require more than one of them to provide
     their piece before it can be reassembled."""
+
     description = re.sub(r'\s\s+', ' ', description.strip())
 
     parser = argparse.ArgumentParser(description=description)
@@ -245,7 +246,7 @@ def enable_handler(args):
             args.shares + 1))
 
     if args.replace:
-        key_name = 'qlmdm-secret-keeping-' + uuid.uuid4().hex
+        key_name = 'penguindome-secret-keeping-' + uuid.uuid4().hex
         output = gpg_command('--passphrase', '', '--quick-gen-key', key_name,
                              with_trustdb=True, quiet=False)
         match = re.search(r'key (.*) marked as ultimately trusted', output)

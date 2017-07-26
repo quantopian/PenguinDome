@@ -25,14 +25,14 @@ from pymongo.operations import IndexModel
 import signal
 import tempfile
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     set_gpg,
     releases_dir,
     gpg_command,
 )
-import qlmdm.json as json
-from qlmdm.server import (
+import penguindome.json as json
+from penguindome.server import (
     get_logger,
     get_setting as get_server_setting,
     get_port_setting,
@@ -324,6 +324,8 @@ def dict_changes(old, new, prefix=None, changes=None, audit_trail=None):
     return changes, audit_trail
 
 
+@app.route('/PenguinDome/v1/submit', methods=('POST',))
+@app.route('/penguindome/v1/submit', methods=('POST',))
 @app.route('/qlmdm/v1/submit', methods=('POST',))
 @verify_signature
 @log_deprecated_port
@@ -379,6 +381,8 @@ def submit():
         return('error')
 
 
+@app.route('/PenguinDome/v1/update', methods=('POST',))
+@app.route('/penguindome/v1/update', methods=('POST',))
 @app.route('/qlmdm/v1/update', methods=('POST',))
 @verify_signature
 @log_deprecated_port
@@ -421,6 +425,8 @@ def update():
     return json.dumps(response_data)
 
 
+@app.route('/PenguinDome/v1/acknowledge_patch', methods=('POST',))
+@app.route('/penguindome/v1/acknowledge_patch', methods=('POST',))
 @app.route('/qlmdm/v1/acknowledge_patch', methods=('POST',))
 @verify_signature
 @log_deprecated_port
@@ -437,6 +443,8 @@ def acknowledge_patch():
     return 'ok'
 
 
+@app.route('/PenguinDome/v1/download_release', methods=('GET',))
+@app.route('/penguindome/v1/download_release', methods=('GET',))
 @app.route('/qlmdm/v1/download_release', methods=('GET',))
 @require_httpauth('server_auth:download_release', mandatory=False)
 def download_release():

@@ -79,7 +79,7 @@ if [ ! -d $venv ]; then
 fi
 
 for dir in $(find $venv -name site-packages); do
-    echo $(pwd) > $dir/qlmdm.pth
+    echo $(pwd) > $dir/penguindome.pth
 done
 
 . $venv/bin/activate

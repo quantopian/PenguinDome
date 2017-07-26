@@ -24,14 +24,14 @@ from tempfile import NamedTemporaryFile, mkdtemp
 import sys
 from urllib.parse import urlparse, urlunparse
 
-from qlmdm import set_setting, top_dir, var_dir
-from qlmdm.server import (
+from penguindome import set_setting, top_dir, var_dir
+from penguindome.server import (
     get_setting as get_server_setting,
     get_port_setting,
     set_setting as set_server_setting,
     save_settings as save_server_settings,
 )
-from qlmdm.client import (
+from penguindome.client import (
     get_setting as get_client_setting,
     set_setting as set_client_setting,
     save_settings as save_client_settings,
@@ -67,7 +67,7 @@ def make_self_signed_cert(hostname):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Add, remove, or configure '
-                                     'ports for qlmdm server')
+                                     'ports for PenguinDome server')
 
     parent = argparse.ArgumentParser(add_help=False)
     parent.add_argument('port', metavar='PORTNUMBER', type=int, action='store')

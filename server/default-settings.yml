@@ -14,7 +14,7 @@
 port: 80
 threaded: true
 database:
-  name: qlmdm
+  name: penguindome
 logging:
   handler: stderr
   level: debug

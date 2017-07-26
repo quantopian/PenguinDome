@@ -15,7 +15,7 @@
 import json
 import subprocess
 
-from qlmdm.client import get_logger
+from penguindome.client import get_logger
 
 results = {}
 log = get_logger('plugins/hd_encryption')

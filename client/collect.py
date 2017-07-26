@@ -23,7 +23,7 @@ import sys
 from tempfile import NamedTemporaryFile
 import time
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     collected_dir,
     plugins_dir,
@@ -31,8 +31,8 @@ from qlmdm import (
     signatures_dir,
     set_gpg,
 )
-from qlmdm.client import get_logger, encrypt_document
-import qlmdm.json as json
+from penguindome.client import get_logger, encrypt_document
+import penguindome.json as json
 
 os.chdir(top_dir)
 set_gpg('client')

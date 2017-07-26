@@ -24,7 +24,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
-from qlmdm import (
+from penguindome import (
     top_dir,
     gpg_private_home,
     gpg_public_home,
@@ -32,25 +32,30 @@ from qlmdm import (
     gpg_command,
     releases_dir,
 )
-from qlmdm.client import (
+from penguindome.client import (
     get_setting as get_client_setting,
     set_setting as set_client_setting,
     save_settings as save_client_settings,
 )
-from qlmdm.server import (
+from penguindome.server import (
     get_setting as get_server_setting,
     set_setting as set_server_setting,
     save_settings as save_server_settings,
 )
-from qlmdm.prompts import get_bool, get_int, get_string, get_string_or_list
+from penguindome.prompts import (
+    get_bool,
+    get_int,
+    get_string,
+    get_string_or_list,
+)
 
 os.chdir(top_dir)
 
 os.makedirs(gpg_private_home, 0o700, exist_ok=True)
 os.makedirs(gpg_public_home, 0o700, exist_ok=True)
 
-server_user_id = 'qlmdm-server'
-client_user_id = 'qlmdm-client'
+server_user_id = 'penguindome-server'
+client_user_id = 'penguindome-client'
 
 entropy_warned = False
 get_string_none = partial(get_string, none_ok=True)
@@ -79,7 +84,7 @@ def generate_key(mode, user_id):
             gpg_command('--passphrase', '', '--quick-gen-key', user_id,
                         with_trustdb=True)
         except subprocess.CalledProcessError as e:
-            sys.exit('Qlmdm requires GnuPG version 2.1 or newer. '
+            sys.exit('PenguinDome requires GnuPG version 2.1 or newer. '
                      'gpg output:\n{}'.format(e.output))
 
 
@@ -319,7 +324,7 @@ def main(args):
         if client_changed:
             print('Saved client settings.')
 
-    service_file = '/etc/systemd/system/qlmdm-server.service'
+    service_file = '/etc/systemd/system/penguindome-server.service'
     service_exists = os.path.exists(service_file)
     default = not service_exists
 
@@ -355,13 +360,13 @@ def main(args):
     if service_exists:
         try:
             subprocess.check_output(
-                ('systemctl', 'is-enabled', 'qlmdm-server'),
+                ('systemctl', 'is-enabled', 'penguindome-server'),
                 stderr=subprocess.STDOUT)
         except:
             if maybe_get_bool('Do you want to enable the server?', True,
                               args.yes):
                 subprocess.check_output(
-                    ('systemctl', 'enable', 'qlmdm-server'),
+                    ('systemctl', 'enable', 'penguindome-server'),
                     stderr=subprocess.STDOUT)
                 is_enabled = True
         else:
@@ -370,23 +375,23 @@ def main(args):
         if is_enabled:
             try:
                 subprocess.check_output(
-                    ('systemctl', 'status', 'qlmdm-server'),
+                    ('systemctl', 'status', 'penguindome-server'),
                     stderr=subprocess.STDOUT)
             except:
                 if maybe_get_bool('Do you want to start the server?', True,
                                   args.yes):
                     subprocess.check_output(
-                        ('systemctl', 'start', 'qlmdm-server'),
+                        ('systemctl', 'start', 'penguindome-server'),
                         stderr=subprocess.STDOUT)
             else:
                 if maybe_get_bool('Do you want to restart the server?',
                                   server_changed, args.yes):
                     subprocess.check_output(
-                        ('systemctl', 'restart', 'qlmdm-server'),
+                        ('systemctl', 'restart', 'penguindome-server'),
                         stderr=subprocess.STDOUT)
 
         if get_server_setting('audit_cron:enabled'):
-            cron_file = '/etc/cron.d/qlmdm-audit'
+            cron_file = '/etc/cron.d/penguindome-audit'
             cron_exists = os.path.exists(cron_file)
 
             if cron_exists:

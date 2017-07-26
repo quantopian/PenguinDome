@@ -17,10 +17,10 @@ import re
 import subprocess
 from tempfile import TemporaryFile
 
-from qlmdm import cached_data
-from qlmdm.client import get_logger
-import qlmdm.json as json
-from qlmdm.plugin_tools import find_x_users, DBusUser
+from penguindome import cached_data
+from penguindome.client import get_logger
+import penguindome.json as json
+from penguindome.plugin_tools import find_x_users, DBusUser
 
 valid_lockers = ('slock', 'i3lock')
 valid_lockers_re = re.compile(r'^(?:' +

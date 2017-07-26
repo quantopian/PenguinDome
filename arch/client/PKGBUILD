@@ -12,12 +12,12 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-pkgname=qlmdm-client
+pkgname=penguindome-client
 pkgver=1.0.0
 pkgrel=0
-pkgdesc="Quantopian Linux Mobile Device Management Client"
+pkgdesc="PenguinDome Mobile Device Management Client"
 arch=('x86_64')
-url="https://www.github.com/quantopian/qlmdm"
+url="https://www.github.com/quantopian/PenguinDome"
 depends=('python'
          'python-certifi'
          'python-chardet'
@@ -41,14 +41,14 @@ depends=('python'
          'tar'
          'wireless_tools'
          'util-linux')
-source=("http://eraserver.dynoquant.com:5001/qlmdm/v1/download_release")
+source=("http://example.com/penguindome/v1/download_release")
 sha256sums=(SKIP)
-install=qlmdm-client.install
+install=penguindome-client.install
 
 package() {
   cd ${srcdir}
 
-  real_install_dir="/opt/qlmdm"
+  real_install_dir="/opt/penguindome"
   install_dir="$pkgdir/$real_install_dir"
 
   install -d ${install_dir}
@@ -61,7 +61,7 @@ package() {
 
   for dir in ${site}; do
     install -d "$pkgdir/$dir"
-    echo ${real_install_dir} > "$pkgdir/$dir/qlmdm.pth"
+    echo ${real_install_dir} > "$pkgdir/$dir/penguindome.pth"
   done
 
   install -d ${install_dir}/bin
@@ -74,6 +74,6 @@ package() {
     ln -sf ../$file "$install_dir/bin/${tail%.py}"
   done
 
-  install -Dm644 client/qlmdm-client.service "$pkgdir/etc/systemd/system/qlmdm-client.service"
-  install -Dm644 client/qlmdm-client.timer "$pkgdir/etc/systemd/system/qlmdm-client.timer"
+  install -Dm644 client/penguindome-client.service "$pkgdir/etc/systemd/system/penguindome-client.service"
+  install -Dm644 client/penguindome-client.timer "$pkgdir/etc/systemd/system/penguindome-client.timer"
 }

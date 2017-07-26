@@ -10,12 +10,17 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-[Unit]
-Description=Quantopian Linux Mobile Device Management Client
+post_install() {
+    systemctl enable penguindome-client.timer
+    systemctl start penguindome-client.timer
 
-[Service]
-Type=oneshot
-ExecStart=/opt/qlmdm/bin/client-cron
+    systemctl enable penguindome-client.service
+    systemctl start penguindome-client.service
+}
 
-[Install]
-WantedBy=multi-user.target
+pre_remove() {
+    systemctl stop penguindome-client.timer
+    systemctl disable penguindome-client.timer
+
+    systemctl disable penguindome-client.service
+}

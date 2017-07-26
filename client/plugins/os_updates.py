@@ -20,7 +20,7 @@ from signal import SIGHUP
 from tempfile import TemporaryFile
 import time
 
-from qlmdm.client import get_logger
+from penguindome.client import get_logger
 
 log = get_logger('plugins/os_updates')
 

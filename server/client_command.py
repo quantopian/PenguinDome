@@ -18,8 +18,8 @@ import re
 import stat
 import sys
 
-from qlmdm import set_gpg
-from qlmdm.server import patch_hosts
+from penguindome import set_gpg
+from penguindome.server import patch_hosts
 
 set_gpg('server')
 

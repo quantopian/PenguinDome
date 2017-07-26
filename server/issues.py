@@ -20,8 +20,8 @@ import pytz
 import subprocess
 import sys
 
-from qlmdm import top_dir
-from qlmdm.server import (
+from penguindome import top_dir
+from penguindome.server import (
     get_db,
     open_issue,
     close_issue,
