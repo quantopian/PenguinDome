@@ -3,6 +3,7 @@
 import psutil
 import re
 import subprocess
+from tempfile import TemporaryFile
 
 from qlmdm import cached_data
 from qlmdm.client import get_logger
@@ -70,9 +71,10 @@ class DBusUser(object):
     def __str__(self):
         return("<DBusUser('{}', '{}')>".format(self.user, self.display))
 
-    def command(self, cmd):
-        return subprocess.check_output(('su', self.user, '-c', cmd),
-                                       env=self.environ).decode('ascii')
+    def command(self, cmd, stderr=None):
+        return subprocess.check_output(
+            ('su', self.user, '-c', cmd),
+            env=self.environ, stderr=stderr).decode('ascii')
 
 
 def gnome_xscreensaver_status(user, display):
@@ -81,9 +83,28 @@ def gnome_xscreensaver_status(user, display):
     except KeyError:
         return None
 
-    dbus_output = dbus_user.command(
-        'dbus-send --session --dest=org.freedesktop.DBus --type=method_call '
-        '--print-reply /org/freedesktop/Dbus org.freedesktop.DBus.ListNames')
+    with TemporaryFile('w+') as stderr_file:
+        try:
+            dbus_output = dbus_user.command(
+                'echo $FOOBAR $DBUS_SESSION_BUS_ADDRESS; '
+                'dbus-send --session --dest=org.freedesktop.DBus '
+                '--type=method_call --print-reply /org/freedesktop/Dbus org.'
+                'freedesktop.DBus.ListNames',
+                stderr=stderr_file)
+        except subprocess.CalledProcessError as e:
+            stdout = e.output.decode('ascii').strip()
+            stderr_file.seek(0)
+            stderr = stderr_file.read().strip()
+            log.error('dbus-send failed')
+            if stdout:
+                log.error('dbus-send output: {}', stdout)
+            if stderr:
+                log.error('dbus-send stderr: {}', stderr)
+            if 'Could not parse server address' in stderr:
+                log.error('dbus-send DBUS_SESSION_BUS_ADDRESS={}',
+                          dbus_user.environ.get('DBUS_SESSION_BUS_ADDRESS',
+                                                None))
+            return None
     if dbus_output.find('org.gnome.ScreenSaver') == -1:
         return None
 
