@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-# There's no error-handling here. If anything fails, the whole script will
-# fail. In the short term, at least, that's acceptable. If something fails,
-# we'll log into the box, look at the exception, figure out why it's failing,
-# and fix it. This isn't code we're going to ship, it's code for internal use
-# only on machines to which we have full access and can debug as needed.
-
 import argparse
 import datetime
 import os
