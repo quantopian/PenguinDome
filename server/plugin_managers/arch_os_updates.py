@@ -42,12 +42,9 @@ from pymongo.errors import DuplicateKeyError
 import re
 import requests
 
-from qlmdm.server import get_db, get_logger
+from qlmdm.server import get_db, get_logger, arch_security_flag
 
 log = get_logger('plugin_managers/arch_os_updates')
-# If this has dots in it then clear_obsolete_flags will break, so either don't
-# give it dots or fix clear_obsolete_flags.
-flag_field = 'arch_security_updates_at'
 
 
 def download_arch_security():
@@ -109,24 +106,26 @@ def download_arch_security():
 def flag_impacted_clients(package, dt):
     spec = {'plugins.os_info.distname': 'arch',
             'plugins.os_updates.installed_packages': package,
-            '$or': [{flag_field: {'$exists': False}},
-                    {flag_field: {'$lt': dt}}]}
+            '$or': [{arch_security_flag: {'$exists': False}},
+                    {arch_security_flag: {'$lt': dt}}]}
     db = get_db()
     for doc in db.clients.find(spec, projection=['hostname']):
         log.info('Flagging client {} for update of Arch package {}',
                  doc['hostname'], package)
-    db.clients.update_many(spec, {'$set': {flag_field: dt}})
+    db.clients.update_many(spec, {'$set': {arch_security_flag: dt}})
 
 
 def clear_obsolete_flags():
     db = get_db()
 
-    spec = {flag_field: {'$exists': True},
+    spec = {arch_security_flag: {'$exists': True},
             'plugins.os_updates.patches': False}
-    projection = ['_id', 'hostname', flag_field, 'plugins.submitted_at']
+    projection = ['_id', 'hostname', arch_security_flag,
+                  'plugins.submitted_at']
     for doc in db.clients.find(spec, projection):
-        if doc['plugins']['submitted_at'] > doc[flag_field]:
-            db.update_one({'_id': doc['_id']}, {'$unset': {flag_field: True}})
+        if doc['plugins']['submitted_at'] > doc[arch_security_flag]:
+            db.update_one({'_id': doc['_id']},
+                          {'$unset': {arch_security_flag: True}})
             log.info('Cleared Arch security updates flag from {}',
                      doc['hostname'])
 

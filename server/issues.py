@@ -21,6 +21,7 @@ from qlmdm.server import (
     get_setting,
     get_port_setting,
     get_logger,
+    arch_security_flag,
 )
 
 os.chdir(top_dir)
@@ -65,7 +66,7 @@ problem_checks = {
                           'plugins.os_updates.security_patches':
                           {'$not': {'$eq': False}}},
                          {'plugins.os_info.distname': 'arch',
-                          'arch_security_updates_at': {'$exists': True}}]}},
+                          arch_security_flag: {'$exists': True}}]}},
     'guest-session-enabled': {
         'spec': {'plugins.guest_session.enabled': {'$not': {'$eq': False}}}},
     'unencrypted-hard-drive': {
