@@ -65,6 +65,8 @@ class DBusUser(object):
                 continue
             if 'DBUS_SESSION_BUS_ADDRESS' not in environ:
                 continue
+            if environ['DBUS_SESSION_BUS_ADDRESS'].startswith('disabled'):
+                continue
             self.found_users[which] = environ
             break
         self.environ = self.found_users[which]
