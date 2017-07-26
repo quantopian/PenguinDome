@@ -9,6 +9,7 @@ from multiprocessing import Process
 import os
 from passlib.hash import pbkdf2_sha256
 from pymongo import ASCENDING
+from pymongo.operations import IndexModel
 import signal
 import tempfile
 
@@ -28,6 +29,7 @@ from qlmdm.server import (
     close_issue,
     encrypt_document,
     audit_trail_write,
+    arch_security_flag,
 )
 
 log = get_logger('server')
@@ -478,7 +480,31 @@ def startServer(port):
 def prepare_database():
     db = get_db()
 
-    db.clients.create_index([('hostname', ASCENDING)], unique=True)
+    db.clients.create_indexes([
+        IndexModel([('hostname', ASCENDING)],
+                   unique=True),
+        IndexModel([('suspended', ASCENDING)]),
+        IndexModel([('plugins.os_info.distname', ASCENDING),
+                    ('plugins.os_updates.installed_packages', ASCENDING),
+                    (arch_security_flag, ASCENDING)]),
+        IndexModel([(arch_security_flag, ASCENDING),
+                    ('plugins.os_updates.patches', ASCENDING)])])
+    db.issues.create_indexes([IndexModel([('hostname', ASCENDING),
+                                          ('name', ASCENDING),
+                                          ('closed_at', ASCENDING),
+                                          ('unsnooze_at', ASCENDING)]),
+                              IndexModel([('closed_at', ASCENDING),
+                                          ('unsnooze_at', ASCENDING)]),
+                              IndexModel([('hostname', ASCENDING),
+                                          ('closed_at', ASCENDING),
+                                          ('unsnooze_at', ASCENDING)]),
+                              IndexModel([('name', ASCENDING),
+                                          ('closed_at', ASCENDING),
+                                          ('unsnooze_at', ASCENDING)]),
+                              IndexModel([('hostname', ASCENDING),
+                                          ('suspended', ASCENDING)])])
+    db.patches.create_indexes([IndexModel([('pending_hosts', ASCENDING)]),
+                               IndexModel([('files.path', ASCENDING)])])
 
 
 def main():
