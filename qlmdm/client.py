@@ -22,6 +22,20 @@ gpg_command = partial(main_gpg_command, minimum_version=client_gpg_version)
 
 
 def get_setting(setting, default=None, check_defaults=True):
+    """Fetch a setting from `client/settings.xml`
+
+    `setting` is a colon-separated list of keys and to transit to fetch the
+    desired setting. For example, `logging:handler` fetches the type Logbook
+    handler configured on the client.
+
+    `default` is the value to return if the setting does not exist.
+
+    `check_defaults` indicates whether `client/default-settings.yml` should be
+    checked if the specified setting isn't in `client/settings.xml`.
+
+    Returns None if the setting does not exist.
+    """
+
     return main_get_setting(load_settings('client'), setting, default,
                             check_defaults)
 
