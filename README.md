@@ -676,6 +676,13 @@ If you want to use the geolocation plugin, you'll need an API key from
 Google. See
 https://developers.google.com/maps/documentation/geolocation/intro.
 
+Contacts
+--------
+
+[Github](https://github.com/quantopian/PenguinDome)
+
+[Email](mailto:opensource@quantopian.com)
+
 Credits
 -------
 
