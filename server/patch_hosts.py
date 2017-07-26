@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 
 from qlmdm import set_gpg, signatures_dir
 from qlmdm.server import patch_hosts, get_db, get_logger
@@ -61,13 +62,19 @@ def patch_handler(args):
         kwargs['patch_mode'] = args.mode
     kwargs['patch_content'] = open(args.source_file, 'rb').read()
     kwargs['hosts'] = args.host if args.host else None
-    patch_hosts(args.target_path, **kwargs)
+    try:
+        patch_hosts(args.target_path, **kwargs)
+    except Exception as e:
+        sys.exit('Error: ' + str(e))
 
 
 def rm_handler(args):
-    patch_hosts(args.target_path,
-                patch_mode=0,
-                hosts=args.host if args.host else None)
+    try:
+        patch_hosts(args.target_path,
+                    patch_mode=0,
+                    hosts=args.host if args.host else None)
+    except Exception as e:
+        sys.exit('Error: ' + str(e))
 
 
 def file_descriptions(patch):

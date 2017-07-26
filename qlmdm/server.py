@@ -82,10 +82,21 @@ def get_db():
 def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
                 hosts=None):
     db = get_db()
+    all_hosts = db.clients.distinct('hostname')
     if hosts is None:
-        hosts = db.clients.distinct('hostname')
+        hosts = all_hosts
     if isinstance(hosts, str):
         hosts = [hosts]
+    bad_hosts = set(hosts) - set(all_hosts)
+    if bad_hosts:
+        if len(bad_hosts) > 1:
+            s = 's'
+            verb = 'are'
+        else:
+            s = ''
+            verb = 'is'
+        raise Exception('Host{s} {hosts} {verb} not in the database'.format(
+            s=s, verb=verb, hosts=', '.join(sorted(bad_hosts))))
     conflict = db.patches.find_one({'files.path': patch_path,
                                     'pending_hosts': {'$in': hosts}})
     if conflict:
