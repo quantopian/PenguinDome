@@ -9,6 +9,7 @@ from qlmdm import cached_data
 from qlmdm.client import get_logger
 import qlmdm.json as json
 
+valid_lockers = ('slock', 'i3lock')
 log = get_logger('plugins/screenlock')
 
 
@@ -152,7 +153,7 @@ def xautolock_status(user, display):
             continue
         if not nowlocker:
             nowlocker = locker
-        if _time and locker == 'slock' and nowlocker == 'slock':
+        if _time and locker in valid_lockers and nowlocker in valid_lockers:
             return {'enabled': True, 'delay': _time}
     return None
 
