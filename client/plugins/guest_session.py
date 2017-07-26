@@ -8,20 +8,11 @@ import re
 
 from qlmdm import cached_data
 import qlmdm.json as json
+from qlmdm.plugin_tools import find_xinit_users, find_x_users
 
 
 def xinit_checker():
-    xinit = Xorg = None
-    for p in psutil.process_iter():
-        if p.exe().endswith('/xinit'):
-            xinit = p
-        elif p.exe().endswith('/Xorg'):
-            Xorg = p
-    if xinit and Xorg and Xorg.ppid() == xinit.pid and \
-       xinit.uids().real and Xorg.uids().real:  # Shouldn't be running as root
-        return False
-
-    return None
+    return False if find_xinit_users() else None
 
 
 def lightdm_checker():
@@ -61,7 +52,9 @@ for checker in checkers:
 if results is None:
     results = 'unknown'
 
-results = {'enabled': results}
+results = ({'enabled': results}
+           if results != 'unknown' or find_x_users()
+           else None)
 results = cached_data('guest_session', results, add_timestamp=True,
-                      check_logged_in=True)
+                      raise_exception=False)
 print(json.dumps(results))

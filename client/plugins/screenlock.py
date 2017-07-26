@@ -1,83 +1,16 @@
 #!/usr/bin/env python3
 
 import psutil
-import re
 import subprocess
 from tempfile import TemporaryFile
 
 from qlmdm import cached_data
 from qlmdm.client import get_logger
 import qlmdm.json as json
+from qlmdm.plugin_tools import find_x_users, DBusUser
 
 valid_lockers = ('slock', 'i3lock')
 log = get_logger('plugins/screenlock')
-
-
-def find_xinit_users():
-    users = []
-    xinits = []
-    for p in psutil.process_iter():
-        if p.exe().endswith('/xinit'):
-            xinits.append(p)
-    if not xinits:
-        return users
-    Xorgs = []
-    for p in psutil.process_iter():
-        if p.exe().endswith('/Xorg'):
-            xinit = any(x for x in xinits if p.ppid() == x.pid)
-            if xinit:
-                Xorgs.append((xinit, p))
-    if not Xorgs:
-        return users
-    for xinit, Xorg in Xorgs:
-        try:
-            display = next(a for a in Xorg.cmdline() if a[0] == ':')
-        except:
-            continue
-        try:
-            proc = min((p for p in psutil.process_iter() if 'DISPLAY' in
-                        p.environ() and p.environ()['DISPLAY'] == display),
-                       key=lambda p: p.pid)
-        except:
-            continue
-        users.append((proc.username(), display))
-    return users
-
-
-class DBusUser(object):
-    found_users = {}
-
-    def __init__(self, user, display):
-        # Find out the user's dbus settings.
-        self.user = user
-        self.display = display
-        which = (user, display)
-        try:
-            self.environ = self.found_users[which]
-            return
-        except KeyError:
-            pass
-        for proc in psutil.process_iter():
-            if proc.username() != user:
-                continue
-            environ = proc.environ()
-            if environ.get('DISPLAY', None) != display:
-                continue
-            if 'DBUS_SESSION_BUS_ADDRESS' not in environ:
-                continue
-            if environ['DBUS_SESSION_BUS_ADDRESS'].startswith('disabled'):
-                continue
-            self.found_users[which] = environ
-            break
-        self.environ = self.found_users[which]
-
-    def __str__(self):
-        return("<DBusUser('{}', '{}')>".format(self.user, self.display))
-
-    def command(self, cmd, stderr=None):
-        return subprocess.check_output(
-            ('su', self.user, '-m', '-c', cmd),
-            env=self.environ, stderr=stderr).decode('ascii')
 
 
 def gnome_xscreensaver_status(user, display):
@@ -162,30 +95,21 @@ def xautolock_status(user, display):
 
 display_checkers = (gnome_xscreensaver_status, xautolock_status)
 
-# Who is logged into an X display?
-
-w_lines = subprocess.check_output(
-    ('who',)).decode('ascii').strip().split('\n')
-matches = (re.match(r'(\S+)\s+.*\((:\d[^\)]*)\)', l) for l in w_lines)
-matches = filter(None, matches)
-user_displays = [m.groups() for m in matches] + find_xinit_users()
+user_displays = find_x_users()
 
 results = {}
 
-if not user_displays:
-    log.warn('Failed to identify any X users')
-else:
-    for user, display in user_displays:
-        for checker in display_checkers:
-            status = checker(user, display)
-            if status:
-                status['user'] = user
-                results[user] = status
-                break
-        else:
-            results[user] = {'user': user, 'enabled': 'unknown'}
+for user, display in user_displays:
+    for checker in display_checkers:
+        status = checker(user, display)
+        if status:
+            status['user'] = user
+            results[user] = status
+            break
+    else:
+        results[user] = {'user': user, 'enabled': 'unknown'}
 
-results = {'users': list(results.values())}
+results = {'users': list(results.values())} if user_displays else None
 results = cached_data('screenlock', results, add_timestamp=True,
-                      check_logged_in=True)
+                      raise_exception=False)
 print(json.dumps(results))

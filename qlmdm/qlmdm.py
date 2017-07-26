@@ -253,22 +253,31 @@ def get_logger(setting_getter, name, fail_to_local=False):
             hostname = setting_getter('logging:syslog:host')
             if hostname:
                 port = setting_getter('logging:syslog:port')
-                addrinfo = socket.getaddrinfo(hostname, port, socket.AF_INET,
-                                              socket.SOCK_STREAM)[0]
-                kwargs['socktype'] = addrinfo[1]
-                kwargs['address'] = addrinfo[4]
+                try:
+                    addrinfo = socket.getaddrinfo(
+                        hostname, port, socket.AF_INET, socket.SOCK_STREAM)[0]
+                except:
+                    if not fail_to_local:
+                        raise
+                    logger.warn('Failed to resolve {}:{}, falling back to '
+                                'local-only logging', hostname, port)
+                    handler = None
+                else:
+                    kwargs['socktype'] = addrinfo[1]
+                    kwargs['address'] = addrinfo[4]
 
-        if fail_to_local:
-            try:
-                with ThreadingTimeout(5, swallow_exc=False):
-                    handler = handler(**kwargs)
-            except:
-                logger.warn('Failed to create {}, falling back to local-only '
-                            'logging', handler_name)
+        if handler:
+            if fail_to_local:
+                try:
+                    with ThreadingTimeout(5, swallow_exc=False):
+                        handler = handler(**kwargs)
+                except:
+                    logger.warn('Failed to create {}, falling back to '
+                                'local-only logging', handler_name)
+                else:
+                    handler.push_application()
             else:
-                handler.push_application()
-        else:
-            handler(**kwargs).push_application()
+                handler(**kwargs).push_application()
 
     logbook.compat.redirect_logging()
     got_logger = logger
@@ -346,11 +355,13 @@ def encrypt_document(getter, doc, log=None, selectors=None):
     return doc, None
 
 
-def cached_data(key, data=None, add_timestamp=False, check_logged_in=False):
+def cached_data(key, data=None, add_timestamp=False, check_logged_in=False,
+                raise_exception=True):
     """Return or save cached data for the specified key
 
     If data is None and there is no cached data for the specified key, raises
-    FileNotFoundError.
+    FileNotFoundError unless raise_exception is False in which case just
+    returns None.
 
     If add_timestamp is true, then adds a cached_at timestamp to data (which
     must be a dict or dict-like object) before saving it.
@@ -370,7 +381,12 @@ def cached_data(key, data=None, add_timestamp=False, check_logged_in=False):
         data = None
 
     if data is None:
-        return pickle.load(open(cache_file, 'rb'))
+        try:
+            return pickle.load(open(cache_file, 'rb'))
+        except FileNotFoundError:
+            if raise_exception:
+                raise
+            return None
 
     os.makedirs(os.path.dirname(cache_file), exist_ok=True)
 
