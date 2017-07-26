@@ -63,6 +63,9 @@ def patch_handler(args):
     kwargs['patch_content'] = open(args.source_file, 'rb').read()
     kwargs['hosts'] = args.host if args.host else None
     try:
+        log.info('Queuing patch for {} on {}', args.target_path,
+                 'all hosts' if not args.host
+                 else ', '.join(sorted(args.host)))
         patch_hosts(args.target_path, **kwargs)
     except Exception as e:
         sys.exit('Error: ' + str(e))
@@ -70,6 +73,9 @@ def patch_handler(args):
 
 def rm_handler(args):
     try:
+        log.info('Queuing rm of {} on {}', args.target_path,
+                 'all hosts' if not args.host
+                 else ', '.join(sorted(args.host)))
         patch_hosts(args.target_path,
                     patch_mode=0,
                     hosts=args.host if args.host else None)
@@ -119,6 +125,7 @@ def cancel_handler(args):
         removed_hosts = set(pending_hosts) - set(remaining_hosts)
         hosts_list = ', '.join(sorted(removed_hosts))
         for f in file_descriptions(patch):
+            log.info('Canceling {} on {}', f, hosts_list)
             print('Canceling {} on {}'.format(f, hosts_list))
         db.patches.update({'_id': patch['_id']},
                           {'$set': {'pending_hosts': list(remaining_hosts)}})
