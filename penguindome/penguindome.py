@@ -118,7 +118,8 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
             gpg_exe = 'gpg'
         else:
             gpg_exe = 'gpg2'
-        match = re.match(r'^gpg.* (\d+(?:\.\d+(?:\.\d+)?)?)', output)
+        match = re.search(r'^gpg \(GnuPG\) (\d+(?:\.\d+(?:\.\d+)?)?)', output,
+                          re.MULTILINE)
         if not match:
             raise Exception('Could not determine GnuPG version in output:\n{}'.
                             format(output))
