@@ -232,6 +232,13 @@ def parse_args():
                                   help='Hosts(s) to unsuspend')
     unsuspend_parser.set_defaults(func=unsuspend_handler)
 
+    open_parser = subparsers.add_parser('open', help='Open issues')
+    open_parser.add_argument('--host', action='append', required=True,
+                             help='Open issues for the specified host(s)')
+    open_parser.add_argument('--issue-name', action='append', required=True,
+                             help='Open the specified issue type(s)')
+    open_parser.set_defaults(func=open_handler)
+
     close_parser = subparsers.add_parser('close', help='Close issues')
     close_parser.add_argument(
         '--all', action='store_true', help='Close all issues (required if '
@@ -420,6 +427,14 @@ def unsuspend_handler(args):
     with logbook.StreamHandler(sys.stdout, bubble=True):
         for host in matches:
             log.info('Unsuspended {}', host)
+
+
+def open_handler(args):
+    with logbook.StreamHandler(sys.stdout, bubble=True):
+        for host in args.host:
+            for issue in args.issue_name:
+                open_issue(host, issue)
+                log.info('Opened {} issue for {}', issue, host)
 
 
 def close_handler(args):
