@@ -49,8 +49,8 @@ def get_port_setting(port, setting, default=None):
     settings_port = get_setting('port')
     if isinstance(settings_port, int) or isinstance(settings_port, list):
         return global_setting
-    return main_get_setting(settings_port[port], setting, global_setting,
-                            check_defaults=False)
+    return main_get_setting(settings_port.get(port, {}), setting,
+                            global_setting, check_defaults=False)
 
 
 def set_setting(setting, value):
