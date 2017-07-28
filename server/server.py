@@ -659,7 +659,7 @@ class PipeLogger(object):
             # If the word "password" appears in the output from the client,
             # then mask the next two lines sent from the server.
             if direction == 'receive' and re.search(b'password', line, re.I):
-                log.info('{}(Masking next line as potential passwords)',
+                log.info('pipelog {}(Masking next line as potential passwords)',
                          pending['send']['prefix'])
                 pending['send']['masking'] += 1
             try:
