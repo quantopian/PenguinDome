@@ -21,7 +21,7 @@ url="https://www.github.com/quantopian/PenguinDome"
 depends=('python'
          'python-certifi'
          'python-chardet'
-         'python-dateutil',
+         'python-dateutil'
          'python-fasteners'
          'python-idna'
          'python-netifaces'
