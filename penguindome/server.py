@@ -61,8 +61,8 @@ def save_settings():
     main_save_settings('server')
 
 
-def get_logger(name):
-    return main_get_logger(get_setting, name)
+def get_logger(name, filter=None):
+    return main_get_logger(get_setting, name, filter=filter)
 
 
 def get_db():

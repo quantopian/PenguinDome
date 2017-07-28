@@ -12,20 +12,27 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+from base64 import b64encode, b64decode
 from bson import ObjectId
+from collections import defaultdict
 import datetime
-from flask import Flask, request, Response
+from flask import Flask, request, Response, abort
 from functools import wraps
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, IPv6Network
 import logging  # Only so we can replace werkzeug's logger
-from multiprocessing import Process
+from multiprocessing import Process, Manager, RLock
 import os
 from passlib.hash import pbkdf2_sha256
 from pymongo import ASCENDING
 from pymongo.operations import IndexModel
+import re
 import signal
+import sys
 import tempfile
+import time
+from uuid import uuid4
 import werkzeug._internal  # To replace its logger to nix "werkzeug" in logs
+from werkzeug.serving import WSGIRequestHandler  # So we can enable keep-alive
 
 from penguindome import (
     top_dir,
@@ -34,6 +41,7 @@ from penguindome import (
     gpg_command,
 )
 import penguindome.json as json
+from penguindome.encryption import Encryptor
 from penguindome.server import (
     get_logger,
     get_setting as get_server_setting,
@@ -46,10 +54,13 @@ from penguindome.server import (
     arch_security_flag,
 )
 
-log = get_logger('server')
+log = None
 
 os.chdir(top_dir)
 set_gpg('server')
+pipes = None
+encryptors = None
+pipes_lock = RLock()
 
 app = Flask(__name__)
 
@@ -133,28 +144,72 @@ def check_ip_auth(auth_name):
 
 
 def check_password(auth_name):
-    auth_info = get_server_setting(auth_name + ':passwords')
-    if not auth_info:
+    # Get list of users who are allowed access
+    users = get_server_setting(auth_name + ':users') or []
+    if isinstance(users, str):
+        users = [users]
+    users = {u: None for u in users}
+
+    # Get list of groups who are allowed access
+    groups = get_server_setting(auth_name + ':groups') or []
+    if isinstance(groups, str):
+        groups = [groups]
+
+    # Get users for authorized groups
+    for group in groups:
+        group_users = get_server_setting('groups:' + group) or []
+        if isinstance(group_users, str):
+            group_users = [group_users]
+        if group_users:
+            users.update({u: None for u in group_users})
+        else:
+            log.warn('check_password: group {} is empty', group)
+
+    # Warn about and remove invalid users
+    for user in list(users.keys()):
+        users[user] = get_server_setting('users:' + user)
+        if not users[user]:
+            log.warn('check_password: user {} has no password', user)
+            del users[user]
+
+    auth_info = get_server_setting(auth_name + ':passwords') or {}
+    users.update(auth_info)
+    if not users:
         log.debug('No auth: no passwords configured in {}', auth_name)
         return False
+
     if not request.authorization:
         log.debug('No auth: no username specified in request')
         return False
     try:
-        password_hash = auth_info[request.authorization.username]
+        password_hash = users[request.authorization.username]
     except KeyError:
         # N.B. One does not log usernames from authentication requests, in
         # case the user accidentally typed the password in the username field,
         # so that one doesn't accidentally log passwords.
-        log.debug('No auth: specified username not in {}', auth_name)
+        log.debug('No auth: invalid username for {}', auth_name)
         return False
     if not pbkdf2_sha256.verify(request.authorization.password, password_hash):
         # It's OK to log the username here, since we've already confirmed that
         # it's a valid username, not a password.
-        log.debug('No auth: incorrect password for {} in {}',
-                  request.authorization.username, auth_name)
+        log.warn('No auth: incorrect password for {} in {}',
+                 request.authorization.username, auth_name)
         return False
+    log.info('check_password: authenticated {} for {}',
+             request.authorization.username, auth_name)
     return True
+
+
+def flush_content(f):
+    """Make sure we read the content so keep-alive doesn't get messed up
+
+    Not needed if @verify_signature is guaranteed to be called, since it also
+    reads the content."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        request.data
+        return f(*args, **kwargs)
+    return wrapper
 
 
 def require_httpauth(auth_name, mandatory=True):
@@ -166,8 +221,8 @@ def require_httpauth(auth_name, mandatory=True):
     proceed (i.e., whether an endpoint with optional authentication has it is
     enforced by the configuration file).
 
-    The authentication information can contain the subkey `passwords` and/or
-    `ipranges`.
+    The authentication information can contain the subkeys `passwords`,
+    `ipranges`, `users`, and/or `groups`.
 
     `ipranges` is a list of IP ranges. If the remote address of the request
     falls in any of the specified ranges, then the authentication succeeds with
@@ -177,13 +232,22 @@ def require_httpauth(auth_name, mandatory=True):
     username specified by the user matches any of the usernames in the
     dictionary, then the authentication succeeds if the password matches the
     stored hash.
+
+    `users` is a list of one or more configured server users who are allowed to
+    access the endpoint; their usernames and passwords will be checked.
+
+    `groups` is a list of one or more configured server groups who are allowed
+    to access the endpoing; the usernames and passwords of all users in all of
+    the groups will be checked.
     """
 
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
+            log.debug('require_httpauth: starting for {}', auth_name)
             if not (no_auth_needed(auth_name, mandatory=mandatory) or
                     check_ip_auth(auth_name) or check_password(auth_name)):
+                log.debug('require_httpauth: returning 401 for {}', auth_name)
                 return Response(
                     response='Login required',
                     status=401,
@@ -448,6 +512,7 @@ def acknowledge_patch():
 @app.route('/PenguinDome/v1/download_release', methods=('GET',))
 @app.route('/penguindome/v1/download_release', methods=('GET',))
 @app.route('/qlmdm/v1/download_release', methods=('GET',))
+@flush_content
 @require_httpauth('server_auth:download_release', mandatory=False)
 def download_release():
     try:
@@ -473,29 +538,314 @@ def download_release():
                              'attachment; filename={}'.format(filename)})
 
 
-def startServer(port):
+# Signing messages sent to the server is an expensive operation since it
+# involves saving the message to disk, asking GnuPG to generate a separate
+# signature file for it, and reading the signature file back into memory. We're
+# doing that over and over since both the client and server ends of the pipe
+# are pinging the server constantly to see if there is any new data from the
+# other end, so it is silly for us to use GnuPG signing. Therefore, each end of
+# the pipe gets an AES encryptor set up when it is opened, and we use that to
+# encrypt the data rather than signing. Note that the key and IV are generated
+# in a deterministic fashion from the UUID of the pipe, so they are not
+# intended to be "secret" per se. The GnuPG messages weren't secret either,
+# since we were just signing, not encryption, so this is no worse. The point of
+# this is to prevent tampering and corruption in transit, not to ensure
+# secrecy. For that, maybe use SSL, hmm?
+
+@app.route('/PenguinDome/v1/server_pipe/server/create', methods=('POST',))
+@app.route('/penguindome/v1/server_pipe/server/create', methods=('POST',))
+@flush_content
+@require_httpauth('server_auth:pipe_create')
+@verify_signature
+def pipe_create():
+    data = json.loads(request.form['data'])
+    key = data['encryption_key']
+    iv = data['encryption_iv']
+    uuid = uuid4().hex
+    encryptors[uuid]['server'] = {'send': Encryptor(key, iv),
+                                  'receive': Encryptor(key, iv)}
+    pipes[uuid] = {
+        'client_opened': False,
+        'client_closed': False,
+        'server_closed': False,
+        'client_to_server': b'',
+        'server_to_client': b'',
+        'created': time.time(),
+        'activity': None,
+    }
+    log.debug('Created pipe {}', uuid)
+    return json.dumps({'pipe_id': uuid})
+
+
+@app.route('/PenguinDome/v1/server_pipe/client/open', methods=('POST',))
+@app.route('/penguindome/v1/server_pipe/client/open', methods=('POST',))
+@verify_signature
+def pipe_open():
+    data = json.loads(request.form['data'])
+    uuid = data['pipe_id']
+    with pipes_lock:
+        if uuid not in pipes:
+            log.error('Attempt to open nonexistent pipe {}', uuid)
+            abort(404)
+        key = data['encryption_key']
+        iv = data['encryption_iv']
+        encryptors[uuid]['client'] = {'send': Encryptor(key, iv),
+                                      'receive': Encryptor(key, iv)}
+        try:
+            pipe = pipes[uuid]
+            if pipe['client_opened']:
+                raise Exception('Attempt to open already opened pipe')
+            pipe['client_opened'] = True
+        finally:
+            # DictProxy doesn't detect updates to nested dicts.
+            pipes[uuid] = pipe
+
+    return json.dumps({'status': 'ok'})
+
+
+class PipeLogger(object):
+    pending = {}
+    # Can contain 'send' and/or 'receive'. I'm still up in the air about
+    # whether it's necessary to log data received from the server end of the
+    # pipe. I think it's not, because we're most concerned about exfiltration
+    # of data from the client, and because given the only thing we're currently
+    # using pipes for right now, i.e., remote shells, most everything the admin
+    # types on the server will be echo'd back by the client's terminal.
+    # Therefore, since this is where my thinking is right now, I'm only logging
+    # data received from the client for the time being.
+    enabled = ('receive',)
+
+    @classmethod
+    def get(cls, uuid, direction, data):
+        if uuid not in cls.pending:
+            cls.pending[uuid] = {
+                d: {'data': b'',
+                    'last': time.time(),
+                    'masking': 0,
+                    'prefix': p}
+                for d, p in (('send', '<<<'), ('receive', '>>>'))}
+        cls.pending[uuid][direction]['data'] += data
+        return cls.pending[uuid]
+
+    @classmethod
+    def split_lines(cls, pending):
+        for sep in (b'\r\n', b'\n', b'\r'):
+            if sep in pending['data']:
+                pending['lines'] = pending['data'].split(sep)
+                pending['data'] = pending['lines'].pop()
+                return True
+        return False
+
+    @classmethod
+    def log(cls, uuid, direction, data):
+        pending = cls.get(uuid, direction, data)
+        if cls.split_lines(pending[direction]):
+            cls.emit_lines(pending, direction)
+        if not pending[direction]['data']:
+            return
+        # Arbitrary: Log if there are more than 80 characters or it's been more
+        # than 30 seconds since we started accumulating the current line of
+        # data.
+        if len(pending[direction]['data']) > 80 or \
+           time.time() - pending[direction]['last'] > 30:
+            pending[direction]['lines'] = [pending[direction]['data']]
+            pending[direction]['data'] = b''
+            cls.emit_lines(pending, direction)
+
+    @classmethod
+    def emit_lines(cls, pending, direction):
+        lines = pending[direction].pop('lines', [])
+        for line in lines:
+            # If the word "password" appears in the output from the client,
+            # then mask the next two lines sent from the server.
+            if direction == 'receive' and re.search(b'password', line, re.I):
+                log.info('{}(Masking next line as potential passwords)',
+                         pending['send']['prefix'])
+                pending['send']['masking'] += 1
+            try:
+                line = line.decode()
+            except:
+                line = str(line)
+            if pending[direction]['masking']:
+                pending[direction]['masking'] -= 1
+                line = re.sub(r'.', '.', line)
+            if direction in cls.enabled:
+                log.info('pipelog {}{}', pending[direction]['prefix'], line)
+            pending[direction]['last'] = time.time()
+
+    @classmethod
+    def finish(cls, uuid):
+        try:
+            pending = cls.pending[uuid]
+        except KeyError:
+            return
+        for direction in pending:
+            if cls.split_lines(pending[direction]):
+                if pending[direction]['data']:
+                    pending[direction]['lines'].append(
+                        pending[direction]['data'])
+            elif pending[direction]['data']:
+                pending[direction]['lines'] = [pending[direction]['data']]
+            if 'lines' in pending[direction]:
+                cls.emit_lines(pending, direction)
+        del cls.pending[uuid]
+
+
+@app.route('/PenguinDome/v1/server_pipe/<peer_type>/send', methods=('POST',))
+@app.route('/penguindome/v1/server_pipe/<peer_type>/send', methods=('POST',))
+@flush_content
+def pipe_send(peer_type):
+    if peer_type not in ('client', 'server'):
+        raise Exception('Invalid peer type "{}"'.format(peer_type))
+    data = json.loads(request.form['data'])
+    uuid = data['pipe_id']
+    if uuid not in pipes:
+        log.error('Attempt to send to nonexistent pipe {}', uuid)
+        abort(404)
+    with pipes_lock:
+        pipe = pipes[uuid]
+        pipe['activity'] = time.time()
+        try:
+            other_peer_type = 'server' if peer_type == 'client' else 'client'
+            closed_field = other_peer_type + '_closed'
+            if pipe[closed_field]:
+                return json.dumps({'eof': True})
+            data_field = peer_type + '_to_' + other_peer_type
+            encoded_data = data['data']
+            encrypted_data = b64decode(encoded_data)
+            encryptor = encryptors[uuid][peer_type]['send']
+            decrypted_data = encryptor.decrypt(encrypted_data)
+            pipe[data_field] += decrypted_data
+            if peer_type == 'server':
+                PipeLogger.log(uuid, 'send', decrypted_data)
+            return json.dumps({'status': 'ok'})
+        finally:
+            # DictProxy doesn't detect updates to nested dicts.
+            pipes[uuid] = pipe
+
+
+@app.route('/PenguinDome/v1/server_pipe/<peer_type>/receive',
+           methods=('POST',))
+@app.route('/penguindome/v1/server_pipe/<peer_type>/receive',
+           methods=('POST',))
+@flush_content
+def pipe_receive(peer_type):
+    if peer_type not in ('client', 'server'):
+        raise Exception('Invalid peer type "{}"'.format(peer_type))
+    data = json.loads(request.form['data'])
+    uuid = data['pipe_id']
+    if uuid not in pipes:
+        log.error('Attempt to receive from nonexistent pipe {}', uuid)
+        abort(404)
+    with pipes_lock:
+        pipe = pipes[uuid]
+        pipe['activity'] = time.time()
+        try:
+            other_peer_type = 'server' if peer_type == 'client' else 'client'
+            data_field = other_peer_type + '_to_' + peer_type
+            if pipe[data_field]:
+                encryptor = encryptors[uuid][peer_type]['receive']
+                encrypted_data = encryptor.encrypt(pipe[data_field])
+                encoded_data = b64encode(encrypted_data).decode('ascii')
+                ret = json.dumps({'data': encoded_data})
+                if peer_type == 'server':
+                    PipeLogger.log(uuid, 'receive', pipe[data_field])
+                pipe[data_field] = b''
+                return ret
+            closed_field = other_peer_type + '_closed'
+            if pipe[closed_field]:
+                return json.dumps({'eof': True})
+            return json.dumps({'status': 'ok'})
+        finally:
+            # DictProxy doesn't detect updates to nested dicts.
+            pipes[uuid] = pipe
+
+
+@app.route('/PenguinDome/v1/server_pipe/<peer_type>/close', methods=('POST',))
+@app.route('/penguindome/v1/server_pipe/<peer_type>/close', methods=('POST',))
+@verify_signature
+def pipe_close(peer_type):
+    if peer_type not in ('client', 'server'):
+        raise Exception('Invalid peer type "{}"'.format(peer_type))
+    data = json.loads(request.form['data'])
+    uuid = data['pipe_id']
+    if uuid not in pipes:
+        log.error('Attempt to close nonexistent pipe {}', uuid)
+        abort(404)
+    with pipes_lock:
+        pipe = pipes[uuid]
+        try:
+            other_peer_type = 'server' if peer_type == 'client' else 'client'
+            closed_field = peer_type + '_closed'
+            other_closed_field = other_peer_type + '_closed'
+            pipe[closed_field] = True
+            client_opened = peer_type == 'client' or pipe['client_opened']
+            if not client_opened or pipe[other_closed_field]:
+                del pipes[uuid]
+                encryptors.pop(uuid, None)
+                if peer_type == 'server':
+                    PipeLogger.finish(uuid)
+            return json.dumps({'status': 'ok'})
+        finally:
+            # DictProxy doesn't detect updates to nested dicts.
+            if uuid in pipes:  # i.e., it wasn't deleted above
+                pipes[uuid] = pipe
+
+
+def clean_up_encryptors(*args):
+    with pipes_lock:
+        for uuid in list(encryptors.keys()):
+            if uuid not in pipes:
+                del encryptors[uuid]
+    signal.signal(signal.SIGALRM, clean_up_encryptors)
+    signal.alarm(60 * 60)
+
+
+def startServer(port, pipes_arg, local_only=False):
+    global log, pipes, encryptors
+
+    # To enable keep-alive
+    WSGIRequestHandler.protocol_version = 'HTTP/1.1'
+
+    log = get_logger('server')
+    pipes = pipes_arg
+    encryptors = defaultdict(dict)
+    clean_up_encryptors()
+
     werkzeug._internal._logger = logging.getLogger(log.name)
-    app.config['deprecated_port'] = get_port_setting(port, 'deprecated', False)
+
+    if not local_only:
+        app.config['deprecated_port'] = get_port_setting(
+            port, 'deprecated', False)
 
     # Logbook will handle all logging, via the root handler installed by
     # `get_logger` when it alls `logbook.compat.redirect_logging()`.
     del app.logger.handlers[:]
     app.logger.propagate = True
 
-    kwargs = {
-        'host': '0.0.0.0',
-        'port': port,
-        'threaded': get_port_setting(port, 'threaded', True),
-    }
+    if local_only:
+        kwargs = {
+            'host': '127.0.0.1',
+            'port': port,
+            'threaded': True,
+        }
+    else:
+        kwargs = {
+            'host': '0.0.0.0',
+            'port': port,
+            'threaded': get_port_setting(port, 'threaded', True),
+        }
 
-    ssl_certificate = get_port_setting(port, 'ssl:certificate', None)
-    ssl_key = get_port_setting(port, 'ssl:key', None)
-    ssl_enabled = get_port_setting(port, 'ssl:enabled', bool(ssl_certificate))
-    if bool(ssl_certificate) + bool(ssl_key) == 1:
-        raise Exception('You must specify both certificate and key for SSL!')
+        ssl_certificate = get_port_setting(port, 'ssl:certificate', None)
+        ssl_key = get_port_setting(port, 'ssl:key', None)
+        ssl_enabled = get_port_setting(port, 'ssl:enabled',
+                                       bool(ssl_certificate))
+        if bool(ssl_certificate) + bool(ssl_key) == 1:
+            raise Exception(
+                'You must specify both certificate and key for SSL!')
 
-    if ssl_enabled:
-        kwargs['ssl_context'] = (ssl_certificate, ssl_key)
+        if ssl_enabled:
+            kwargs['ssl_context'] = (ssl_certificate, ssl_key)
 
     app.run(**kwargs)
 
@@ -530,35 +880,72 @@ def prepare_database():
                                IndexModel([('files.path', ASCENDING)])])
 
 
+def clean_up_pipes(*args):
+    now = time.time()
+    with pipes_lock:
+        for uuid in list(pipes.keys()):
+            active = pipes[uuid]['activity'] or pipes[uuid]['created']
+            if now - active > 60 * 60:  # 1 hour
+                del pipes[uuid]
+    signal.signal(signal.SIGALRM, clean_up_pipes)
+    signal.alarm(60 * 60)
+
+
 def main():
+    global log, pipes
+
+    log = get_logger('server')
+
     ports = None
     port = get_server_setting('port')
     if isinstance(port, int):
         ports = [port]
     elif isinstance(port, dict):
         ports = list(port.keys())
-    if len(ports) == 1:
-        port = ports.pop()
+    local_port = get_server_setting('local_port')
+    if local_port in ports:
+        sys.exit('Configuration error! Local port {} is also configured as a '
+                 'non-local port.'.format(local_port))
+    ports.append(local_port)
 
     prepare_database()
 
-    if ports:
-        children = []
+    children = {}
+
+    def sigint_handler(*args):
+        for p in children.values():
+            try:
+                os.kill(p.pid, signal.SIGINT)
+            except:
+                pass
+
+    with Manager() as manager:
+        pipes = manager.dict()
+        clean_up_pipes()
         for port in ports:
-            p = Process(target=startServer, args=(port,))
+            p = Process(target=startServer, args=(port, pipes),
+                        kwargs={'local_only': port == local_port})
             p.daemon = True
             p.start()
-            children.append(p)
+            children[port] = p
 
-        def sigint_handler(*args):
-            for p in children:
-                os.kill(p.pid, signal.SIGINT)
+        # Make sure the children didn't die on startup, e.g., because they
+        # couldn't bind to their ports.
+        time.sleep(1)
+        problems = False
+        for port in children.keys():
+            if not children[port].is_alive():
+                log.error('Child process for port {} died on startup. Maybe '
+                          'its port is in use?', port)
+                problems = True
+        if problems:
+            sigint_handler()
+            log.error('Exiting because one or more servers failed to start up')
+            sys.exit(1)
 
         signal.signal(signal.SIGINT, sigint_handler)
-        for p in children:
+        for p in children.values():
             p.join()
-    else:
-        startServer(port)
 
 
 if __name__ == '__main__':

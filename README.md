@@ -160,9 +160,9 @@ SSL certificates and GnuPG keypairs use to secure communication
 between the client and server, so access to them should be restricted
 to the people in your organization who need them. The
 `download_release` endpoint can be restricted using IP ranges or
-password authentication, as explained in
-`server/settings.yml.template`, or of course you can use a firewall on
-the server itself to restrict access to your internal IPs.
+password authentication, as explained in below in "Server
+authentication", or of course you can use a firewall on the server
+itself to restrict access to your internal IPs.
 
 Configuration
 -------------
@@ -297,20 +297,8 @@ accessible to the public, because they contain security-sensitive
 information which should not be distributed outside your organization.
 Therefore, the server allows the `download_release` endpoint to be
 authenticated by IP addresses and ranges (IPv4 and IPv6) and/or
-username / password pairs. Any combination of these can be used, and
-only one match is required (i.e., either a valid client IP address or
-a valid username and password) for the request to the endpoint to
-succeed.
-
-To add permitted IP ranges, edit `server/settings.xml` directly (see
-`server/settings.xml.template` for the format). To add a username and
-password, use `bin/save_password` (run it with `--help` for more
-information) so that the password is hashed properly in the settings
-file.
-
-Note that at this time the `download_release` endpoint is the only one
-that supports authentication, though the other endpoints are
-authenticated using GnuPG.
+username / password pairs. See "Server authentication" below for
+details.
 
 Secret-keeping
 --------------
@@ -365,6 +353,62 @@ database; or view secret data without decrypting it persistently. Run
 Everyday operation
 ------------------
 
+### Server authentication
+
+The following server endpoints can currently be configured to require
+authentication:
+
+<style>
+table, th, td { border: 1px solid black;
+                border-collapse: collapse;
+                padding: 5px; }
+</style>
+
+ | Purpose                     | Endpoint                                    | settings.xml location          | Authentication mandatory? |
+ | --------------------------- | ----------------------------------          | ------------------------------ | :-----------------------: |
+ | Downloading client releases | `/penguindome/v1/download_release`          | server\_auth:download\_release | no                        |
+ | Initiating remote shells    | `/penguindome/v1/server_pipe/server/create` | server\_auth:pipe\_create      | yes                       |
+
+The following authentication types can be configured for each
+endpoint:
+
+* IP addresses and ranges (both IPv4 and IPv6)
+* Username / password pairs dedicated to an individual endpoint
+* Username / passwords configured server-wide
+* Names groups of server-wide users
+
+Any combination of these can be used. If any one authentication passes
+for a particular endpoint, access is permitted. For endpoints
+designated mandatory above, the server throws an exception when the
+endpoint is accessed if no authentication is configured for it.
+
+Here's an example `settings.yml` fragment to illustrate how you
+authentication of these endpoints is configured:
+
+    users:
+      fred: $pbkdf2-sha256$200000$AcAYQ8j5X0tpzRkD4HwvxQ$.EIGFP/1iRPNabcPHw8bOvR.MbYVWFXauC2jJV5hleo
+    groups:
+      server_admins:
+        - fred
+    server_auth:
+      download_release:
+        ipranges:
+          - 127.0.0.1
+          - fe00::0
+          - 192.168.4.0/24
+        users:
+          - fred
+        passwords:
+          download_user: $pbkdf2-sha256$200000$kDKGUCpl7B3jXGutFYLwHg$lQfA3HrPZVIVjKCUhDkDYMtkeuTRKbb6UxqnUeLzV0k
+      pipe_create:
+        groups:
+          - server_admins
+
+You can use `bin/save_password` on the server to hash and store a
+password for a user in `server/settings.yml` either server-wide (i.e.,
+in the top-level `users` section) or for a specific endpoint. Run it
+with `--help` for more information.
+
 ### Issues audit
 
 The issues audit that is run out of cron on the server basically just
@@ -415,6 +459,38 @@ You can get a one-time command onto clients in one of two ways:
 * You can use the `bin/client_command` script to add a script file or
   shell command to one or more clients as a patch. Run
   `bin/client_command --help` for more information.
+
+### Remote shells
+
+PenguinDome supports running a remote shell on any client that is on
+the network and checking in periodically with the PenguinDome server.
+
+Running a remote shell is (obviously) a security-sensitive operation.
+Because of this, a full transcript of each shell session is logged,
+and the server endpoint used on the server to set up a remote shell
+session requires authentication to be configured as described above.
+It is highly recommended to configure the endpoint with username /
+password authentication, with dedicated usernames and passwords for
+each PenguinDome administrator, so that the server can log who
+initiated each remote shell.
+
+To initiate a remote shell, run <code>bin/client_shell
+*hostname*</code> on the server and enter your username and password
+when prompted. A message will then be displayed, telling you that the
+script is waiting for the client to respond to the remote shell
+request. You should get a shell prompt within a few minutes when the
+client checks in to the server.
+
+As long as you set TERM properly, you should be able to use
+full-screen editors, type ctrl-C and ctrl-Z, etc., within the remote
+shell. You can exit normally from the shell, e.g. by typing ctrl-d or
+"exit", or you can hit Enter and type "~." to terminate the connection
+(note that although that's the same escape sequence used by SSH,
+that's just to make it easy to remember; the remote shell connection
+doesn't actually use SSH).
+
+Remote shells are disconnected automatically if they're idle for a
+while.
 
 ### Wiping a client
 
@@ -599,6 +675,47 @@ crontab installed by `client/client-setup.sh`. It does the following:
   as elapsed, then submit collected data to the server using the
   `bin/submit` script.
 
+### Remote shells
+
+When you initiate a remote shell on the server, several things happen:
+
+1. The `client_shell` script tells the PenguinDome web server that
+   it's requesting a shell.
+
+2. The web server initializes a proxy I/O pipe for this shell
+   instance, assigns a unique identifier to it, and returns it to the
+   `client_shell` script.
+
+3. The `client_shell` script tells the server to send a patch script
+   down to the client.
+
+4. The `client_shell` script connects to the proxy I/O pipe on the
+   web server and waits to start receiving I/O from the client.
+
+5. The client checks in with the server and downloads and runs the
+   patch script.
+
+6. The patch script launches the shell process and acts as an I/O
+   passthrough between the shell and the client end of the proxy I/O
+   pipe on the web server.
+
+7. Once the `client_shell` script detects that the client has
+   connected, it starts acting as an I/O passthrough between the
+   user's terminal and the server end of the proxy I/O pipe on the web
+   server.
+
+The "proxy I/O pipe" mentioned above uses keep-alive connections to
+the web server and periodic polling for new data transmitted from the
+other side of the pipe. WebSockets would have been a reasonable
+alternative to this implementation, but when I looked at the various
+WebSocket implementations available to layer on top of Flask, they all
+looked like various different levels of painful to use, so I decided
+to roll my own.
+
+The code to make this all work is in `penguindome/shell/__init__.py`
+and `penguindome/shell/client.py`, along with the code in the server
+for managing the proxy I/O pipes.
+
 Client-server API
 -----------------
 
@@ -618,13 +735,34 @@ The server supports the following queries from clients:
 * `/penguindome/v1/download_release` for downloading a tar file
   containing the most recent client release, as documented above.
 
+* `/penguindome/v1/server_pipe/server/create` for the `client_shell`
+  script to use when initiating a remote shell request.
+
+* `/penguindome/v1/server_pipe/client/open` for clients to use when
+  responding to remote shell requests.
+
+* `/penguindome/v1/server_pipe/{server or client}/{send or receive}`
+  for the server and client ends of remote shell connections to talk
+  to each other.
+
+* `/penguinddome/v1/server_pipe/{server or client}/close` for the
+  server and client ends of remote shell connections to terminate and
+  clean up the connection.
+
 All of the API endpoints except `download_release` should be called
-with `POST` and require two form fields:
+with `POST`.
+
+All of the `POST` endpoints except `server_pipe` send and receive
+require two form fields:
 
 * `data` contains the JSON-encoded query data.
 
 * `signature` contains a detached GnuPG signature for the data. More
   on this below.
+
+Rather than using GnuPG signatures, the `server_pipe` endpoints use
+AES encryption using a random key and IV created when the pipe is
+created.
 
 Security
 --------

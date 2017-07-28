@@ -48,6 +48,8 @@ gpg_mode = None
 gpg_exe = None
 got_logger = None
 client_gpg_version = '2.1.11'
+server_pipe_log_filter_re = re.compile(
+    r'POST.*/server_pipe/.*/(?:send|receive).* 200 ')
 
 SelectorVariants = namedtuple(
     'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
@@ -231,13 +233,22 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
     return signature_file[len(top_dir)+1:]
 
 
-def get_logger(setting_getter, name, fail_to_local=False):
+def get_logger(setting_getter, name, fail_to_local=False, filter=None):
     global got_logger
     if got_logger:
         # Yes, this means that if you try to change your logging within an
         # application, it won't work. This is intentional. You shouldn't do
         # that.
         return got_logger
+
+    if filter:
+        def log_filter(r, h):
+            if server_pipe_log_filter_re.search(r.message):
+                return False
+            return filter(r, h)
+    else:
+        def log_filter(r, h):
+            return not server_pipe_log_filter_re.search(r.message)
 
     logger = logbook.Logger('penguindome-' + name)
 
@@ -249,7 +260,7 @@ def get_logger(setting_getter, name, fail_to_local=False):
     # We always do local debug logging, regardless of whether we're also
     # logging elsewhere.
     logbook.RotatingFileHandler(
-        internal_log_file, bubble=True).push_application()
+        internal_log_file, bubble=True, filter=log_filter).push_application()
 
     handler_name = setting_getter('logging:handler')
     if handler_name:
@@ -258,7 +269,7 @@ def get_logger(setting_getter, name, fail_to_local=False):
         handler_name = next(d for d in dir(logbook)
                             if d.lower() == handler_name)
         handler = logbook.__dict__[handler_name]
-        kwargs = {'bubble': True}
+        kwargs = {'bubble': True, 'filter': log_filter}
         level = setting_getter('logging:level')
         kwargs['level'] = logbook.__dict__[level.upper()]
         if handler_name == 'SyslogHandler':

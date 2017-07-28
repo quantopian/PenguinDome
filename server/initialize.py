@@ -226,6 +226,10 @@ def main(args):
                 'server', 'port', get_int,
                 'What port should the server listen on?')
 
+        server_changed |= maybe_changed(
+            'server', 'local_port', get_int,
+            'What local-only port should the server use?')
+
         configure_ssl = True
         port = get_server_setting('port')
         if isinstance(port, dict):

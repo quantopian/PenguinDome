@@ -34,6 +34,10 @@
 #   8080:
 #
 port: [server port, optional, defaults to 80]
+# In addition to the ports configured in "port", the server also always binds
+# to a non-SSL port on the address 127.0.0.1, for requests generated locally by
+# scripts that need to talk to the server. The default is 5000.
+local_port: 5000
 threaded: [whether to run multithreaded server, optional, defaults to true]
 database:
   host: [either a single host[:port] or a list, optional, defaults to localhost:27017]
@@ -74,3 +78,10 @@ server_auth:
   download_release:
     ipranges: [IP addresses or ranges to allow, IPv4 and IPv6 are OK]
     passwords: [hash of username/password pairs to accept]
+    users: [server usernames that are allowed to access the endpoint]
+    groups: [server groups whose members are allowed to access the endpoint]
+  pipe_create: [same fields as above, for server pipe creation, which
+                basically means the ability to initiate a remote shell on a
+                client]
+users: [hash of usernames & hashed passwords, maintained by bin/save_passwords]
+groups: [hash of server groups with member lists, used for authenticating endpoints]

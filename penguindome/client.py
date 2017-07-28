@@ -11,6 +11,7 @@
 # the License.
 
 from functools import partial
+import getpass
 import json
 import os
 import requests
@@ -31,6 +32,7 @@ from penguindome import (
 )
 
 gpg_command = partial(main_gpg_command, minimum_version=client_gpg_version)
+session = None
 
 
 def get_setting(setting, default=None, check_defaults=True):
@@ -73,39 +75,55 @@ def encrypt_document(*args, **kwargs):
 
 
 def server_request(cmd, data=None, data_path=None,
-                   exit_on_connection_error=False):
-    server_url = get_setting('server_url')
+                   exit_on_connection_error=False, logger=None,
+                   # Clients should never need to use these. They are for
+                   # internal use on the server.
+                   local_port=None, signed=True):
+    global session
+    if session is None:
+        session = requests.Session()
+    server_url = 'http://127.0.0.1:{}'.format(local_port) if local_port \
+        else get_setting('server_url')
     if data and data_path:
         raise Exception('Both data and data_path specified')
     with NamedTemporaryFile('w+') as temp_data_file, \
             NamedTemporaryFile('w+') as signature_file:
-        if data:
+        if data_path:
+            data = open(data_path).read()
+        else:
             data = json.dumps(data)
             temp_data_file.write(data)
             temp_data_file.flush()
             data_path = temp_data_file.name
-        else:
-            data = open(data_path).read()
-        gpg_command('--armor', '--detach-sign', '-o', signature_file.name,
-                    data_path)
-        signature_file.seek(0)
-        post_data = {
-            'data': data,
-            'signature': signature_file.read(),
-        }
+        post_data = {'data': data}
+        if signed:
+            gpg_command('--armor', '--detach-sign', '-o', signature_file.name,
+                        data_path)
+            signature_file.seek(0)
+            post_data['signature'] = signature_file.read()
 
     kwargs = {
         'data': post_data,
         'timeout': 30,
     }
-    ca_path = get_setting('ssl:ca_path')
-    if ca_path:
-        if not ca_path.startswith('/'):
-            ca_path = os.path.join(top_dir, ca_path)
-        kwargs['verify'] = ca_path
+    if not local_port:
+        ca_path = get_setting('ssl:ca_path')
+        if ca_path:
+            if not ca_path.startswith('/'):
+                ca_path = os.path.join(top_dir, ca_path)
+            kwargs['verify'] = ca_path
     try:
-        response = requests.post('{}{}'.format(server_url, cmd), **kwargs)
-        response.raise_for_status()
+        while True:
+            response = session.post('{}{}'.format(server_url, cmd), **kwargs)
+            if response.status_code == 401 and os.isatty(sys.stderr.fileno()):
+                username = input('Username:')
+                pw = getpass.getpass('Password:')
+                kwargs['auth'] = (username, pw)
+                continue
+            response.raise_for_status()
+            if 'auth' in kwargs and logger:
+                logger.info('Authenticated {} to {}', kwargs['auth'][0], cmd)
+            break
     except requests.exceptions.ConnectionError:
         if exit_on_connection_error:
             sys.exit('Connection error posting to {}'.format(server_url))
