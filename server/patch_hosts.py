@@ -115,7 +115,7 @@ def ls_handler(args):
     if args.host:
         spec['pending_hosts'] = {'$in': args.host}
     else:
-        spec['pending_hosts'] = {'$gt': []}
+        spec['pending_hosts'] = {'$ne': []}
 
     for patch in db.patches.find(spec):
         pending_hosts = ', '.join(sorted(patch['pending_hosts']))
