@@ -393,16 +393,14 @@ of the issues enumerated there.
 Clearly, this could be easier to configure than MongoDB query specs
 hard-coded in a script. Patches are welcome. ;-)
 
-Patching clients
-----------------
+### Patching clients
 
 If you need to patch PenguinDome files on individual clients, as
 opposed to creating a new release with changes that go to all clients,
 you can do so using the server-side `bin/patch_hosts` utility. Run
 `bin/patch_hosts --help` for additional information.
 
-Executing one-time commands on clients
---------------------------------------
+### Executing one-time commands on clients
 
 For general-purpose, one-time data collection, any scripts found in
 the `client/commands` directory on clients are executed, their output
@@ -418,8 +416,7 @@ You can get a one-time command onto clients in one of two ways:
   shell command to one or more clients as a patch. Run
   `bin/client_command --help` for more information.
 
-Wiping a client
----------------
+### Wiping a client
 
 Wiping a client is a special case of the one-time commands
 functionality described above. When you run <code>bin/client_wipe
@@ -428,8 +425,7 @@ the specified host for execution the next time the host checks in.
 This script wipes all non-system-user home directories, kills all of
 their processes, and then deletes their accounts.
 
-Working with open issues
-------------------------
+### Working with open issues
 
 The server utility `bin/issues` is used to review or modify open
 issues. It has the following subcommands:
