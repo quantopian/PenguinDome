@@ -665,6 +665,12 @@ The database contains the following collections:
   clients, including the bookkeeping information necessary to
   determine when to alert about them.
 
+* `arch_security_updates` contains data about Arch Linux security
+  bulletins, maintained by the
+  `server/plugin_managers/arch_os_updates.py` script, for use in
+  determining when there are pending security patches for Arch
+  clients.
+
 Geolocation
 -----------
 
