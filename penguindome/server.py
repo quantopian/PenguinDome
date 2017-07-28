@@ -36,6 +36,7 @@ from penguindome import (
 # dots or fix clear_obsolete_flags.
 arch_security_flag = 'arch_security_updates_at'
 db = None
+pid = None
 
 
 def get_setting(setting, default=None, check_defaults=True):
@@ -65,9 +66,9 @@ def get_logger(name):
 
 
 def get_db():
-    global db
+    global db, pid
 
-    if db:
+    if db and os.getpid() == pid:
         return db
 
     database_name = get_setting('database:name')
@@ -92,6 +93,7 @@ def get_db():
         newdb.authenticate(username, password)
 
     db = MongoProxy(newdb)
+    pid = os.getpid()
     return db
 
 
