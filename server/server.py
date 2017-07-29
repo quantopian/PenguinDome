@@ -563,6 +563,11 @@ def download_release():
 @verify_signature
 def pipe_create():
     data = json.loads(request.form['data'])
+    client_hostname = data['client_hostname']
+    db = get_db()
+    if not db.clients.find_one({'hostname': client_hostname}):
+        raise Exception('Attempt to create pipe for invalid client {}'.format(
+            client_hostname))
     key = data['encryption_key']
     iv = data['encryption_iv']
     uuid = uuid4().hex
@@ -576,6 +581,7 @@ def pipe_create():
         'server_to_client': b'',
         'created': time.time(),
         'activity': None,
+        'client_hostname': client_hostname,
     }
     log.debug('Created pipe {}', uuid)
     return json.dumps({'pipe_id': uuid})
@@ -609,6 +615,8 @@ def pipe_open():
 
 class PipeLogger(object):
     pending = {}
+    directions = {'send': '<<<', 'receive': '>>>'}
+
     # Can contain 'send' and/or 'receive'. I'm still up in the air about
     # whether it's necessary to log data received from the server end of the
     # pipe. I think it's not, because we're most concerned about exfiltration
@@ -627,7 +635,8 @@ class PipeLogger(object):
                     'last': time.time(),
                     'masking': 0,
                     'prefix': p}
-                for d, p in (('send', '<<<'), ('receive', '>>>'))}
+                for d, p in cls.directions.items()}
+            cls.pending[uuid]['hostname'] = pipes[uuid]['client_hostname']
         cls.pending[uuid][direction]['data'] += data
         return cls.pending[uuid]
 
@@ -662,9 +671,11 @@ class PipeLogger(object):
         for line in lines:
             # If the word "password" appears in the output from the client,
             # then mask the next two lines sent from the server.
-            if direction == 'receive' and re.search(b'password', line, re.I):
-                log.info('pipelog {}(Masking next line as potential '
-                         'passwords)', pending['send']['prefix'])
+            if direction == 'receive' and re.search(b'password', line, re.I) \
+               and 'send' in cls.enabled:
+                log.info('pipelog[{}] {}(Masking next line as potential '
+                         'password)', pending['hostname'],
+                         pending['send']['prefix'])
                 pending['send']['masking'] += 1
             try:
                 line = line.decode()
@@ -674,7 +685,8 @@ class PipeLogger(object):
                 pending[direction]['masking'] -= 1
                 line = re.sub(r'.', '.', line)
             if direction in cls.enabled:
-                log.info('pipelog {}{}', pending[direction]['prefix'], line)
+                log.info('pipelog[{}] {}{}', pending['hostname'],
+                         pending[direction]['prefix'], line)
             pending[direction]['last'] = time.time()
 
     @classmethod
@@ -683,7 +695,7 @@ class PipeLogger(object):
             pending = cls.pending[uuid]
         except KeyError:
             return
-        for direction in pending:
+        for direction in cls.directions.keys():
             if cls.split_lines(pending[direction]):
                 if pending[direction]['data']:
                     pending[direction]['lines'].append(

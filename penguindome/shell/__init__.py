@@ -14,6 +14,7 @@ from abc import ABCMeta, abstractmethod
 from base64 import b64encode, b64decode
 import select
 import os
+import socket
 import sys
 import time
 from uuid import uuid4
@@ -148,7 +149,8 @@ class TerminalPeer(InteractionPeer):
 
 
 class PenguinDomeServerPeer(InteractionPeer):
-    def __init__(self, peer_type, pipe_id=None, local_port=None, logger=None):
+    def __init__(self, peer_type, pipe_id=None, local_port=None, logger=None,
+                 client_hostname=None):
         if peer_type not in ('client', 'server'):
             raise Exception('Invalid peer type "{}"'.format(peer_type))
         self.type = peer_type
@@ -157,9 +159,15 @@ class PenguinDomeServerPeer(InteractionPeer):
         self.done = False
         self.local_port = local_port
         self.logger = logger
+        self.client_hostname = client_hostname
         data = {'encryption_key': uuid4().hex,
-                'encryption_iv': uuid4().hex}
+                'encryption_iv': uuid4().hex,
+                'hostname': socket.gethostname()}
         if self.pipe_id is None:
+            if not client_hostname:
+                raise Exception("Can't create server pipe without specifying "
+                                "client_hostname")
+            data['client_hostname'] = client_hostname
             response = self._request('create', data=data)
             self.pipe_id = response['pipe_id']
         else:
