@@ -257,6 +257,7 @@ def parse_args():
 
 
 def check_ssl_certificates():
+    issue_name = 'expiring-certificate'
     ports = get_setting('port')
     if isinstance(ports, int):
         ports = [ports]
@@ -275,18 +276,23 @@ def check_ssl_certificates():
         except subprocess.CalledProcessError:
             hostname = 'server-port-{}'.format(port)
             problem_hosts.append(hostname)
-            open_issue(hostname, 'expiring-certificate')
-    close_issue({'$not': {'$in': list(problem_hosts)}}, 'expiring-certificate')
+            if open_issue(hostname, issue_name):
+                log.info('Opened {} issue for {}', issue_name, hostname)
+    for doc in close_issue({'$not': {'$in': list(problem_hosts)}}, issue_name):
+        log.info('Closed {} issue for {}', issue_name, doc['hostname'])
 
 
 def check_pending_patches():
+    issue_name = 'pending-patches'
     db = get_db()
     problem_hosts = set()
     for patch in db.patches.find({'pending_hosts': {'$not': {'$size': 0}}}):
         for hostname in patch['pending_hosts']:
-            open_issue(hostname, 'pending-patches')
+            if open_issue(hostname, issue_name):
+                log.info('Opened {} issue for {}', issue_name, hostname)
             problem_hosts.add(hostname)
-    close_issue({'$not': {'$in': list(problem_hosts)}}, 'pending-patches')
+    for doc in close_issue({'$not': {'$in': list(problem_hosts)}}, issue_name):
+        log.info('Closed {} issue for {}', issue_name, doc['hostname'])
 
 
 def audit_handler(args):
@@ -310,10 +316,14 @@ def audit_handler(args):
             continue
         problems = [d for d in db.clients.find(check['spec'])]
         for problem in problems:
-            open_issue(problem['hostname'], check_name,
-                       as_of=problem['plugins']['submitted_at'])
+            if open_issue(problem['hostname'], check_name,
+                          as_of=problem['plugins']['submitted_at']):
+                log.info('Opened {} issue for {} as of {}', check_name,
+                         problem['hostname'],
+                         problem['plugins']['submitted_at'])
         problem_hosts = [d['hostname'] for d in problems]
-        close_issue({'$not': {'$in': problem_hosts}}, check_name)
+        for doc in close_issue({'$not': {'$in': problem_hosts}}, check_name):
+            log.info('Closed {} issue for {}', check_name, doc['hostname'])
 
     check_pending_patches()
     check_ssl_certificates()
@@ -433,8 +443,11 @@ def open_handler(args):
     with logbook.StreamHandler(sys.stdout, bubble=True):
         for host in args.host:
             for issue in args.issue_name:
-                open_issue(host, issue)
-                log.info('Opened {} issue for {}', issue, host)
+                if open_issue(host, issue):
+                    log.info('Manually opened {} issue for {}', issue, host)
+                else:
+                    print('Open {} issue for {} already exists.'.format(
+                        issue, host))
 
 
 def close_handler(args):
@@ -448,15 +461,16 @@ def close_handler(args):
     issue_name = (None if not args.issue_name else
                   args.issue_name[0] if len(args.issue_name) == 1
                   else {'$in': args.issue_name})
-    ids = close_issue(hostname, issue_name)
+    docs = close_issue(hostname, issue_name)
 
-    if not ids:
+    if not docs:
         print('No matching issues.')
         return
 
     with logbook.StreamHandler(sys.stdout, bubble=True):
-        for doc in get_db().issues.find({'_id': {'$in': ids}}):
-            log.info('Manually closed {} {}', doc['hostname'], doc['name'])
+        for doc in docs:
+            log.info('Manually closed {} issue for {}', doc['name'],
+                     doc['hostname'])
 
 
 def main():

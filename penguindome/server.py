@@ -152,7 +152,9 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
 
 
 def open_issue(hostname, issue_name, as_of=None):
-    """Opens an issue for the specified hostname if there isn't one"""
+    """Opens an issue for the specified hostname if there isn't one
+
+    Returns True if created, False if issue was already open."""
     db = get_db()
     spec = {'hostname': hostname, 'name': issue_name}
     if as_of:
@@ -168,23 +170,28 @@ def open_issue(hostname, issue_name, as_of=None):
         db.issues.insert_one({'hostname': hostname,
                               'name': issue_name,
                               'opened_at': datetime.datetime.utcnow()})
+    return not existing
 
 
 def close_issue(hostname, issue_name):
-    """Closes any open issues for the specified host and issue name"""
+    """Closes any open issues for the specified host and issue name
+
+    Returns list of documents of closed issues."""
     db = get_db()
     spec = {'closed_at': {'$exists': False}}
     if hostname:
         spec['hostname'] = hostname
     if issue_name:
         spec['name'] = issue_name
-    ids = [d['_id'] for d in db.issues.find(spec)]
-    if not ids:
-        return ids
-    db.issues.update_many(
-        {'_id': {'$in': ids}},
-        {'$set': {'closed_at': datetime.datetime.utcnow()}})
-    return ids
+    docs = list(db.issues.find(spec))
+    if not docs:
+        return docs
+    now = datetime.datetime.utcnow()
+    for doc in docs:
+        doc['closed_at'] = now
+    db.issues.update_many({'_id': {'$in': [d['_id'] for d in docs]}},
+                          {'$set': {'closed_at': now}})
+    return docs
 
 
 def suspend_host(hostname):

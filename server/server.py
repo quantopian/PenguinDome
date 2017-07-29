@@ -68,6 +68,7 @@ app = Flask(__name__)
 def log_deprecated_port(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
+        issue_name = 'deprecated-port'
         try:
             hostname = json.loads(request.form['data'])['hostname']
             ok = True
@@ -78,10 +79,13 @@ def log_deprecated_port(f):
         if app.config['deprecated_port']:
             log.warn('Host {} connected to deprecated port', hostname)
             if ok:
-                open_issue(hostname, 'deprecated-port')
+                if open_issue(hostname, issue_name):
+                    log.info('Opened {} issue for {}', issue_name, hostname)
         else:
             if ok:
-                close_issue(hostname, 'deprecated-port')
+                doc = close_issue(hostname, issue_name)
+                if doc:
+                    log.info('Closed {} issue for {}', issue_name, hostname)
         return f(*args, **kwargs)
     return wrapper
 
