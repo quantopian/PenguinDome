@@ -175,8 +175,8 @@ def clear_obsolete_flags():
                   'plugins.submitted_at']
     for doc in db.clients.find(spec, projection):
         if doc['plugins']['submitted_at'] > doc[arch_security_flag]:
-            db.update_one({'_id': doc['_id']},
-                          {'$unset': {arch_security_flag: True}})
+            db.clients.update_one({'_id': doc['_id']},
+                                  {'$unset': {arch_security_flag: True}})
             log.info('Cleared Arch security updates flag from {}',
                      doc['hostname'])
 
