@@ -31,6 +31,29 @@ from penguindome import (
     top_dir,
 )
 
+valid_client_parameters = (
+    # This is a list of other client which should be treated as the same as the
+    # client this setting is on, for the purposes of the "not-reporting"
+    # issue. In other words, if any of the linked clients have reported
+    # recently, it's as if all have. Note that if you set this setting for one
+    # client, the code in set_client_parameter below automatically propagates
+    # the equivalent settings for the other.
+    'user_clients',
+)
+
+
+def client_type(name):
+    db = get_db()
+    if not db.clients.find_one({'hostname': name}):
+        raise Exception('Client {} does not exist.'.format(name))
+    return name
+
+
+client_parameter_types = {
+    # name: (type, is_multiple)
+    'user_clients': (client_type, True),
+}
+
 # If this has dots in it then clear_obsolete_flags in
 # server/plugin_managers/arch_os_updates.py will break, so either don't give it
 # dots or fix clear_obsolete_flags.
@@ -404,3 +427,111 @@ def audit_trail_write(tags, records):
     # inserting, but that's an acceptable risk, since duplicate records can be
     # distinguished after the fact, for the sake of making this run faster.
     get_db().audit_trail.insert_many(records, ordered=False)
+
+
+def set_client_parameter(hostname, parameter, value, recurse=True):
+    """Set a client parameter
+
+    If None is specified for value, then the parameter is unset.
+
+    Returns the old value if set and different else None."""
+
+    # Note that when we unset a parameter, i.e., value is None, we actually
+    # keep it in the database with a value of None, so that we have a record of
+    # when it was unset.
+
+    # Note that to simplify things, values are always stored in the database as
+    # lists, even when is_multiple is False.
+
+    hostname = client_type(hostname)
+
+    if parameter not in valid_client_parameters:
+        raise Exception('Invalid client parameter {}'.format(parameter))
+
+    try:
+        parameter_type, is_multiple = client_parameter_types[parameter]
+    except KeyError:
+        parameter_type, is_multiple = str, False
+
+    if value:
+        if isinstance(value, str):
+            value = [value]
+        value.sort()
+        value = list(map(parameter_type, value))
+        if not is_multiple and len(value) > 1:
+            raise Exception('Parameter {} does not take multiple values'.
+                            format(parameter))
+
+    db = get_db()
+
+    collection = db.client_parameters
+    spec = {'hostname': hostname, 'parameter': parameter}
+    old = collection.find_one(spec)
+    old_value = old['value'] if old else None
+
+    if value == old_value:
+        return None
+
+    if parameter == 'user_clients' and recurse:
+        if value and hostname in value:
+            raise Exception('You cannot link a client with itself.')
+
+        if old_value:
+            for client in old_value:
+                if not value or client not in value:
+                    set_client_parameter(client, parameter, None, False)
+        if value:
+            for client in value:
+                client_value = list(value)
+                client_value.remove(client)
+                client_value.append(hostname)
+                set_client_parameter(client, parameter, client_value, False)
+
+    if old:
+        new = old.copy()
+    else:
+        new = spec.copy()
+
+    new['value'] = value
+    new['updated_at'] = datetime.datetime.utcnow()
+    collection.replace_one(spec, new, upsert=True)
+
+    return old_value
+
+
+def get_client_parameters(hostname, parameter):
+    """Iterates through matching (hostname, parameter, value) tuples"""
+
+    spec = {'value': {'$ne': None}}
+
+    if hostname:
+        if isinstance(hostname, str):
+            spec['hostname'] = hostname
+        elif hostname:
+            spec['hostname'] = {'$in': hostname}
+
+    if parameter:
+        if isinstance(parameter, str):
+            spec['parameter'] = parameter
+            params = [parameter]
+        else:
+            spec['parameter'] = {'$in': parameter}
+            params = parameter
+
+        for p in params:
+            if p not in valid_client_parameters:
+                raise Exception('Invalid client parameter {}'.format(p))
+
+    db = get_db()
+    collection = db.client_parameters
+
+    for d in collection.find(spec):
+        yield (d['hostname'], d['parameter'], d['value'])
+
+
+def get_client_parameter(hostname, parameter):
+    """Convenience function to fetch just one value"""
+    try:
+        return next(get_client_parameters(hostname, parameter))[2]
+    except StopIteration:
+        return None

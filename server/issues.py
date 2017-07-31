@@ -34,17 +34,37 @@ from penguindome.server import (
     get_port_setting,
     get_logger,
     arch_security_flag,
+    get_client_parameter,
 )
 
 os.chdir(top_dir)
 log = get_logger('issues')
 now = datetime.datetime.utcnow()
 
+
+def not_reporting_filter(issue):
+    db = get_db()
+    peers = get_client_parameter(issue['hostname'], 'user_clients')
+    if not peers:
+        return False
+    # Completely arbitrary: Even peered clients need to check in at least once
+    # per month.
+    if db.clients.find_one({'hostname': issue['hostname']})['submitted_at'] < \
+       now - datetime.timedelta(days=31):
+        return False
+    peer_times = [d['submitted_at'] for d in
+                  db.clients.find({'hostname': {'$in': peers}},
+                                  projection=['submitted_at'])]
+    cutoff = problem_checks['not-reporting']['spec']['submitted_at']['$lt']
+    return any(t >= cutoff for t in peer_times)
+
+
 problem_checks = {
     'not-reporting': {
         'grace-period': datetime.timedelta(hours=4),
         'spec': {'submitted_at':
-                 {'$lt': now - datetime.timedelta(days=1)}}},
+                 {'$lt': now - datetime.timedelta(days=1)}},
+        'filter': not_reporting_filter},
     'no-location': {
         'grace-period': datetime.timedelta(days=1),
         'spec': {'plugins.geolocation': 'unknown'}},
@@ -171,6 +191,9 @@ def parse_args():
     audit_parser = subparsers.add_parser('audit',
                                          help='Audit and report on issues')
     audit_parser.add_argument(
+        '--ignore-filters', action='store_true',
+        help='Ignore filters configured into checks')
+    audit_parser.add_argument(
         '--ignore-grace-period', action='store_true',
         help='Ignore alert grace period when deciding what to report')
     group = audit_parser.add_mutually_exclusive_group()
@@ -195,7 +218,8 @@ def parse_args():
                               help='Show alerts for suspended hosts')
     audit_parser.add_argument(
         '--full', action='store_true', help='Same as --ignore-grace-period '
-        '--display-recent --ignore-snoozed (but NOT --ignore-suspended)')
+        '--display-recent --ignore-snoozed --ignore-filters (but NOT '
+        '--ignore-suspended)')
     audit_parser.set_defaults(func=audit_handler)
 
     snooze_parser = subparsers.add_parser('snooze', help='Snooze alerts')
@@ -307,7 +331,7 @@ def audit_handler(args):
 
     if args.full:
         args.ignore_grace_period = args.display_recent = \
-            args.ignore_snoozed = True
+            args.ignore_snoozed = args.ignore_filters = True
 
     db = get_db()
 
@@ -336,10 +360,10 @@ def audit_handler(args):
     for key1, value1 in issues.items():
         key1_printed = False
         for key2, issue in value1.items():
-            try:
-                grace_period = problem_checks[issue['name']]['grace-period']
-            except KeyError:
-                grace_period = datetime.timedelta(0)
+            check = problem_checks.get(issue['name']) or {}
+            filter = None if args.ignore_filters else check.get('filter', None)
+            grace_period = check.get('grace-period', datetime.timedelta(0))
+            filter_ok = not (filter and filter(issue))
             alert_ok = (args.display_recent or
                         'alerted_at' not in issue or
                         issue['alerted_at'] < alert_threshold)
@@ -352,7 +376,7 @@ def audit_handler(args):
                 snoozed = ' [snoozed until {}]'.format(d(issue['unsnooze_at']))
             else:
                 snoozed = ''
-            if alert_ok and grace_ok and snooze_ok:
+            if filter_ok and alert_ok and grace_ok and snooze_ok:
                 if not key1_printed:
                     print(key1)
                     key1_printed = True
