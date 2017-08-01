@@ -409,6 +409,13 @@ password for a user in `server/settings.yml` either server-wide (i.e.,
 in the top-level `users` section) or for a specific endpoint. Run it
 with `--help` for more information.
 
+### Client parameters
+
+The `bin/client_parameters` utility allows you to list, set, and unset
+client-specific parameters. Right now the only parameter that is
+supported is `user_clients`, which is described below (see "Special
+audit handling for users with multiple computers").
+
 ### Issues audit
 
 The issues audit that is run out of cron on the server basically just
@@ -436,6 +443,31 @@ of the issues enumerated there.
 
 Clearly, this could be easier to configure than MongoDB query specs
 hard-coded in a script. Patches are welcome. ;-)
+
+### Special audit handling for users with multiple computers
+
+A situation which occurs frequently enough that special handling is
+justified is when a user has more than one computer and uses one of
+them most of the time. For example, a user may have a primary and
+backup computer and use the latter only when the former is out of
+commission for some reason, or a user may have a computer at work for
+during the week and a second one at home they only tend to use during
+the weekends.
+
+This causes spurious "not-reporting" audit reports to be generated for
+the computer that is used infrequently.
+
+To address this, you can configure the `user_clients` parameter on a
+group of clients to link them all together. When you set this
+parameter (using `bin/client_parameters`) on one client to be a list
+of one or more other clients, the reciprocal parameters are
+automatically set on all the other clients you specify. Then, the
+issues audit suppresses not-reporting alerts about all of the clients
+in the linked group if any of them have reported recently.
+
+However, this dispensation only lasts for up to a month at a time,
+i.e., after a month of not reporting the issues audit will complain
+even about computers that are linked to others that have reported.
 
 ### Patching clients
 
@@ -809,6 +841,9 @@ The database contains the following collections:
   `server/plugin_managers/arch_os_updates.py` script, for use in
   determining when there are pending security patches for Arch
   clients.
+
+* `client_parameters` contains client-specific paramaters currently
+  used only by `bin/client_parameters` and `bin/issues audit`.
 
 Geolocation
 -----------
