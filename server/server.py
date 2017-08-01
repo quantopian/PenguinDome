@@ -869,6 +869,10 @@ def startServer(port, pipes_arg, local_only=False):
 def prepare_database():
     db = get_db()
 
+    db.client_parameters.create_indexes([
+        IndexModel([('hostname', ASCENDING),
+                    ('parameter', ASCENDING)]),
+        IndexModel([('parameter', ASCENDING)])])
     db.clients.create_indexes([
         IndexModel([('hostname', ASCENDING)],
                    unique=True),
