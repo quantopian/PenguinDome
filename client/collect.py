@@ -21,6 +21,7 @@ import socket
 import stat
 import sys
 from tempfile import NamedTemporaryFile
+import threading
 import time
 
 from penguindome import (
@@ -46,25 +47,79 @@ for d in ('/sbin', '/usr/sbin'):
 log = get_logger('collect')
 
 
+def run_file(run_path, run_name, results, parse_output=True,
+             delete_after_success=False, submit_failures=False):
+    log.debug('Running {}', run_path)
+    with NamedTemporaryFile('w+') as stderr_file:
+        try:
+            run_output = subprocess.check_output(
+                run_path,
+                stderr=stderr_file.fileno()).decode('ascii')
+        except subprocess.CalledProcessError as e:
+            log.exception('Failed to execute {}', run_path)
+            output = e.output.decode('ascii').strip()
+            if output:
+                log.info('Output of failed script:\n{}', output)
+            stderr_file.seek(0)
+            stderr = stderr_file.read().strip()
+            if stderr:
+                log.info('Stderr of failed script:\n{}', stderr)
+            if submit_failures:
+                results[run_name] = {
+                    'stdout': e.output.decode('ascii'),
+                    'stderr': stderr,
+                    'returncode': e.returncode,
+                }
+            else:
+                return
+        else:
+            if parse_output:
+                try:
+                    results[run_name] = json.loads(run_output)
+                except:
+                    log.exception('Output of {} failed to parse', run_path)
+                    return
+            else:
+                results[run_name] = {'output': run_output.strip()}
+            if delete_after_success:
+                try:
+                    os.remove(run_path)
+                    sig_file = os.path.join(signatures_dir,
+                                            run_path + '.sig')
+                    try:
+                        os.remove(sig_file)
+                    except:
+                        log.warn('Failed to remove {}', sig_file)
+                except:
+                    log.exception('Failed to remove {}', run_path)
+                else:
+                    log.info('Removed {}', run_path)
+        finally:
+            log.debug('Finished with {}', run_path)
+
+
 def run_dir(dir_path, parse_output=True, delete_after_success=False,
             submit_failures=False):
     results = {}
     if not os.path.exists(dir_path):
         log.debug('Skipping nonexistent directory {}', dir_path)
         return
-    for run_file in os.listdir(dir_path):
-        run_path = os.path.join(dir_path, run_file)
-        if run_file.endswith('~'):
+    saw_names = set()
+    threads = []
+    for run_tail in os.listdir(dir_path):
+        run_path = os.path.join(dir_path, run_tail)
+        if run_tail.endswith('~'):
             log.debug('Skipping {}', run_path)
             continue
-        if run_file.startswith('.'):
+        if run_tail.startswith('.'):
             log.debug('Skipping {}', run_path)
             continue
-        run_name = re.sub(r'\.[^.]+$', '', run_file)
-        if run_name in results:
+        run_name = re.sub(r'\.[^.]+$', '', run_tail)
+        if run_name in saw_names:
             log.error('Skipping file with duplicate name {}',
                       run_path)
             continue
+        saw_names.add(run_name)
         run_stat = os.stat(run_path)
         run_mode = run_stat.st_mode
         if not stat.S_ISREG(run_mode):
@@ -73,51 +128,21 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
         if not os.access(run_path, os.X_OK):
             log.debug('Skipping non-executable {}', run_path)
             continue
-        log.debug('Running {}', run_path)
-        with NamedTemporaryFile('w+') as stderr_file:
-            try:
-                run_output = subprocess.check_output(
-                    run_path,
-                    stderr=stderr_file.fileno()).decode('ascii')
-            except subprocess.CalledProcessError as e:
-                log.exception('Failed to execute {}', run_path)
-                output = e.output.decode('ascii').strip()
-                if output:
-                    log.info('Output of failed script:\n{}', output)
-                stderr_file.seek(0)
-                stderr = stderr_file.read().strip()
-                if stderr:
-                    log.info('Stderr of failed script:\n{}', stderr)
-                if submit_failures:
-                    results[run_name] = {
-                        'stdout': e.output.decode('ascii'),
-                        'stderr': stderr,
-                        'returncode': e.returncode,
-                    }
-                else:
-                    continue
-            else:
-                if parse_output:
-                    try:
-                        results[run_name] = json.loads(run_output)
-                    except:
-                        log.exception('Output of {} failed to parse', run_path)
-                        continue
-                else:
-                    results[run_name] = {'output': run_output.strip()}
-                if delete_after_success:
-                    try:
-                        os.remove(run_path)
-                        sig_file = os.path.join(signatures_dir,
-                                                run_path + '.sig')
-                        try:
-                            os.remove(sig_file)
-                        except:
-                            log.warn('Failed to remove {}', sig_file)
-                    except:
-                        log.exception('Failed to remove {}', run_path)
-                    else:
-                        log.info('Removed {}', run_path)
+        args = (run_path, run_name, results)
+        kwargs = {'parse_output': parse_output,
+                  'delete_after_success': delete_after_success,
+                  'submit_failures': submit_failures}
+        if True:  # Change to False to disable threading
+            thread = threading.Thread(
+                target=run_file,
+                args=args,
+                kwargs=kwargs)
+            thread.start()
+            threads.append(thread)
+        else:
+            run_file(*args, **kwargs)
+    for thread in threads:
+        thread.join()
     return results
 
 
