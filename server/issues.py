@@ -17,8 +17,10 @@ import datetime
 import logbook
 import os
 import pytz
+import smtplib
 import subprocess
 import sys
+from textwrap import dedent
 
 from penguindome import top_dir
 from penguindome.server import (
@@ -191,6 +193,9 @@ def parse_args():
     audit_parser = subparsers.add_parser('audit',
                                          help='Audit and report on issues')
     audit_parser.add_argument(
+        '--email', action='store_true', help='Send emails about issues to '
+        'the email addresses in clients\' "user_email" parameters')
+    audit_parser.add_argument(
         '--ignore-filters', action='store_true',
         help='Ignore filters configured into checks')
     audit_parser.add_argument(
@@ -359,6 +364,7 @@ def audit_handler(args):
 
     for key1, value1 in issues.items():
         key1_printed = False
+        email_list = ''
         for key2, issue in value1.items():
             check = problem_checks.get(issue['name']) or {}
             filter = None if args.ignore_filters else check.get('filter', None)
@@ -386,11 +392,35 @@ def audit_handler(args):
                     key1_printed = True
                 print('  {} since {}{}'.format(key2, d(issue['opened_at']),
                                                snoozed))
+                email_list += '{} since {}\n'.format(
+                    key2, d(issue['opened_at']))
                 if not in_a_terminal:
                     log.warn('{} {} since {}', key1, key2, issue['opened_at'])
                 if args.update_recent:
                     db.issues.update(
                         {'_id': issue['_id']}, {'$set': {'alerted_at': now}})
+        if args.email and email_list:
+            email = get_client_parameter(key1, 'user_email')
+            if not email:
+                log.warn("Can't send email for {} since user_email not set",
+                         key1)
+                continue
+            subject = 'Please address issues on {}'.format(key1)
+            body = dedent("""\
+                The following issues have been identified on the PenguinDome
+                (device management) client "{}", for which you are the listed
+                owner. Please rectify these issues at your earliest
+                convenience.\n\n""")
+            body += email_list
+            smtp = smtplib.SMTP()
+            smtp.connect()
+            msg = dedent("""\
+                From: PenguinDome
+                To: {to}
+                Subject: {subject}\n\n""").format(to=email, subject=subject)
+            msg += body
+            smtp.sendmail('PenguinDome', [email], msg)
+            smtp.quit()
 
 
 def snooze_handler(args):

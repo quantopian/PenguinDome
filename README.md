@@ -412,9 +412,12 @@ with `--help` for more information.
 ### Client parameters
 
 The `bin/client_parameters` utility allows you to list, set, and unset
-client-specific parameters. Right now the only parameter that is
-supported is `user_clients`, which is described below (see "Special
-audit handling for users with multiple computers").
+client-specific parameters. Two parameters are currently supported:
+
+* `user_clients`, which is described below (see "Special audit
+  handling for users with multiple computers")
+* `user_email`, which indicates the email address of a client's user,
+  used to email the user about issues with the client
 
 ### Issues audit
 

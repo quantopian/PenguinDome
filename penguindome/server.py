@@ -39,6 +39,8 @@ valid_client_parameters = (
     # client, the code in set_client_parameter below automatically propagates
     # the equivalent settings for the other.
     'user_clients',
+    # Email address of the user who should be notified about client issues.
+    'user_email',
 )
 
 
@@ -51,6 +53,7 @@ def client_type(name):
 
 client_parameter_types = {
     # name: (type, is_multiple)
+    # If a parameter isn't here, then it defaults to a single string.
     'user_clients': (client_type, True),
 }
 
@@ -60,6 +63,13 @@ client_parameter_types = {
 arch_security_flag = 'arch_security_updates_at'
 db = None
 pid = None
+
+
+def client_parameter_type(parameter):
+    try:
+        return client_parameter_types[parameter]
+    except KeyError:
+        return str, False
 
 
 def get_setting(setting, default=None, check_defaults=True):
@@ -448,10 +458,7 @@ def set_client_parameter(hostname, parameter, value, recurse=True):
     if parameter not in valid_client_parameters:
         raise Exception('Invalid client parameter {}'.format(parameter))
 
-    try:
-        parameter_type, is_multiple = client_parameter_types[parameter]
-    except KeyError:
-        parameter_type, is_multiple = str, False
+    parameter_type, is_multiple = client_parameter_type(parameter)
 
     if value:
         if isinstance(value, str):
@@ -526,6 +533,9 @@ def get_client_parameters(hostname, parameter):
     collection = db.client_parameters
 
     for d in collection.find(spec):
+        param_type, is_multiple = client_parameter_type(d['parameter'])
+        if not is_multiple:
+            d['value'] = d['value'][0]
         yield (d['hostname'], d['parameter'], d['value'])
 
 
