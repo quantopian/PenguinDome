@@ -511,6 +511,7 @@ issues. It has the following subcommands:
   them) for a specified number of hours or days
 * **suspend**, **unsuspend** -- suspend hosts until the next time they
   report to the server
+* ***open** -- manually open new issues
 * **close** -- manually close open issues rather than waiting for the
   audit script or server to detect that they are resolved and close
   them automatically
