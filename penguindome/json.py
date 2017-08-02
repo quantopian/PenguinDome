@@ -12,12 +12,14 @@
 
 import datetime
 import dateutil.parser
-from json import (
+from json import (  # noqa
     JSONEncoder,
     dump as real_dump,
     load as real_load,
     dumps as real_dumps,
     loads as real_loads,
+    tool,
+    decoder,
 )
 
 

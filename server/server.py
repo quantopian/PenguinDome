@@ -404,7 +404,13 @@ def submit():
     db = get_db()
     which = []
     now = datetime.datetime.utcnow()
-    data = json.loads(request.form['data'])
+    try:
+        data = json.loads(request.form['data'])
+    except json.decoder.JSONDecodeError as e:
+        log.exception('Failed to parse request data as JSON. Content=<<<{}>>>',
+                      request.data)
+        return Response(str(e), status=400)
+
     hostname = data['hostname']
     spec = {'hostname': hostname}
     update = {
