@@ -16,6 +16,7 @@ Description=PenguinDome Client
 [Service]
 Type=oneshot
 ExecStart=/opt/penguindome/bin/client-cron
+KillMode=process
 
 [Install]
 WantedBy=multi-user.target
