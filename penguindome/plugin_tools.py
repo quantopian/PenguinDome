@@ -51,16 +51,24 @@ def find_xinit_users():
         users = []
         xinits = []
         for p in psutil.process_iter():
-            if p.exe().endswith('/xinit'):
-                xinits.append(p)
+            try:
+                if p.exe().endswith('/xinit'):
+                    xinits.append(p)
+            except FileNotFoundError:
+                # Race condition, process disappeared
+                continue
         if not xinits:
             break
         Xorgs = []
         for p in psutil.process_iter():
-            if p.exe().endswith('/Xorg'):
-                xinit = any(x for x in xinits if p.ppid() == x.pid)
-                if xinit:
-                    Xorgs.append((xinit, p))
+            try:
+                if p.exe().endswith('/Xorg'):
+                    xinit = any(x for x in xinits if p.ppid() == x.pid)
+                    if xinit:
+                        Xorgs.append((xinit, p))
+            except FileNotFoundError:
+                # Race condition, process disappeared
+                continue
         if not Xorgs:
             break
         for xinit, Xorg in Xorgs:
