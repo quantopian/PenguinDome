@@ -64,6 +64,13 @@ def arch_checker():
         Stat file to get inode number, check if it is in use, stat again to
         make sure the inode number is the same. If so and no one is using the
         file, then remove it.
+
+        Returns True if the script should proceed, which means one of three
+        things: (1) there was no lock; (2) the lock was removed successfully;
+        (3) the lock is more than ten minutes old, in which case what we're
+        about to do is probably going to fail, but we should try it anyway and
+        let the failure get logged so people will find out about the
+        ten-minute-old lock file and do something about it.
         """
         lock_path = '/var/lib/pacman/db.lck'
 
@@ -71,7 +78,7 @@ def arch_checker():
             before = os.stat(lock_path).st_ino
         except FileNotFoundError:
             log.debug('clear_lock: not found before')
-            return
+            return True
         log.debug('clear_lock: found before')
 
         try:
@@ -84,14 +91,14 @@ def arch_checker():
             pass
         else:
             log.debug('clear_lock: fuser says in use')
-            return
+            return False
 
         try:
             after = os.stat(lock_path).st_ino
         except FileNotFoundError:
             # Oh, good, it's gone now!
             log.debug('clear_lock: lock cleared after')
-            return
+            return True
 
         if before == after:
             try:
@@ -99,10 +106,12 @@ def arch_checker():
             except FileNotFoundError:
                 # Yet another race condition.
                 log.debug('clear_lock: Deleted out from under us')
-                return
+                return True
             log.warn('Cleared stale lock file {}', lock_path)
-        else:
-            log.debug('clear_lock: inode changed')
+            return True
+
+        log.debug('clear_lock: inode changed')
+        return False
 
     def status(current, updates):
         try:
@@ -124,7 +133,9 @@ def arch_checker():
                 'installed_packages': installed}
 
     clear_eset_lock()
-    clear_lock()
+    if not clear_lock():
+        log.info('Pacman is locked. Giving up for now.')
+        return status(False, 'unknown')
 
     try:
         subprocess.check_output(('pacman', '-Sy'), stderr=subprocess.STDOUT)
