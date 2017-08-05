@@ -14,8 +14,9 @@
 
 import json
 import os
-import psutil
 import time
+
+from penguindome.plugin_tools import process_dict_iter
 
 binary_paths = ('/opt/eset/esets/sbin/esets_daemon',)
 defn_paths = ('/var/opt/eset/esets/lib/data/data.txt',)
@@ -23,9 +24,9 @@ defn_paths = ('/var/opt/eset/esets/lib/data/data.txt',)
 results = {}
 
 results['installed'] = any(os.path.exists(path) for path in binary_paths)
-results['running'] = any(p.exe() == b
+results['running'] = any(p['exe'] == b
                          for b in binary_paths
-                         for p in psutil.process_iter())
+                         for p in process_dict_iter(('exe',)))
 results['recent'] = any(os.path.exists(p) and
                         time.time() - os.stat(p).st_mtime < 60 * 60 * 24 * 2
                         for p in defn_paths)

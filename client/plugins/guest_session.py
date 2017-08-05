@@ -15,12 +15,15 @@
 from configparser import SafeConfigParser
 import glob
 import os
-import psutil
 import re
 
 from penguindome import cached_data
 import penguindome.json as json
-from penguindome.plugin_tools import find_xinit_users, find_x_users
+from penguindome.plugin_tools import (
+    find_xinit_users,
+    find_x_users,
+    process_dict_iter,
+)
 
 
 def xinit_checker():
@@ -29,8 +32,8 @@ def xinit_checker():
 
 def lightdm_checker():
     lightdm_re = re.compile(r'\blightdm\b')
-    running_lightdm = any(p for p in psutil.process_iter()
-                          if lightdm_re.search(p.exe()))
+    running_lightdm = any(p for p in process_dict_iter(('exe',))
+                          if lightdm_re.search(p['exe']))
     if not running_lightdm:
         return None
     if not os.path.exists('/usr/share/lightdm/guest-session'):

@@ -14,15 +14,16 @@
 
 import json
 import os
-import psutil
+
+from penguindome.plugin_tools import process_dict_iter
 
 binary_paths = ('/opt/eset/RemoteAdministrator/Agent/ERAAgent',)
 
 results = {}
 
 results['installed'] = any(os.path.exists(path) for path in binary_paths)
-results['running'] = any(p.exe() == b
+results['running'] = any(p['exe'] == b
                          for b in binary_paths
-                         for p in psutil.process_iter())
+                         for p in process_dict_iter(('exe',)))
 
 print(json.dumps(results))

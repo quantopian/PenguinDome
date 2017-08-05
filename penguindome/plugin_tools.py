@@ -50,40 +50,34 @@ def find_xinit_users():
     while True:
         users = []
         xinits = []
-        for p in psutil.process_iter():
-            try:
-                if p.exe().endswith('/xinit'):
-                    xinits.append(p)
-            except FileNotFoundError:
-                # Race condition, process disappeared
-                continue
+        for p in process_dict_iter(('exe', 'pid')):
+            if p['exe'].endswith('/xinit'):
+                xinits.append(p)
         if not xinits:
             break
         Xorgs = []
-        for p in psutil.process_iter():
-            try:
-                if p.exe().endswith('/Xorg'):
-                    xinit = any(x for x in xinits if p.ppid() == x.pid)
-                    if xinit:
-                        Xorgs.append((xinit, p))
-            except FileNotFoundError:
-                # Race condition, process disappeared
-                continue
+        for p in process_dict_iter(('exe', 'ppid', 'cmdline')):
+            if p['exe'].endswith('/Xorg'):
+                xinit = any(x for x in xinits if p['ppid'] == x['pid'])
+                if xinit:
+                    Xorgs.append((xinit, p))
         if not Xorgs:
             break
         for xinit, Xorg in Xorgs:
             try:
-                display = next(a for a in Xorg.cmdline() if a[0] == ':')
-            except:
+                display = next(a for a in Xorg['cmdline'] if a[0] == ':')
+            except StopIteration:
                 continue
             try:
-                proc = min((p for p in psutil.process_iter()
-                            if 'DISPLAY' in p.environ() and
-                            p.environ()['DISPLAY'] == display),
-                           key=lambda p: p.pid)
-            except:
+                proc = min(
+                    (p for p in process_dict_iter(
+                        ('environ', 'pid', 'username'))
+                     if 'DISPLAY' in p['environ'] and
+                     p['environ']['DISPLAY'] == display),
+                    key=lambda p: p['pid'])
+            except ValueError:  # no matching processes
                 continue
-            users.append((proc.username(), display))
+            users.append((proc['username'], display))
         break
     _xinit_users = users
     return _xinit_users
@@ -122,10 +116,10 @@ class DBusUser(object):
             return
         except KeyError:
             pass
-        for proc in psutil.process_iter():
-            if proc.username() != user:
+        for proc in process_dict_iter(('username', 'environ')):
+            if proc['username'] != user:
                 continue
-            environ = proc.environ()
+            environ = proc['environ']
             if environ.get('DISPLAY', None) != display:
                 continue
             if 'DBUS_SESSION_BUS_ADDRESS' not in environ:
@@ -150,3 +144,14 @@ class DBusUser(object):
         return subprocess.check_output(
             ('su', self.user, '-m', '-c', cmd),
             env=self.environ, stderr=stderr).decode('ascii')
+
+
+def process_dict_iter(attrs=None):
+    for p in psutil.process_iter():
+        try:
+            d = p.as_dict(attrs=attrs)
+            if any(v is None for v in d.values()):
+                continue
+            yield d
+        except FileNotFoundError:
+            pass

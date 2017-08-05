@@ -12,7 +12,6 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-import psutil
 import re
 import subprocess
 from tempfile import TemporaryFile
@@ -20,7 +19,7 @@ from tempfile import TemporaryFile
 from penguindome import cached_data
 from penguindome.client import get_logger
 import penguindome.json as json
-from penguindome.plugin_tools import find_x_users, DBusUser
+from penguindome.plugin_tools import find_x_users, DBusUser, process_dict_iter
 
 valid_lockers = ('slock', 'i3lock')
 valid_lockers_re = re.compile(r'^(?:' +
@@ -78,13 +77,13 @@ def gnome_xscreensaver_status(user, display):
 
 
 def xautolock_status(user, display):
-    procs = (p for p in psutil.process_iter()
-             if p.username() == user)
-    procs = (p for p in procs if p.environ().get('DISPLAY', None) == display)
-    procs = (p for p in procs if p.exe().endswith('/xautolock'))
+    procs = (p for p in process_dict_iter(
+        ('username', 'environ', 'exe', 'cmdline')) if p['username'] == user)
+    procs = (p for p in procs if p['environ'].get('DISPLAY', None) == display)
+    procs = (p for p in procs if p['exe'].endswith('/xautolock'))
     for proc in procs:
         _time = locker = nowlocker = None
-        args = proc.cmdline()
+        args = proc['cmdline']
         try:
             while args:
                 if args[0] == '-time':

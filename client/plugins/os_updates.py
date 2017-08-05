@@ -14,49 +14,60 @@
 
 import json
 import os
-from psutil import process_iter, Process
+from psutil import Process
 import subprocess
 from signal import SIGHUP
 from tempfile import TemporaryFile
 import time
 
 from penguindome.client import get_logger
+from penguindome.plugin_tools import process_dict_iter
 
 log = get_logger('plugins/os_updates')
 
 
 def arch_checker():
-    def ancestors(p):
+    def ancestors(p, attrs=None):
+        if attrs:
+            attrs = list(attrs)
+            if 'ppid' not in attrs:
+                attrs.append('ppid')
+        else:
+            attrs = ['ppid']
+
         ancestors = []
-        while p.ppid():
-            p = Process(p.ppid())
-            ancestors.append(p)
+        try:
+            while p['ppid']:
+                p = Process(p['ppid']).as_dict(attrs=attrs)
+                ancestors.append(p)
+        except FileNotFoundError:
+            pass
         return ancestors
 
     def clear_eset_lock():
         # Identify pacman processes that are descendants of ERAAgent and
         # kill them if they have been running for more than 60 seconds.
-        procs = process_iter()
+        procs = process_dict_iter(('cmdline', 'create_time', 'pid', 'ppid'))
         # All pacman processes
         procs = (p for p in procs
-                 if p.cmdline() and p.cmdline()[0] == 'pacman')
+                 if p['cmdline'] and p['cmdline'][0] == 'pacman')
         # Pacman processes with the command-line options that ERAAgent uses
         procs = (p for p in procs
-                 if len(p.cmdline()) > 1 and p.cmdline()[1] in
+                 if len(p['cmdline']) > 1 and p['cmdline'][1] in
                  ('-Syq', '--version', '--Quq'))
         # Pacman processes which are descendants of ERAAgent
         eraagent_cmd = '/opt/eset/RemoteAdministrator/Agent/ERAAgent'
         procs = (p for p in procs
-                 if any(a.cmdline() and a.cmdline()[0] == eraagent_cmd
-                        for a in ancestors(p)))
+                 if any(a['cmdline'] and a['cmdline'][0] == eraagent_cmd
+                        for a in ancestors(p, ('cmdline',))))
         # Pacman processes which were launched more than 60 seconds ago
-        procs = [p for p in procs if time.time() - p.create_time() > 60]
+        procs = [p for p in procs if time.time() - p['create_time'] > 60]
         if procs:
             log.info('Killing stale ERAAgent pacman process(es): {}',
                      ', '.join('{} (PID {})'.format(
-                         ' '.join(p.cmdline()), p.pid) for p in procs))
+                         ' '.join(p['cmdline']), p['pid']) for p in procs))
             for p in procs:
-                os.kill(p.pid, SIGHUP)
+                os.kill(p['pid'], SIGHUP)
 
     def clear_lock():
         """Break stale pacman lock file

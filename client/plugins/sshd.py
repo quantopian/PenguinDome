@@ -33,18 +33,26 @@ sshd_name_re = re.compile(r'\bsshd\b|\bin\.sshd\b')
 results = {}
 
 try:
-    sshd_process = next(p for p in psutil.process_iter()
-                        if sshd_name_re.search(p.exe()) or
-                        any(c for c in p.connections('tcp')
-                            if c.laddr[1] == 22 and not len(c.raddr)))
-except:
+    sshd_process = None
+    for p in psutil.process_iter():
+        try:
+            if sshd_name_re.search(p.exe()) or \
+               any(c for c in p.connections('tcp')
+                   if c.laddr[1] == 22 and not len(c.raddr)):
+                sshd_process = p.as_dict(attrs=('exe', 'cmdline'))
+                break
+        except FileNotFoundError:
+            continue
+    else:
+        raise StopIteration()
+except StopIteration:
     sshd_process = None
     results['status'] = 'stopped'
     sshd_config_command = ['sshd', '-T']
 else:
     results['status'] = 'running'
-    sshd_config_command = [sshd_process.exe(), '-T']
-    sshd_cmdline = sshd_process.cmdline()
+    sshd_config_command = [sshd_process['exe'], '-T']
+    sshd_cmdline = sshd_process['cmdline']
     try:
         sshd_config_file = sshd_cmdline[sshd_cmdline.index('-f') + 1]
         sshd_config_command.extend(['-f', sshd_config_file])
