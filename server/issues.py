@@ -42,6 +42,7 @@ from penguindome.server import (
 os.chdir(top_dir)
 log = get_logger('issues')
 now = datetime.datetime.utcnow()
+_problem_checks = None
 
 
 def not_reporting_filter(issue):
@@ -57,67 +58,123 @@ def not_reporting_filter(issue):
     peer_times = [d['submitted_at'] for d in
                   db.clients.find({'hostname': {'$in': peers}},
                                   projection=['submitted_at'])]
-    cutoff = problem_checks['not-reporting']['spec']['submitted_at']['$lt']
+    cutoff = problem_checks()['not-reporting']['spec']['submitted_at']['$lt']
     return any(t >= cutoff for t in peer_times)
 
 
-problem_checks = {
-    'not-reporting': {
-        'grace-period': datetime.timedelta(hours=4),
-        'spec': {'submitted_at':
-                 {'$lt': now - datetime.timedelta(days=1)}},
-        'filter': not_reporting_filter},
-    'no-location': {
-        'grace-period': datetime.timedelta(days=1),
-        'spec': {'plugins.geolocation': 'unknown'}},
-    'ssh-password-authentication': {
-        'spec': {'$and': [
-            {'plugins.sshd.status': 'running'},
-            {'plugins.sshd.config.passwordauthentication': 'yes'}]}},
-    'ssh-root-password-authentication': {
-        'spec': {'$and': [
-            {'plugins.sshd.status': 'running'},
-            {'plugins.sshd.config.permitrootlogin': 'yes'}]}},
-    'eraagent-absent': {
-        'spec': {'plugins.eraagent.installed': {'$not': {'$eq': True}}}},
-    'eraagent-stopped': {
-        'grace-period': datetime.timedelta(hours=4),
-        'spec': {'plugins.eraagent.running': {'$not': {'$eq': True}}}},
-    'eset-absent': {
-        'spec': {'plugins.eset.installed': {'$not': {'$eq': True}}}},
-    'eset-out-of-date': {
-        'grace-period': datetime.timedelta(hours=4),
-        'spec': {'plugins.eset.recent': {'$not': {'$eq': True}}}},
-    'eset-stopped': {
-        'grace-period': datetime.timedelta(hours=4),
-        'spec': {'plugins.eset.running': {'$not': {'$eq': True}}}},
-    'os-update-available': {
-        'grace-period': datetime.timedelta(days=90),
-        'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
-    'os-security-patches-available': {
-        'grace-period': datetime.timedelta(days=1),
-        'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
-                          'plugins.os_updates.security_patches':
-                          {'$not': {'$eq': False}}},
-                         {'plugins.os_info.distname': 'arch',
-                          arch_security_flag: {'$exists': True}}]}},
-    'guest-session-enabled': {
-        'spec': {'plugins.guest_session.enabled': {'$not': {'$eq': False}}}},
-    'unencrypted-hard-drive': {
-        'spec': {'$or': [
-            {'plugins.hd_encryption.encrypted': {'$eq': False}},
-            {'plugins.hd_encryption.encrypted': {'$exists': False}}]}},
-    'firewall-disabled': {
-        'spec': {'plugins.firewall.status': {'$not': {'$eq': 'on'}}}},
-    'screenlock-disabled': {
-        'grace-period': datetime.timedelta(hours=4),
-        'spec': {'plugins.screenlock.users.enabled': {'$not': {'$eq': True}}}},
-    'deprecated-port': {
-        'grace-period': datetime.timedelta(hours=1)},
-    'pending-patches': {
-        'grace-period': datetime.timedelta(hours=4)},
-    'expiring-certificate': {}
-}
+def problem_checks():
+    global _problem_checks
+
+    if _problem_checks:
+        return _problem_checks
+
+    _problem_checks = {
+        'not-reporting': {
+            'grace-period': datetime.timedelta(hours=4),
+            'spec': {'submitted_at':
+                     {'$lt': business_days_ago(1)}},
+            'filter': not_reporting_filter},
+        'no-location': {
+            'grace-period': datetime.timedelta(days=1),
+            'spec': {'plugins.geolocation': 'unknown'}},
+        'ssh-password-authentication': {
+            'spec': {'$and': [
+                {'plugins.sshd.status': 'running'},
+                {'plugins.sshd.config.passwordauthentication': 'yes'}]}},
+        'ssh-root-password-authentication': {
+            'spec': {'$and': [
+                {'plugins.sshd.status': 'running'},
+                {'plugins.sshd.config.permitrootlogin': 'yes'}]}},
+        'eraagent-absent': {
+            'spec': {'plugins.eraagent.installed': {'$not': {'$eq': True}}}},
+        'eraagent-stopped': {
+            'grace-period': datetime.timedelta(hours=4),
+            'spec': {'plugins.eraagent.running': {'$not': {'$eq': True}}}},
+        'eset-absent': {
+            'spec': {'plugins.eset.installed': {'$not': {'$eq': True}}}},
+        'eset-out-of-date': {
+            'grace-period': datetime.timedelta(hours=4),
+            'spec': {'plugins.eset.recent': {'$not': {'$eq': True}}}},
+        'eset-stopped': {
+            'grace-period': datetime.timedelta(hours=4),
+            'spec': {'plugins.eset.running': {'$not': {'$eq': True}}}},
+        'os-update-available': {
+            'grace-period': datetime.timedelta(days=90),
+            'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
+        'os-security-patches-available': {
+            'grace-period': datetime.timedelta(days=1),
+            'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
+                              'plugins.os_updates.security_patches':
+                              {'$not': {'$eq': False}}},
+                             {'plugins.os_info.distname': 'arch',
+                              arch_security_flag: {'$exists': True}}]}},
+        'guest-session-enabled': {
+            'spec': {'plugins.guest_session.enabled':
+                     {'$not': {'$eq': False}}}},
+        'unencrypted-hard-drive': {
+            'spec': {'$or': [
+                {'plugins.hd_encryption.encrypted': {'$eq': False}},
+                {'plugins.hd_encryption.encrypted': {'$exists': False}}]}},
+        'firewall-disabled': {
+            'spec': {'plugins.firewall.status': {'$not': {'$eq': 'on'}}}},
+        'screenlock-disabled': {
+            'grace-period': datetime.timedelta(hours=4),
+            'spec': {'plugins.screenlock.users.enabled':
+                     {'$not': {'$eq': True}}}},
+        'deprecated-port': {
+            'grace-period': datetime.timedelta(hours=1)},
+        'pending-patches': {
+            'grace-period': datetime.timedelta(hours=4)},
+        'expiring-certificate': {}
+    }
+
+    return _problem_checks
+
+
+def business_hours_back(end, delta):
+    """Find a datetime `delta` back from `end` in "business time"
+
+    Every 24 hours within `delta` is interpreted as eight business hours.
+
+    I'm sure there is a brilliant algorithmic way to write this, but I'm too
+    lazy to do it that way right now, and this script doesn't have to be
+    time-optimized, so I'm just using a dumb binary search.
+    """
+
+    # There are 8 business hours in every work day, so the timedelta we want
+    # is a third of the one we were passed in.
+    delta = datetime.timedelta(seconds=delta.total_seconds() / 3)
+
+    # Find a start date that is definitely before our final calculated date
+    estimate = delta
+    start = end - estimate
+    while business_hours(start, end) < delta:
+        estimate = datetime.timedelta(seconds=estimate.total_seconds() * 2)
+        start = end - estimate
+
+    # Now binary search.
+    search_start = start
+    search_end = end
+    guess = search_start + (search_end - search_start) / 2
+    guess_offset = (business_hours(guess, end) - delta).total_seconds()
+    while abs(guess_offset) > 60:
+        if guess_offset < 0:
+            search_end = guess
+        else:
+            search_start = guess
+        guess = search_start + (search_end - search_start) / 2
+        guess_offset = (business_hours(guess, end) - delta).total_seconds()
+    return guess
+
+
+def business_days_ago(num_days):
+    delta = datetime.timedelta(days=num_days)
+    return business_hours_back(now, delta)
+
+
+def to_local_time(dt):
+    return dt.replace(tzinfo=pytz.utc).astimezone(
+        pytz.timezone('US/Eastern'))
 
 
 # Yeah, this should really use pytest or something, whatevs.
@@ -137,11 +194,6 @@ problem_checks = {
 # )
 # for t1, t2, expected in testcases:
 #     assert bh(t1, t2) == expected
-
-def to_local_time(dt):
-    return dt.replace(tzinfo=pytz.utc).astimezone(
-        pytz.timezone('US/Eastern'))
-
 
 def business_hours(t1, t2):
     """Calculate timedelta of business hours from UTC times t1 to t2
@@ -340,7 +392,7 @@ def audit_handler(args):
 
     db = get_db()
 
-    for check_name, check in problem_checks.items():
+    for check_name, check in problem_checks().items():
         if 'spec' not in check:
             continue
         problems = [d for d in db.clients.find(check['spec'])]
@@ -366,7 +418,7 @@ def audit_handler(args):
         key1_printed = False
         email_list = ''
         for key2, issue in value1.items():
-            check = problem_checks.get(issue['name']) or {}
+            check = problem_checks().get(issue['name']) or {}
             filter = None if args.ignore_filters else check.get('filter', None)
             grace_period = check.get('grace-period', datetime.timedelta(0))
             filter_ok = not (filter and filter(issue))
