@@ -153,5 +153,5 @@ def process_dict_iter(attrs=None):
             if any(v is None for v in d.values()):
                 continue
             yield d
-        except FileNotFoundError:
+        except (FileNotFoundError, psutil.NoSuchProcess):
             pass

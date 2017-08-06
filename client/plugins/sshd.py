@@ -41,7 +41,7 @@ try:
                    if c.laddr[1] == 22 and not len(c.raddr)):
                 sshd_process = p.as_dict(attrs=('exe', 'cmdline'))
                 break
-        except FileNotFoundError:
+        except (FileNotFoundError, psutil.NoSuchProcess):
             continue
     else:
         raise StopIteration()
