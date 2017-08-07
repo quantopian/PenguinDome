@@ -46,13 +46,13 @@ def gnome_xscreensaver_status(user, display):
             stdout = e.output.decode('ascii').strip()
             stderr_file.seek(0)
             stderr = stderr_file.read().strip()
-            log.error('dbus-send failed')
+            log.debug('dbus-send failed')
             if stdout:
-                log.error('dbus-send output: {}', stdout)
+                log.debug('dbus-send output: {}', stdout)
             if stderr:
-                log.error('dbus-send stderr: {}', stderr)
+                log.debug('dbus-send stderr: {}', stderr)
             if 'Could not parse server address' in stderr:
-                log.error('dbus-send DBUS_SESSION_BUS_ADDRESS={}',
+                log.debug('dbus-send DBUS_SESSION_BUS_ADDRESS={}',
                           dbus_user.environ.get('DBUS_SESSION_BUS_ADDRESS',
                                                 None))
             return None
