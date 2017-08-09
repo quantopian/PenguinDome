@@ -396,7 +396,6 @@ def dict_changes(old, new, prefix=None, changes=None, audit_trail=None):
 
 @app.route('/PenguinDome/v1/submit', methods=('POST',))
 @app.route('/penguindome/v1/submit', methods=('POST',))
-@app.route('/qlmdm/v1/submit', methods=('POST',))
 @verify_signature
 @log_deprecated_port
 @set_werkzeug_hostname
@@ -459,7 +458,6 @@ def submit():
 
 @app.route('/PenguinDome/v1/update', methods=('POST',))
 @app.route('/penguindome/v1/update', methods=('POST',))
-@app.route('/qlmdm/v1/update', methods=('POST',))
 @verify_signature
 @log_deprecated_port
 @set_werkzeug_hostname
@@ -503,7 +501,6 @@ def update():
 
 @app.route('/PenguinDome/v1/acknowledge_patch', methods=('POST',))
 @app.route('/penguindome/v1/acknowledge_patch', methods=('POST',))
-@app.route('/qlmdm/v1/acknowledge_patch', methods=('POST',))
 @verify_signature
 @log_deprecated_port
 @set_werkzeug_hostname
@@ -521,7 +518,6 @@ def acknowledge_patch():
 
 @app.route('/PenguinDome/v1/download_release', methods=('GET',))
 @app.route('/penguindome/v1/download_release', methods=('GET',))
-@app.route('/qlmdm/v1/download_release', methods=('GET',))
 @flush_content
 @require_httpauth('server_auth:download_release', mandatory=False)
 def download_release():
