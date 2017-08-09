@@ -34,5 +34,6 @@ for collected in sorted(glob.glob(os.path.join(collected_dir, '*[0-9]'))):
                       'Renaming {} to {}.bad.', collected, collected)
             os.rename(collected, collected + '.bad')
             sys.exit(1)
+        raise
     os.unlink(collected)
     log.debug('Successful submission of {}', collected)
