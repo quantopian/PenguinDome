@@ -14,7 +14,7 @@
 
 import glob
 import os
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, ReadTimeout
 import sys
 
 from penguindome import top_dir, collected_dir, set_gpg
@@ -25,15 +25,23 @@ os.chdir(top_dir)
 set_gpg('client')
 
 for collected in sorted(glob.glob(os.path.join(collected_dir, '*[0-9]'))):
+    # This nested try/except is that we don't have to duplicate the code twice,
+    # one for unrecognized HTTPError exceptiosns and again for ReadTimeout.
     try:
-        server_request('/penguindome/v1/submit', data_path=collected,
-                       exit_on_connection_error=True)
-    except HTTPError as e:
-        if e.response.status_code == 400:
-            log.error('Server returned status code 400. '
-                      'Renaming {} to {}.bad.', collected, collected)
-            os.rename(collected, collected + '.bad')
-            sys.exit(1)
-        raise
+        try:
+            server_request('/penguindome/v1/submit', data_path=collected,
+                           exit_on_connection_error=True)
+        except HTTPError as e:
+            if e.response.status_code == 400:
+                log.error('Server returned status code 400. '
+                          'Renaming {} to {}.bad.', collected, collected)
+                os.rename(collected, collected + '.bad')
+                sys.exit(1)
+            raise
+    except (HTTPError, ReadTimeout) as e:
+        log.error('Submit failed: {}', str(e))
+        log.debug('Traceback of failed submission', exc_info=sys.exc_info())
+        sys.exit(1)
+
     os.unlink(collected)
     log.debug('Successful submission of {}', collected)
