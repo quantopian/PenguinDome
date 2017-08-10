@@ -259,7 +259,7 @@ def get_logger(setting_getter, name, fail_to_local=False, filter=None):
     internal_log_file = os.path.join(
         internal_log_dir, file_safe_logger_name + '.log')
 
-    os.makedirs(internal_log_dir, 0x0700, exist_ok=True)
+    os.makedirs(internal_log_dir, 0o0700, exist_ok=True)
 
     # We always do local debug logging, regardless of whether we're also
     # logging elsewhere.
