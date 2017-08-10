@@ -40,7 +40,7 @@ from penguindome.server import (
 )
 
 os.chdir(top_dir)
-log = get_logger('issues')
+log = None
 now = datetime.datetime.utcnow()
 _problem_checks = None
 
@@ -238,12 +238,15 @@ def business_hours(t1, t2):
 def parse_args():
     parser = argparse.ArgumentParser(description='Check for and report on '
                                      'problems')
-    parser.set_defaults(func=None)
+    parser.set_defaults(func=None, cron=False)
 
     subparsers = parser.add_subparsers()
 
     audit_parser = subparsers.add_parser('audit',
                                          help='Audit and report on issues')
+    audit_parser.add_argument(
+        '--cron', action='store_true', help='Indicate that audit is running '
+        'out of cron (primarily so that it will use a separate log file)')
     audit_parser.add_argument(
         '--email', action='store_true', help='Send emails about issues to '
         'the email addresses in clients\' "user_email" parameters')
@@ -584,7 +587,10 @@ def close_handler(args):
 
 
 def main():
+    global log
+
     args = parse_args()
+    log = get_logger('issues-cron' if args.cron else 'issues')
 
     args.func(args)
 

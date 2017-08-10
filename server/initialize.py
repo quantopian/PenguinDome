@@ -414,7 +414,7 @@ def main(args):
 
                 crontab = dedent('''\
                     MAILTO={email}
-                    {minute2} * * * * root "{top_dir}/bin/issues" audit
+                    {minute2} * * * * root "{top_dir}/bin/issues" audit --cron
                 '''.format(minute2=minute2, email=email, top_dir=top_dir))
 
                 if get_server_setting('support_arch_linux'):
