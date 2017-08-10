@@ -250,10 +250,14 @@ def get_logger(setting_getter, name, fail_to_local=False, filter=None):
         def log_filter(r, h):
             return not server_pipe_log_filter_re.search(r.message)
 
-    logger = logbook.Logger('penguindome-' + name)
+    logger_name = 'penguindome-' + name
+    file_safe_logger_name = logger_name.replace(os.sep, '_')
+
+    logger = logbook.Logger(logger_name)
 
     internal_log_dir = os.path.join(var_dir, 'log')
-    internal_log_file = os.path.join(internal_log_dir, 'penguindome.log')
+    internal_log_file = os.path.join(
+        internal_log_dir, file_safe_logger_name + '.log')
 
     os.makedirs(internal_log_dir, 0x0700, exist_ok=True)
 
