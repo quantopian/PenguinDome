@@ -124,7 +124,8 @@ def server_request(cmd, data=None, data_path=None,
             if 'auth' in kwargs and logger:
                 logger.info('Authenticated {} to {}', kwargs['auth'][0], cmd)
             break
-    except requests.exceptions.ConnectionError:
+    except (requests.exceptions.ConnectionError,
+            requests.exceptions.ReadTimeout):
         if exit_on_connection_error:
             sys.exit('Connection error posting to {}'.format(server_url))
         raise
