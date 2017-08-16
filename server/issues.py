@@ -465,7 +465,7 @@ def audit_handler(args):
                 The following issues have been identified on the PenguinDome
                 (device management) client "{}", for which you are the listed
                 owner. Please rectify these issues at your earliest
-                convenience.\n\n""")
+                convenience.\n\n""".format(key1))
             body += email_list
             smtp = smtplib.SMTP()
             smtp.connect()
