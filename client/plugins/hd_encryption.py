@@ -50,19 +50,19 @@ def is_encrypted(device):
 
 for mount in open('/proc/mounts'):
     mount = mount.strip()
-    device, mountpoint, type, options, freq, passno = mount.split(' ')
-    if type in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
-                'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
-                'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
-                'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs', 'nsfs'):
+    device, mountpoint, fstype, options, freq, passno = mount.split(' ')
+    if fstype in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
+                  'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
+                  'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
+                  'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs', 'nsfs'):
         continue
     if any(True for r in results.values() if r['device'] == device):
         # Bind mounting, probably.
         # Don't need to check the same device twice.
         continue
-    if type.startswith('fuse'):
+    if fstype.startswith('fuse'):
         continue
-    if type == 'ecryptfs':
+    if fstype == 'ecryptfs':
         results[mountpoint] = {'mountpoint': mountpoint,
                                'device': device,
                                'encrypted': True}
