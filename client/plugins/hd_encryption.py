@@ -54,7 +54,8 @@ for mount in open('/proc/mounts'):
     if fstype in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
                   'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
                   'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
-                  'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs', 'nsfs'):
+                  'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs', 'nsfs',
+                  'aufs'):
         continue
     if any(True for r in results.values() if r['device'] == device):
         # Bind mounting, probably.
