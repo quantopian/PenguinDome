@@ -54,10 +54,20 @@ def lightdm_checker():
     return status
 
 
+def gdm3_checker():
+    # gdm3 doesn't support guest sessions
+    gdm3_re = re.compile(r'/gdm3$')
+    running_gdm3 = any(p for p in process_dict_iter(('exe', 'username'))
+                       if p['username'] == 'root' and gdm3_re.search(p['exe']))
+    if running_gdm3:
+        return False
+    return None
+    
+
 # Make sure xinit_checker is last. Just because somebody is running xinit
 # doesn't mean that they aren't _also_ running a display manager that has a
 # guest session, so xinit_checker should only be used as a last resort.
-checkers = (lightdm_checker, xinit_checker)
+checkers = (lightdm_checker, xinit_checker, gdm3_checker)
 
 for checker in checkers:
     results = checker()
