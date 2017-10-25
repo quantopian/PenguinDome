@@ -62,7 +62,7 @@ def gdm3_checker():
     if running_gdm3:
         return False
     return None
-    
+
 
 # Make sure xinit_checker is last. Just because somebody is running xinit
 # doesn't mean that they aren't _also_ running a display manager that has a

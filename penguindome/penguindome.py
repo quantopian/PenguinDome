@@ -75,7 +75,7 @@ def release_files_iter(with_signatures=False, top_dir=top_dir):
             path = os.path.join(dirpath, filename)
             if not stat.S_ISREG(os.stat(path).st_mode):
                 continue
-            relative_path = path[len(top_dir)+1:]
+            relative_path = path[len(top_dir) + 1:]
             if with_signatures:
                 yield (relative_path,
                        os.path.join('signatures', relative_path + '.sig'))
@@ -230,7 +230,7 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
         if raise_errors:
             raise
         return None
-    return signature_file[len(top_dir)+1:]
+    return signature_file[len(top_dir) + 1:]
 
 
 def get_logger(setting_getter, name, fail_to_local=False, filter=None):

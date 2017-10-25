@@ -179,7 +179,7 @@ def main():
 
 def recursive_list(top_dir):
     for dirpath, dirnames, filenames in os.walk(top_dir):
-        dirpath = dirpath[len(top_dir)+1:]
+        dirpath = dirpath[len(top_dir) + 1:]
         for filename in filenames:
             yield os.path.join(dirpath, filename)
 

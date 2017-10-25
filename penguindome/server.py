@@ -401,12 +401,12 @@ def sign_file(file, top_dir=top_dir):
     file = os.path.join(top_dir, file)
     os.makedirs(os.path.dirname(signature_file), exist_ok=True)
     gpg_command('--detach-sig', '-o', signature_file, file)
-    return signature_file[len(top_dir)+1:]
+    return signature_file[len(top_dir) + 1:]
 
 
 def sign_data(data):
     with NamedTemporaryFile() as data_file, \
-         NamedTemporaryFile() as signature_file:
+            NamedTemporaryFile() as signature_file:
         data_file.write(data)
         data_file.flush()
         gpg_command('--detach-sig', '-o', signature_file.name, data_file.name)
