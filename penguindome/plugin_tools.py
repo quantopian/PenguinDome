@@ -47,6 +47,7 @@ def find_xinit_users():
 
     # Not actually for looping, just for syntactic user to make it easy to
     # exit the code block in the middle.
+    xorg_re = re.compile(r'/X(?:org|wayland)$')
     while True:
         users = []
         xinits = []
@@ -57,7 +58,7 @@ def find_xinit_users():
             break
         Xorgs = []
         for p in process_dict_iter(('exe', 'ppid', 'cmdline')):
-            if p['exe'].endswith('/Xorg'):
+            if xorg_re.search(p['exe']):
                 xinit = any(x for x in xinits if p['ppid'] == x['pid'])
                 if xinit:
                     Xorgs.append((xinit, p))
