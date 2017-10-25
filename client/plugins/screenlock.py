@@ -37,7 +37,7 @@ def gnome_xscreensaver_status(user, display):
     with TemporaryFile('w+') as stderr_file:
         try:
             dbus_output = dbus_user.command(
-                'echo $FOOBAR $DBUS_SESSION_BUS_ADDRESS; '
+                'echo $DBUS_SESSION_BUS_ADDRESS; '
                 'dbus-send --session --dest=org.freedesktop.DBus '
                 '--type=method_call --print-reply /org/freedesktop/Dbus org.'
                 'freedesktop.DBus.ListNames',
