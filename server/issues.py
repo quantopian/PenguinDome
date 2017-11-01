@@ -103,6 +103,7 @@ def problem_checks():
             'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
         'os-security-patches-available': {
             'grace-period': datetime.timedelta(days=1),
+            'alert-frequency': datetime.timedelta(days=1),
             'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
                               'plugins.os_updates.security_patches':
                               {'$not': {'$eq': False}}},
@@ -414,8 +415,7 @@ def audit_handler(args):
 
     issues = get_open_issues(include_suspended=args.ignore_suspended)
 
-    # Slightly less than an hour, to avoid race conditions when running hourly.
-    alert_threshold = now - datetime.timedelta(minutes=59)
+    default_alert_frequency = datetime.timedelta(hours=1)
 
     for key1, value1 in issues.items():
         key1_printed = False
@@ -423,6 +423,13 @@ def audit_handler(args):
         for key2, issue in value1.items():
             check = problem_checks().get(issue['name']) or {}
             filter = None if args.ignore_filters else check.get('filter', None)
+            alert_frequency = check.get(
+                'alert-frequency', default_alert_frequency)
+            # Not exactly on the hour, to avoid race conditions when running
+            # hourly.
+            if 0 == alert_frequency.total_seconds() % 3600:
+                alert_frequency -= datetime.timedelta(minutes=1)
+            alert_threshold = now - alert_frequency
             grace_period = check.get('grace-period', datetime.timedelta(0))
             filter_ok = not (filter and filter(issue))
             alert_ok = (args.display_recent or
