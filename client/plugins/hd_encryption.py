@@ -55,7 +55,7 @@ for mount in open('/proc/mounts'):
                   'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
                   'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
                   'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs', 'nsfs',
-                  'aufs'):
+                  'aufs', 'overlay'):
         continue
     if any(True for r in results.values() if r['device'] == device):
         # Bind mounting, probably.
