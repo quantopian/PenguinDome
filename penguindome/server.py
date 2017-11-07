@@ -453,7 +453,8 @@ def set_client_parameter(hostname, parameter, value, recurse=True):
     # Note that to simplify things, values are always stored in the database as
     # lists, even when is_multiple is False.
 
-    hostname = client_type(hostname)
+    if value is not None:
+        hostname = client_type(hostname)
 
     if parameter not in valid_client_parameters:
         raise Exception('Invalid client parameter {}'.format(parameter))
