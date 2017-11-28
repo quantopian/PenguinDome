@@ -269,7 +269,7 @@ def parse_args():
     group.add_argument(
         '--update-recent', action='store_true', default=None, help="Tag "
         "displayed alerts so they won't be displayed again for the next hour "
-        "(defaults to tagging when run interactively, not otherwise)")
+        "(defaults to tagging when run non-interactively, not otherwise)")
     group.add_argument(
         '--noupdate-recent', dest='update_recent', action='store_false',
         default=None, help="Don't tag displayed alerts")
