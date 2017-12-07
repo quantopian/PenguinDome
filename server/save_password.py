@@ -43,7 +43,7 @@ def main():
             sys.exit('Passwords do not match')
     if args.setting:
         setting_path = 'server_auth:{}:passwords:{}'.format(
-            args.SETTING, args.USERNAME)
+            args.setting, args.USERNAME)
     else:
         setting_path = 'users:{}'.format(args.USERNAME)
     hashed = pbkdf2_sha256.encrypt(args.password, rounds=200000, salt_size=16)
