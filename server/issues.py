@@ -71,6 +71,7 @@ def problem_checks():
     _problem_checks = {
         'not-reporting': {
             'grace-period': datetime.timedelta(hours=4),
+            'alert-frequency': datetime.timedelta(days=1),
             'spec': {'submitted_at':
                      {'$lt': business_days_ago(1)}},
             'filter': not_reporting_filter},
