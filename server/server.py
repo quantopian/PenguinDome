@@ -266,28 +266,43 @@ def verify_signature(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         try:
-            try:
-                data = request.form['data']
-            except:
-                raise Exception('Malformed request: no data')
-            try:
-                signature = request.form['signature']
-            except:
-                raise Exception('Malformed request: no signature')
-            with tempfile.NamedTemporaryFile('w+') as data_file, \
-                    tempfile.NamedTemporaryFile('w+') as signature_file:
-                data_file.write(data)
-                data_file.flush()
-                signature_file.write(signature)
-                signature_file.flush()
-                try:
-                    gpg_command('--verify', signature_file.name,
-                                data_file.name)
-                except:
-                    raise Exception('Bad signature')
+            data = request.form['data']
         except:
-            log.exception()
-            raise
+            remote_addr = getattr(request, 'remote_addr', None)
+            # Probably just somebody port-scanning us, not worth logging as
+            # an error and making people waste time investigating.
+            if remote_addr:
+                log.info('Ignoring empty request from {}'.format(
+                    remote_addr))
+            else:
+                log.info('Ignoring empty request with no remote address')
+            return('error')
+        try:
+            signature = request.form['signature']
+        except:
+            # We're not logging the data here because it may contain
+            # sensitive info that should not be logged. Perhaps I am being
+            # too paranoid about this. ¯\_(ツ)_/¯
+            hostname = getattr(data, 'hostname', None)
+            remote_addr = getattr(request, 'remote_addr', None)
+            log.error('Ignoring malformed request (no signature) from '
+                      'host {}, addr {}'.format(hostname, remote_addr))
+            return('error')
+        with tempfile.NamedTemporaryFile('w+') as data_file, \
+                tempfile.NamedTemporaryFile('w+') as signature_file:
+            data_file.write(data)
+            data_file.flush()
+            signature_file.write(signature)
+            signature_file.flush()
+            try:
+                gpg_command('--verify', signature_file.name,
+                            data_file.name)
+            except:
+                hostname = getattr(data, 'hostname', None)
+                remote_addr = getattr(request, 'remote_addr', None)
+                log.error('Ignoring malformed request (bad signature) from '
+                          'host {}, addr {}'.format(hostname, remote_addr))
+                return('error')
         return f(*args, **kwargs)
     return wrapper
 
