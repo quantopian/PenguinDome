@@ -16,6 +16,7 @@ cryptsetup
 dmidecode
 gnupg
 iptables
+gcc
 git
 lvm2
 psmisc
