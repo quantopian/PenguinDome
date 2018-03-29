@@ -265,7 +265,7 @@ def enable_handler(args):
             gpg_command('--delete-secret-keys', key_fingerprint)
         except subprocess.CalledProcessError as e:
             sys.exit('Failed to delete secret key:\n{}'.format(
-                e.output.decode('ascii')))
+                e.output.decode('utf8')))
         subprocess.check_output(('shred', '-u', key_file),
                                 stderr=subprocess.STDOUT)
 

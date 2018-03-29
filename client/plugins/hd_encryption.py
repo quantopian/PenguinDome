@@ -31,7 +31,7 @@ def is_encrypted(device):
         # I hope it's a logical volume!
         vg = subprocess.check_output(
             ('lvs', '--noheadings', '-o', 'vg_name',
-             device), close_fds=True).decode('ascii').strip()
+             device), close_fds=True).decode('utf8').strip()
     except:
         log.info('Cryptsetup and lvs on {} failed, assuming not encrypted',
                  device)
@@ -43,7 +43,7 @@ def is_encrypted(device):
             return False
     pv_output = subprocess.check_output(
         ('vgs', '--noheadings', '-o', 'pv_name', vg),
-        close_fds=True).decode('ascii').strip()
+        close_fds=True).decode('utf8').strip()
     pvs = pv_output.split('\n')
     return all(is_encrypted(p) for p in pvs)
 

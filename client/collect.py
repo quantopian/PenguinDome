@@ -54,10 +54,10 @@ def run_file(run_path, run_name, results, parse_output=True,
         try:
             run_output = subprocess.check_output(
                 run_path,
-                stderr=stderr_file.fileno()).decode('ascii')
+                stderr=stderr_file.fileno()).decode('utf8')
         except subprocess.CalledProcessError as e:
             log.exception('Failed to execute {}', run_path)
-            output = e.output.decode('ascii').strip()
+            output = e.output.decode('utf8').strip()
             if output:
                 log.info('Output of failed script:\n{}', output)
             stderr_file.seek(0)
@@ -66,7 +66,7 @@ def run_file(run_path, run_name, results, parse_output=True,
                 log.info('Stderr of failed script:\n{}', stderr)
             if submit_failures:
                 results[run_name] = {
-                    'stdout': e.output.decode('ascii'),
+                    'stdout': e.output.decode('utf8'),
                     'stderr': stderr,
                     'returncode': e.returncode,
                 }
@@ -164,7 +164,7 @@ def runlevel_info():
             'systemctl list-units --type target; runlevel; who -r', shell=True)
     except subprocess.CalledProcessError as e:
         output = e.output
-    output = output.decode('ascii')
+    output = output.decode('utf8')
     return output
 
 

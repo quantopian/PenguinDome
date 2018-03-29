@@ -164,7 +164,7 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
         {
             'path': patch_path,
             'mode': patch_mode,
-            'content': b64encode(patch_content).decode('ascii'),
+            'content': b64encode(patch_content).decode('utf8'),
         },
     ]
 
@@ -172,7 +172,7 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
         files.append({
             'path': os.path.join(signatures_dir, patch_path + '.sig'),
             'mode': 0o644,
-            'content': b64encode(sign_data(patch_content)).decode('ascii'),
+            'content': b64encode(sign_data(patch_content)).decode('utf8'),
         })
 
     result = db.patches.insert_one({

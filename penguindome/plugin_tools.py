@@ -30,7 +30,7 @@ def find_who_x_users():
         return _who_x_users
 
     w_lines = subprocess.check_output(
-        ('who',)).decode('ascii').strip().split('\n')
+        ('who',)).decode('utf8').strip().split('\n')
     matches = filter(None, (who_x_re.match(l) for l in w_lines))
     _who_x_users = [m.groups() for m in matches]
     return _who_x_users
@@ -144,7 +144,7 @@ class DBusUser(object):
         """
         return subprocess.check_output(
             ('su', self.user, '-m', '-c', cmd),
-            env=self.environ, stderr=stderr).decode('ascii')
+            env=self.environ, stderr=stderr).decode('utf8')
 
 
 def process_dict_iter(attrs=None):

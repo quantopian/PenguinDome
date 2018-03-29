@@ -18,7 +18,7 @@ import subprocess
 results = {}
 
 output = subprocess.check_output(
-    ('systemctl', 'show', '--property=SubState', 'prey-agent')).decode('ascii')
+    ('systemctl', 'show', '--property=SubState', 'prey-agent')).decode('utf8')
 results['running'] = 'running' in output
 
 print(json.dumps(results))

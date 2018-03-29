@@ -22,12 +22,12 @@ chain_re = re.compile(r'^Chain (.*) \(policy (.*)\)')
 def get_policies(cmd):
     try:
         output = subprocess.check_output(
-            (cmd, '-L', '-n'), stderr=subprocess.STDOUT).decode('ascii')
+            (cmd, '-L', '-n'), stderr=subprocess.STDOUT).decode('utf8')
     except subprocess.CalledProcessError as e:
-        if re.search(r'Module \S+ not found', e.output.decode('ascii')):
+        if re.search(r'Module \S+ not found', e.output.decode('utf8')):
             # Not enabled in kernel
             return None
-        print(e.output.decode('ascii'))
+        print(e.output.decode('utf8'))
     lines = output.strip().split('\n')
     chains = filter(None, (chain_re.match(l) for l in lines))
     return {c.group(1): c.group(2)

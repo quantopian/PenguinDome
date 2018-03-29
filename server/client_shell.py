@@ -45,7 +45,7 @@ def main():
         script = '#!/bin/bash\npython client/endpoints/shell.py {}\n'.format(
             remote.pipe_id)
         patch_hosts('client/commands/shell-{}'.format(remote.pipe_id),
-                    patch_content=script.encode('ascii'),
+                    patch_content=script.encode('utf8'),
                     hosts=host)
         broker = InteractionBroker(terminal, remote, poll_interval=0.2)
         print('Waiting for client to connect (once connected, use "~." to '

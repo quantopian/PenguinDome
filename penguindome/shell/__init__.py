@@ -204,7 +204,7 @@ class PenguinDomeServerPeer(InteractionPeer):
         if self.done:
             raise EOFError()
         encrypted_data = self.encryptors['send'].encrypt(data)
-        encoded_data = b64encode(encrypted_data).decode('ascii')
+        encoded_data = b64encode(encrypted_data).decode('utf8')
         data = self._request('send', {'data': encoded_data})
         if 'eof' in data and data['eof']:
             self.done = True

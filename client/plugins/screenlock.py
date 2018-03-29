@@ -43,7 +43,7 @@ def gnome_xscreensaver_status(user, display):
                 'freedesktop.DBus.ListNames',
                 stderr=stderr_file)
         except subprocess.CalledProcessError as e:
-            stdout = e.output.decode('ascii').strip()
+            stdout = e.output.decode('utf8').strip()
             stderr_file.seek(0)
             stderr = stderr_file.read().strip()
             log.debug('dbus-send failed')

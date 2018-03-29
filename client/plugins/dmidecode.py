@@ -16,7 +16,7 @@ import json
 import re
 import subprocess
 
-output = subprocess.check_output('dmidecode').decode('ascii')
+output = subprocess.check_output('dmidecode').decode('utf8')
 
 results = {}
 results['full'] = output

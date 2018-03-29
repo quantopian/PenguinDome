@@ -131,11 +131,11 @@ def arch_checker():
         except subprocess.CalledProcessError as e:
             if updates != 'unknown':  # i.e., pacman didn't already fail
                 log.error('Call to pacman -Q failed. Output: {}',
-                          e.output.decode('ascii'))
+                          e.output.decode('utf8'))
             installed = []
         else:
             installed = [l.split(' ')[0]
-                         for l in output.decode('ascii').strip().split('\n')]
+                         for l in output.decode('utf8').strip().split('\n')]
 
         return {'current': current,
                 'release': False,
@@ -154,17 +154,17 @@ def arch_checker():
         return None
     except subprocess.CalledProcessError as e:
         log.error('Call to pacman -Sy failed. Output: {}',
-                  e.output.decode('ascii'))
+                  e.output.decode('utf8'))
         return status(False, 'unknown')
 
     try:
         subprocess.check_output(
-            ('pacman', '-Qu'), stderr=subprocess.STDOUT).decode('ascii')
+            ('pacman', '-Qu'), stderr=subprocess.STDOUT).decode('utf8')
     except subprocess.CalledProcessError as e:
         if e.returncode == 1 and not e.output:
             return status(True, False)
         log.error('Call to pacman -Qu failed. Output: {}',
-                  e.output.decode('ascii'))
+                  e.output.decode('utf8'))
         return status(True, 'unknown')
 
     return status(True, True)
@@ -199,7 +199,7 @@ def ubuntu_checker():
         # So annoying and wrong that output goes to stderr!
         output = subprocess.check_output(
             '/usr/lib/update-notifier/apt-check',
-            stderr=subprocess.STDOUT).decode('ascii')
+            stderr=subprocess.STDOUT).decode('utf8')
     except OSError:
         results['patches'] = 'unknown'
     else:

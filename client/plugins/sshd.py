@@ -61,7 +61,7 @@ else:
 
 try:
     sshd_config = subprocess.check_output(
-        sshd_config_command, stderr=open('/dev/null', 'w')).decode('ascii')
+        sshd_config_command, stderr=open('/dev/null', 'w')).decode('utf8')
 except FileNotFoundError:
     if not sshd_process:
         results['status'] = 'missing'

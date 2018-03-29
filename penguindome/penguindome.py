@@ -112,11 +112,11 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
         try:
             output = subprocess.check_output(
                 ('gpg2', '--version'),
-                stderr=subprocess.STDOUT).decode('ascii')
+                stderr=subprocess.STDOUT).decode('utf8')
         except:
             output = subprocess.check_output(
                 ('gpg', '--version'),
-                stderr=subprocess.STDOUT).decode('ascii')
+                stderr=subprocess.STDOUT).decode('utf8')
             gpg_exe = 'gpg'
         else:
             gpg_exe = 'gpg2'
@@ -143,7 +143,7 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
     cmd = tuple(chain((gpg_exe, '--batch', '--yes'), quiet_args, trustdb_args,
                       cmd))
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
-        decode('ascii')
+        decode('utf8')
 
 
 def load_settings(which):
@@ -365,12 +365,12 @@ def encrypt_document(getter, doc, log=None, selectors=None):
             except subprocess.CalledProcessError as e:
                 if log:
                     log.error('Gpg failed to encrypt. Output:\n{}',
-                              e.output.decode('ascii'))
+                              e.output.decode('utf8'))
                 raise
             encrypted_file.seek(0)
             encrypted_data = {
                 'hash': md5(decrypted_data).hexdigest(),
-                'data': b64encode(encrypted_file.read()).decode('ascii')}
+                'data': b64encode(encrypted_file.read()).decode('utf8')}
         if s.plain_mongo != s.enc_mongo:
             update['$unset'][s.plain_mongo] = True
         update['$set'][s.enc_mongo] = encrypted_data

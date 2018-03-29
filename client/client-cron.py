@@ -69,7 +69,7 @@ def main():
         if e.returncode == 42:
             successful_update = do_collect = do_submit = True
         else:
-            log.error('update failed:\n{}', e.output.decode('ascii'))
+            log.error('update failed:\n{}', e.output.decode('utf8'))
 
     if not successful_update:
         subprocess.check_output((bin_path('verify'),))
@@ -80,14 +80,14 @@ def main():
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             log.error('collect --plugins failed:\n{}',
-                      e.output.decode('ascii'))
+                      e.output.decode('utf8'))
 
     if do_submit:
         try:
             subprocess.check_output((bin_path('submit'),),
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            log.error('submit failed:\n{}', e.output.decode('ascii'))
+            log.error('submit failed:\n{}', e.output.decode('utf8'))
         else:
             update_stamp(submit_stamp_file)
 
@@ -97,7 +97,7 @@ def main():
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             log.error('collect --commands failed:\n{}',
-                      e.output.decode('ascii'))
+                      e.output.decode('utf8'))
 
         # We don't want to hose the machine, so even when collecting fails, we
         # still wait for the configured interval.
@@ -107,7 +107,7 @@ def main():
             subprocess.check_output((bin_path('submit'),),
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            log.error('submit failed:\n{}', e.output.decode('ascii'))
+            log.error('submit failed:\n{}', e.output.decode('utf8'))
         else:
             update_stamp(submit_stamp_file)
 

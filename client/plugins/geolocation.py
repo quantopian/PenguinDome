@@ -76,7 +76,7 @@ channel_re = re.compile(r'\bChannel:\s*(\d+)')
 access_points = {}
 
 ip_addresses = json.loads(
-    subprocess.check_output('client/plugins/ip_addresses.py').decode('ascii'))
+    subprocess.check_output('client/plugins/ip_addresses.py').decode('utf8'))
 
 try:
     old_data = pickle.load(open(cache_file, 'rb'))
@@ -88,7 +88,7 @@ except:
 for i in range(5):
     try:
         output = subprocess.check_output(
-            ('iwlist', 'scan'), stderr=subprocess.STDOUT).decode('ascii')
+            ('iwlist', 'scan'), stderr=subprocess.STDOUT).decode('utf8')
     except:
         unknown()
 

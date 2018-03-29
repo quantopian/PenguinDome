@@ -779,7 +779,7 @@ def pipe_receive(peer_type):
             if pipe[data_field]:
                 encryptor = encryptors[uuid][peer_type]['receive']
                 encrypted_data = encryptor.encrypt(pipe[data_field])
-                encoded_data = b64encode(encrypted_data).decode('ascii')
+                encoded_data = b64encode(encrypted_data).decode('utf8')
                 ret = json.dumps({'data': encoded_data})
                 if peer_type == 'server':
                     PipeLogger.log(uuid, 'receive', pipe[data_field])

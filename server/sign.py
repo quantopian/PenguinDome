@@ -75,7 +75,7 @@ def main():
             stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         sys.exit('Verify failed, try running bin/sign again. Output:\n{}'.
-                 format(e.output.decode('ascii')))
+                 format(e.output.decode('utf8')))
 
 
 if __name__ == '__main__':
