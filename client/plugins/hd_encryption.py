@@ -53,8 +53,9 @@ for mount in open('/proc/mounts'):
     device, mountpoint, fstype, options, freq, passno = mount.split(' ')
     if fstype in ('aufs', 'autofs', 'binfmt_misc', 'bpf', 'cgroup', 'cgroup2',
                   'cifs', 'configfs', 'debugfs', 'devpts', 'devtmpfs',
-                  'efivarfs', 'hugetlbfs', 'mqueue', 'nfs', 'nsfs', 'overlay',
-                  'proc', 'pstore', 'rpc_pipefs', 'securityfs', 'sysfs',
+                  'efivarfs', 'fuse', 'fuse.gvfsd-fuse', 'fusectl',
+                  'hugetlbfs', 'mqueue', 'nfs', 'nsfs', 'overlay', 'proc',
+                  'pstore', 'rpc_pipefs', 'securityfs', 'squashfs', 'sysfs',
                   'tmpfs', 'tracefs', 'vboxsf'):
         continue
     if any(True for r in results.values() if r['device'] == device):
