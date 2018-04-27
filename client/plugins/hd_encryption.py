@@ -51,11 +51,11 @@ def is_encrypted(device):
 for mount in open('/proc/mounts'):
     mount = mount.strip()
     device, mountpoint, fstype, options, freq, passno = mount.split(' ')
-    if fstype in ('autofs', 'binfmt_misc', 'cgroup', 'debugfs', 'devpts',
-                  'devtmpfs', 'hugetlbfs', 'mqueue', 'nfs', 'proc', 'pstore',
-                  'rpc_pipefs', 'securityfs', 'sysfs', 'tmpfs', 'tracefs',
-                  'cgroup2', 'configfs', 'vboxsf', 'efivarfs', 'cifs', 'nsfs',
-                  'aufs', 'overlay', 'bpf'):
+    if fstype in ('aufs', 'autofs', 'binfmt_misc', 'bpf', 'cgroup', 'cgroup2',
+                  'cifs', 'configfs', 'debugfs', 'devpts', 'devtmpfs',
+                  'efivarfs', 'hugetlbfs', 'mqueue', 'nfs', 'nsfs', 'overlay',
+                  'proc', 'pstore', 'rpc_pipefs', 'securityfs', 'sysfs',
+                  'tmpfs', 'tracefs', 'vboxsf'):
         continue
     if any(True for r in results.values() if r['device'] == device):
         # Bind mounting, probably.
