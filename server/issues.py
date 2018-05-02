@@ -121,7 +121,8 @@ def problem_checks():
             'spec': {'plugins.firewall.status': {'$not': {'$eq': 'on'}}}},
         'screenlock-disabled': {
             'grace-period': datetime.timedelta(hours=4),
-            'spec': {'plugins.screenlock.users.enabled':
+            'spec': {'plugins.screenlock.users': {'$exists': True},
+                     'plugins.screenlock.users.enabled':
                      {'$not': {'$eq': True}}}},
         'deprecated-port': {
             'grace-period': datetime.timedelta(hours=1)},
