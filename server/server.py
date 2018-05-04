@@ -839,6 +839,9 @@ def startServer(port, pipes_arg, local_only=False):
 
     # To enable keep-alive
     WSGIRequestHandler.protocol_version = 'HTTP/1.1'
+    # To prevent DoS attacks by opening connections and not closing them and
+    # consuming resources and filling all our connection slots in the kernel.
+    WSGIRequestHandler.timeout = 10
 
     log = get_logger('server')
     pipes = pipes_arg
