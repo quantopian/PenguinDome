@@ -10,14 +10,14 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-Flask==0.12.2
+Flask==1.0.2
 -e git://github.com/quantopian/logbook.git#egg=Logbook
 -e git://github.com/quantopian/MongoDBProxy.git#egg=mongodbproxy
 passlib==1.7.1
 pycrypto==2.6.1
-pymongo==3.4.0
-python-dateutil==2.6.1
-pytz==2017.2
+pymongo==3.6.1
+python-dateutil==2.7.3
+pytz==2018.4
 PyYAML==3.12
-requests==2.18.1
-stopit==1.1.1
+requests==2.18.4
+stopit==1.1.2

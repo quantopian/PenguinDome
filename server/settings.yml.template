@@ -19,8 +19,7 @@
 #
 # If it is a mapping/dict, then the keys are port numbers and the values are
 # port-specific settings which override the global settings. Currently
-# supported port-specific settings are "threaded" to indicate whether the
-# server process listening on this port should be threaded, "ssl" as described
+# supported port-specific settings are "ssl" as described
 # below for enabling SSL on a port, and "deprecated" to indicate whether this
 # port is deprecated. If a client connects to a deprecated port, then it's
 # logged as such an open issue for the client is created in the database. In
@@ -38,7 +37,6 @@ port: [server port, optional, defaults to 80]
 # to a non-SSL port on the address 127.0.0.1, for requests generated locally by
 # scripts that need to talk to the server. The default is 5000.
 local_port: 5000
-threaded: [whether to run multithreaded server, optional, defaults to true]
 database:
   host: [either a single host[:port] or a list, optional, defaults to localhost:27017]
   replicaset: [replicaset name, optional]

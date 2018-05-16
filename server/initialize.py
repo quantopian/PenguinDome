@@ -266,8 +266,6 @@ def main(args):
                     break
                 print('That file does not exist.')
 
-        server_changed |= maybe_changed('server', 'threaded', get_bool,
-                                        'Should the server be multithreaded?')
         server_changed |= maybe_changed('server', 'database:host',
                                         get_string_or_list,
                                         'Database host:port:')

@@ -194,9 +194,6 @@ script.
   is included in client releases and used by the clients to verify the
   server certificate, so it is secure.
 
-* **Should the server be multithreaded?** There's no reason for it not
-  to be unless you're actively developing or debugging it.
-
 * **Database host:port** specifies the MongoDB host name and port
   number the server should connect to. If it's a replicaset, you can
   specify more than one (you'll keep being prompted until you hit

@@ -74,12 +74,6 @@ def parse_args():
 
     options = argparse.ArgumentParser(add_help=False)
     group = options.add_mutually_exclusive_group()
-    group.add_argument('--threaded', action='store_true', default=None,
-                       help='Run server in multi-threaded mode')
-    group.add_argument('--nothreaded', dest='threaded', default=None,
-                       action='store_false',
-                       help='Run server in single-threaded mode')
-    group = options.add_mutually_exclusive_group()
     group.add_argument('--deprecated', action='store_true', default=None,
                        help='Mark the port as deprecated')
     group.add_argument('--nodeprecated', dest='deprecated', default=None,
@@ -157,7 +151,6 @@ def ports_iter():
 
 def port_config(port):
     config = {}
-    config['threaded'] = get_port_setting(port, 'threaded')
     config['deprecated'] = get_port_setting(port, 'deprecated', False)
     if get_port_setting(port, 'ssl'):
         config['ssl'] = {}
@@ -247,10 +240,6 @@ def configure_port(args, add=False):
         nonlocal changed
         set_setting(port_settings, setting, value)
         changed = True
-
-    if args.threaded is not None:
-        if bool(gps('threaded')) != args.threaded:
-            ss('threaded', args.threaded)
 
     if args.deprecated is not None:
         if bool(gps('deprecated')) != args.deprecated:

@@ -32,7 +32,10 @@ import tempfile
 import time
 from uuid import uuid4
 import werkzeug._internal  # To replace its logger to nix "werkzeug" in logs
-from werkzeug.serving import WSGIRequestHandler  # So we can enable keep-alive
+from werkzeug.serving import (
+    WSGIRequestHandler,  # So we can enable keep-alive and set timeout
+    run_simple,
+)
 
 from penguindome import (
     top_dir,
@@ -859,18 +862,21 @@ def startServer(port, pipes_arg, local_only=False):
     del app.logger.handlers[:]
     app.logger.propagate = True
 
+    # Werkzeug has a bug which causes sockets to get stuck in TCP CLOSE_WAIT
+    # state. Eventually, there are so many stuck sockets that the kernel stops
+    # allowing new connections to the port, and then attempts to connect to the
+    # port by clients hang. The "real" way to fix this is to run the server
+    # under a different WSGI framework, but all of them are more of a pain to
+    # set up than werkzeug, so I'm hoping that we can solve this problem just
+    # by handling each request in a separate process so the socket for each
+    # request will get closed properly when its process exits.
+    # More info: https://stackoverflow.com/questions/31403261/\
+    # flask-werkzeug-sockets-stuck-in-close-wait
+    kwargs = {'processes': 5}
     if local_only:
-        kwargs = {
-            'host': '127.0.0.1',
-            'port': port,
-            'threaded': True,
-        }
+        host = '127.0.0.1'
     else:
-        kwargs = {
-            'host': '0.0.0.0',
-            'port': port,
-            'threaded': get_port_setting(port, 'threaded', True),
-        }
+        host = '0.0.0.0'
 
         ssl_certificate = get_port_setting(port, 'ssl:certificate', None)
         ssl_key = get_port_setting(port, 'ssl:key', None)
@@ -883,7 +889,7 @@ def startServer(port, pipes_arg, local_only=False):
         if ssl_enabled:
             kwargs['ssl_context'] = (ssl_certificate, ssl_key)
 
-    app.run(**kwargs)
+    run_simple(host, port, app, **kwargs)
 
 
 def prepare_database():
