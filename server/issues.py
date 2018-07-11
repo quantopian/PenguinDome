@@ -450,9 +450,13 @@ def audit_handler(args):
                 if not key1_printed:
                     client = db.clients.find_one({'hostname': key1},
                                                  projection=['submitted_at'])
-                    last_reported = d(client['submitted_at'])
-                    print('{} [last reported at {}]'.format(
-                        key1, last_reported))
+                    if client:
+                        last_reported = d(client['submitted_at'])
+                        print('{} [last reported at {}]'.format(
+                            key1, last_reported))
+                    else:
+                        # This is a global issue, not a per-client issue
+                        print(key1)
                     key1_printed = True
                 print('  {} since {}{}'.format(key2, d(issue['opened_at']),
                                                snoozed))
