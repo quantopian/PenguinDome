@@ -467,7 +467,7 @@ def audit_handler(args):
                 if args.update_recent:
                     db.issues.update(
                         {'_id': issue['_id']}, {'$set': {'alerted_at': now}})
-        if args.email and email_list:
+        if client and args.email and email_list:
             email = get_client_parameter(key1, 'user_email')
             if not email:
                 log.warn("Can't send email for {} since user_email not set",
