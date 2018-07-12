@@ -446,10 +446,10 @@ def audit_handler(args):
                 snoozed = ' [snoozed until {}]'.format(d(issue['unsnooze_at']))
             else:
                 snoozed = ''
+            client = db.clients.find_one({'hostname': key1},
+                                         projection=['submitted_at'])
             if filter_ok and alert_ok and grace_ok and snooze_ok:
                 if not key1_printed:
-                    client = db.clients.find_one({'hostname': key1},
-                                                 projection=['submitted_at'])
                     if client:
                         last_reported = d(client['submitted_at'])
                         print('{} [last reported at {}]'.format(
