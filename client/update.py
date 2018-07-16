@@ -127,7 +127,7 @@ def do_patches(patches):
                     log.warn("Patch says to remove {} but it's already gone",
                              patch_path)
                 continue
-            log.info('Patching {} (id {}, mode {})', patch_path, patch_id,
+            log.info('Patching {} (id {}, mode {:o})', patch_path, patch_id,
                      patch_mode)
             patch_dir = os.path.dirname(os.path.join(top_dir, patch_path))
             os.makedirs(patch_dir, exist_ok=True)
