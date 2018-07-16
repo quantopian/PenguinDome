@@ -21,7 +21,7 @@ netifaces==0.10.6
 pexpect==4.2.1
 psutil==5.2.2
 ptyprocess==0.5.2
-pycrypto==2.6.1
+pycryptodome==3.6.4
 python-daemon==2.1.2
 python-dateutil==2.6.1
 PyYAML==3.12

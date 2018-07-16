@@ -14,7 +14,7 @@ Flask==1.0.2
 -e git://github.com/quantopian/logbook.git#egg=Logbook
 -e git://github.com/quantopian/MongoDBProxy.git#egg=mongodbproxy
 passlib==1.7.1
-pycrypto==2.6.1
+pycryptodome==3.6.4
 pymongo==3.6.1
 python-dateutil==2.7.3
 pytz==2018.4
