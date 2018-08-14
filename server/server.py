@@ -27,15 +27,12 @@ from pymongo import ASCENDING
 from pymongo.operations import IndexModel
 import re
 import signal
+import socket
 import sys
 import tempfile
 import time
 from uuid import uuid4
 import werkzeug._internal  # To replace its logger to nix "werkzeug" in logs
-from werkzeug.serving import (
-    WSGIRequestHandler,  # So we can enable keep-alive and set timeout
-    run_simple,
-)
 
 from penguindome import (
     top_dir,
@@ -55,6 +52,28 @@ from penguindome.server import (
     encrypt_document,
     audit_trail_write,
     arch_security_flag,
+)
+
+# Monkey-patch TCPServer before it's loaded by Werkzeug, to set keepalive on
+# its sockets, so that clients on flaky internet connections won't be able to
+# wedge Werkzeug child processes forever.
+
+import socketserver  # To create subclass that sets SO_KEEPALIVE
+
+
+class MyTCPServer(socketserver.TCPServer):
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        super(MyTCPServer, self).server_bind()
+
+
+socketserver.TCPServer = MyTCPServer
+
+# End monkey-patching TCPServer.
+
+from werkzeug.serving import (  # noqa
+    WSGIRequestHandler,  # So we can enable keep-alive and set timeout
+    run_simple,
 )
 
 log = None
@@ -872,7 +891,7 @@ def startServer(port, pipes_arg, local_only=False):
     # request will get closed properly when its process exits.
     # More info: https://stackoverflow.com/questions/31403261/\
     # flask-werkzeug-sockets-stuck-in-close-wait
-    kwargs = {'processes': 5}
+    kwargs = {'processes': 10}
     if local_only:
         host = '127.0.0.1'
     else:
