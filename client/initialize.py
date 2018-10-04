@@ -17,6 +17,8 @@ import os
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 import shutil
+import subprocess
+import sys
 
 from penguindome import top_dir
 from penguindome.prompts import get_bool
@@ -66,7 +68,42 @@ def main():
 
         print('Installed {}'.format(cron_file))
 
+        cron_exists = True
+
+    if cron_exists:
+        enable_cron_service(args.prompt)
+
     print('Done!')
+
+
+def enable_cron_service(ask):
+    for service in ('cron', 'cronie'):
+        if not subprocess.call('systemctl list-unit-files {0}.service | '
+                               'fgrep -q -s {0}.service'.format(service),
+                               shell=True):
+            cron_service = service
+            break
+    else:
+        sys.stderr.write(
+            'Warning: Could not determine name of cron service. Cron may not\n'
+            '         be running, so PenguinDome crontab may not run.\n')
+        return
+
+    for check, action in (('enabled', 'enable'), ('active', 'start')):
+        good = not subprocess.call(
+            ('systemctl', '--quiet', 'is-{}'.format(check), cron_service))
+
+        if good:
+            continue
+
+        if ask:
+            prompt = 'Do you want to {} the {} service?'.format(
+                action, cron_service)
+            doit = get_bool(prompt, True)
+            if not doit:
+                return
+
+        subprocess.check_call(('systemctl', action, cron_service))
 
 
 if __name__ == '__main__':
