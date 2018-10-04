@@ -14,6 +14,7 @@ from base64 import b64encode
 from collections import namedtuple, OrderedDict
 import datetime
 from distutils.version import LooseVersion
+import fnmatch
 import glob
 from hashlib import md5
 from itertools import chain
@@ -76,6 +77,8 @@ def release_files_iter(with_signatures=False, top_dir=top_dir):
             if not stat.S_ISREG(os.stat(path).st_mode):
                 continue
             relative_path = path[len(top_dir) + 1:]
+            if fnmatch.fnmatch(relative_path, '*/keyring/reader_*.status'):
+                continue
             if with_signatures:
                 yield (relative_path,
                        os.path.join('signatures', relative_path + '.sig'))
