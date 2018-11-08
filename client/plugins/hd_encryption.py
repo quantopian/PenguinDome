@@ -13,6 +13,7 @@
 # the License.
 
 import json
+import re
 import subprocess
 
 from penguindome.client import get_logger
@@ -74,7 +75,7 @@ for mount in open('/proc/mounts'):
     if device.find(':') > -1 or device.startswith('//'):
         # Remote device
         continue
-    if mountpoint.startswith('/media/'):
+    if re.match(r'(?:/run)?/media/', mountpoint):
         # We don't enforce encryption of removable devices with MDM.
         continue
 
