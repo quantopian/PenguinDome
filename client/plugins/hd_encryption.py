@@ -56,7 +56,8 @@ for mount in open('/proc/mounts'):
                   'cifs', 'configfs', 'debugfs', 'devpts', 'devtmpfs',
                   'efivarfs', 'fuse', 'fuse.gvfsd-fuse', 'fusectl',
                   'hugetlbfs', 'mqueue', 'nfs', 'nsfs', 'overlay', 'proc',
-                  'pstore', 'rpc_pipefs', 'securityfs', 'squashfs', 'sysfs',
+                  'pstore', 'rpc_pipefs', 'securityfs', 'selinuxfs',
+                  'squashfs', 'sysfs',
                   'tmpfs', 'tracefs', 'vboxsf'):
         continue
     if any(True for r in results.values() if r['device'] == device):
