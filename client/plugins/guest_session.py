@@ -16,6 +16,7 @@ from configparser import SafeConfigParser
 import glob
 import os
 import re
+import subprocess
 
 from penguindome import cached_data
 import penguindome.json as json
@@ -64,10 +65,22 @@ def gdm3_checker():
     return None
 
 
+def xguest_checker():
+    # Fedora uses "xguest" RPM, which creates "xguest" user, as its guest
+    # session.
+    try:
+        subprocess.check_call(('dnf', 'info', 'xguest'),
+                              stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    return any(l for l in open('/etc/passwd') if re.match(r'xguest:', l))
+
+
 # Make sure xinit_checker is last. Just because somebody is running xinit
 # doesn't mean that they aren't _also_ running a display manager that has a
 # guest session, so xinit_checker should only be used as a last resort.
-checkers = (lightdm_checker, xinit_checker, gdm3_checker)
+checkers = (lightdm_checker, xinit_checker, gdm3_checker, xguest_checker)
 
 for checker in checkers:
     results = checker()
