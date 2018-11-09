@@ -79,7 +79,7 @@ class InteractionBroker(object):
                     if not received:
                         continue
                     direction[1].send(received)
-                except EOFError as e:
+                except EOFError:
                     return
             end = time.time()
             if end - start < self.poll_interval:
