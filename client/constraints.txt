@@ -18,7 +18,7 @@ idna==2.5
 lockfile==0.12.2
 monotonic==1.3
 netifaces==0.10.6
-pexpect==4.2.1
+pexpect==4.6.0
 psutil==5.2.2
 ptyprocess==0.5.2
 pycryptodome==3.6.6
