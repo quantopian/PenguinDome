@@ -57,12 +57,30 @@ def lightdm_checker():
 
 def gdm3_checker():
     # gdm3 doesn't support guest sessions
-    gdm3_re = re.compile(r'/gdm3$')
     running_gdm3 = any(p for p in process_dict_iter(('exe', 'username'))
-                       if p['username'] == 'root' and gdm3_re.search(p['exe']))
+                       if p['username'] == 'root' and
+                       re.search(r'/gdm3$', p['exe']))
     if running_gdm3:
         return False
-    return None
+    # Sometimes the gdm3 binary is just called gdm
+    try:
+        running_gdm = next(p for p in process_dict_iter(('exe', 'username'))
+                           if p['username'] == 'root' and
+                           re.search(r'/gdm$', p['exe']))
+    except StopIteration:
+        return None
+    try:
+        version = subprocess.check_output((running_gdm['exe'], '--version'),
+                                          universal_newlines=True)
+    except subprocess.CalledProcessError:
+        return None
+    # Format looks like "GDM 3.30.2"
+    match = re.search(r' (\d+)', version)
+    if not match:
+        return None
+    # We are specifically looking for GDM version 3 here, not newer versions,
+    # because it is possible that newer versions will support guest sessions.
+    return False if int(match.group(1)) == 3 else None
 
 
 def xguest_checker():
