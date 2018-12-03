@@ -12,6 +12,20 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+# Checkers in this file should return a dict with five keys in it:
+#
+# "release" -- True or False to indicate whether there is a new OS
+#   release available
+# "current" -- True or False to indicate whether the metadata on the
+#   machine related to updates is current
+# "patches" -- True or False to indicate whether there are OS updates
+#   of any sort available
+# "security_patches" -- True or False to indicate whether there are
+#    OS security updates available
+# "installed_packages" -- List of installed packages
+#
+# Any of the booleans can also return the string "unknown".
+
 import json
 import os
 from psutil import Process
@@ -209,9 +223,67 @@ def ubuntu_checker():
     return results
 
 
-checkers = (ubuntu_checker, arch_checker)
+def fedora_checker():
+    if not os.path.exists('/etc/fedora-release'):
+        return None
+    results = {}
+
+    # I can't figure out how to check on Fedora if there is an OS upgrade
+    # available. I've posted about this on Ask Fedora at
+    # https://ask.fedoraproject.org/en/question/130124/how-do-i-detect-from-
+    # the-command-line-that-a-new-fedora-release-is-available/.
+    # Until there's an answer, we'll use return "unknown" for OS upgrades.
+    results['release'] = 'unknown'
+
+    # The timestamp of /var/cache/dnf/last_makecache tells us when the DNF
+    # metadata were last updated.
+    try:
+        update_stamp = os.stat('/var/cache/dnf/last_makecache').st_mtime
+        results['current'] = time.time() - update_stamp < 60 * 60 * 24 * 2
+    except:
+        results['current'] = False
+
+    # run dnf -q updateinfo --updates to find out if there are any OS updates
+    # available. Non-zero exit status means unknown. Zero exit status but no
+    # output means no updates available. Zero exit status with output means
+    # updates available.
+    try:
+        output = subprocess.check_output(
+            ('dnf', '-q', 'updateinfo', '--updates'),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except (OSError, subprocess.CalledProcessError):
+        results['patches'] = 'unknown'
+    else:
+        results['patches'] = len(output) > 0
+
+    # Run dnf -q updateinfo --updates sec to find out if there are any OS
+    # security updates available. Same interpretation of results as above.
+    try:
+        output = subprocess.check_output(
+            ('dnf', '-q', 'updateinfo', '--updates', 'sec'),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except (OSError, subprocess.CalledProcessError):
+        results['security_patches'] = 'unknown'
+    else:
+        results['security_patches'] = len(output) > 0
+
+    try:
+        output = subprocess.check_output(
+            ('rpm', '-qa'),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except (OSError, subprocess.CalledProcessError):
+        results['installed_packages'] = []
+    else:
+        # Sorted so that changes will be more obvious.
+        results['installed_packages'] = sorted(output.split('\n'))
+
+    return results
+
+
+checkers = (ubuntu_checker, arch_checker, fedora_checker)
 
 for checker in checkers:
+    log.debug('Trying {}'.format(checker))
     results = checker()
     if results is not None:
         break
