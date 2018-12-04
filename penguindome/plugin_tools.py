@@ -70,12 +70,13 @@ def find_xinit_users():
             except StopIteration:
                 continue
             try:
-                proc = min(
-                    (p for p in process_dict_iter(
+                processes = (
+                    p for p in process_dict_iter(
                         ('environ', 'pid', 'username'))
-                     if 'DISPLAY' in p['environ'] and
-                     p['environ']['DISPLAY'] == display),
-                    key=lambda p: p['pid'])
+                    if 'DISPLAY' in p['environ'] and
+                    p['environ']['DISPLAY'] == display)
+                proc = min(
+                    processes, key=lambda p: psutil.Process(p).create_time())
             except ValueError:  # no matching processes
                 continue
             users.append((proc['username'], display))
