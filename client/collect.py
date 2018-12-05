@@ -161,7 +161,12 @@ def parse_args():
 def runlevel_info():
     try:
         output = subprocess.check_output(
-            'systemctl list-units --type target; runlevel; who -r', shell=True)
+            # The `bluetooth` target flaps between active and inactive on some
+            # laptops, so let's ignore it. Also, specify --no-legend to get rid
+            # of the header and footer, because the footer contains a count of
+            # active units which will change when bluetooth flaps.
+            'systemctl list-units --type target --no-legend | '
+            'grep -v bluetooth; runlevel; who -r', shell=True)
     except subprocess.CalledProcessError as e:
         output = e.output
     output = output.decode('utf8')
