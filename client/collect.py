@@ -204,7 +204,12 @@ def main():
         # the machine is in the process of rebooting, in which case the odds
         # are that some of the plugins returned bad data and we shouldn't send
         # anything to the server.
-        sys.exit('Aborting because runlevel changed')
+        before_lines = set(before_runlevel.split('\n'))
+        after_lines = set(after_runlevel.split('\n'))
+        only_before = before_lines - after_lines
+        only_after = after_lines - before_lines
+        sys.exit('Aborting because runlevel changed: removed={}, added={}'.
+                 format(', '.join(only_before), ', '.join(only_after)))
 
     results, updates = encrypt_document(results, log=log)
     if updates:
