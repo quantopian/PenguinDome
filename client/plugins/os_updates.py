@@ -275,7 +275,7 @@ def fedora_checker():
         results['installed_packages'] = []
     else:
         # Sorted so that changes will be more obvious.
-        results['installed_packages'] = sorted(output.split('\n'))
+        results['installed_packages'] = sorted(output.strip().split('\n'))
 
     return results
 
