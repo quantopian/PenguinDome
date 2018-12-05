@@ -223,17 +223,58 @@ def ubuntu_checker():
     return results
 
 
+def fedora_release_checker():
+    try:
+        os_release = open('/etc/os-release', 'r')
+    except Exception:
+        log.exception('Could not open /etc/os-release')
+        return 'unknown'
+
+    try:
+        version_id_line = next(
+            l for l in os_release if l.startswith('VERSION_ID=')).strip()
+    except StopIteration:
+        log.error('Could not find VERSION_ID= line in /etc/os-release')
+        return 'unknown'
+
+    try:
+        current_version_number = int(version_id_line[11:])
+    except Exception:
+        log.error('Could not parse {} in /etc/os-release'.format(
+            version_id_line))
+        return 'unknown'
+
+    next_version_number = current_version_number + 1
+
+    try:
+        subprocess.check_output(
+            ('osinfo-query', 'os', 'short-id=fedora{}'.format(
+                current_version_number)),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except Exception:
+        log.exception('Could not query current release with osinfo-query')
+        return 'unknown'
+
+    try:
+        subprocess.check_output(
+            ('osinfo-query', 'os', 'short-id=fedora{}'.format(
+                next_version_number)),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except subprocess.CalledProcessError:
+        return False
+    except Exception:
+        log.exception('Error querying next release with osinfo-query')
+        return 'unknown'
+    else:
+        return True
+
+
 def fedora_checker():
     if not os.path.exists('/etc/fedora-release'):
         return None
     results = {}
 
-    # I can't figure out how to check on Fedora if there is an OS upgrade
-    # available. I've posted about this on Ask Fedora at
-    # https://ask.fedoraproject.org/en/question/130124/how-do-i-detect-from-
-    # the-command-line-that-a-new-fedora-release-is-available/.
-    # Until there's an answer, we'll use return "unknown" for OS upgrades.
-    results['release'] = 'unknown'
+    results['release'] = fedora_release_checker()
 
     # The timestamp of /var/cache/dnf/last_makecache tells us when the DNF
     # metadata were last updated.
