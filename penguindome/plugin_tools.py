@@ -76,7 +76,8 @@ def find_xinit_users():
                     if 'DISPLAY' in p['environ'] and
                     p['environ']['DISPLAY'] == display)
                 proc = min(
-                    processes, key=lambda p: psutil.Process(p).create_time())
+                    processes,
+                    key=lambda p: psutil.Process(p['pid']).create_time())
             except ValueError:  # no matching processes
                 continue
             users.append((proc['username'], display))
