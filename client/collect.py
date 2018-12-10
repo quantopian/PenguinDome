@@ -206,9 +206,9 @@ def main():
         # anything to the server.
         before_lines = set(before_runlevel.split('\n'))
         after_lines = set(after_runlevel.split('\n'))
-        only_before = before_lines - after_lines
-        only_after = after_lines - before_lines
-        sys.exit('Aborting because runlevel changed: removed={}, added={}'.
+        only_before = sorted(before_lines - after_lines)
+        only_after = sorted(after_lines - before_lines)
+        sys.exit('Aborting because runlevel changed: removed={!r}, added={!r}'.
                  format(', '.join(only_before), ', '.join(only_after)))
 
     results, updates = encrypt_document(results, log=log)
