@@ -209,7 +209,7 @@ def main():
         only_before = sorted(before_lines - after_lines)
         only_after = sorted(after_lines - before_lines)
         sys.exit('Aborting because runlevel changed: removed={!r}, added={!r}'.
-                 format(', '.join(only_before), ', '.join(only_after)))
+                 format(only_before, only_after))
 
     results, updates = encrypt_document(results, log=log)
     if updates:
