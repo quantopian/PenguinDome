@@ -23,7 +23,7 @@ pycryptodome==3.6.6
 pymongo==3.4.0
 python-dateutil==2.6.1
 pytz==2017.2
-PyYAML==3.13
+PyYAML==4.2b4
 requests==2.20.0
 six==1.10.0
 stopit==1.1.1
