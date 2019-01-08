@@ -24,7 +24,7 @@ ptyprocess==0.5.2
 pycryptodome==3.6.6
 python-daemon==2.1.2
 python-dateutil==2.6.1
-PyYAML==3.13
+PyYAML==4.2b4
 requests==2.20.0
 stopit==1.1.1
 urllib3==1.21.1
