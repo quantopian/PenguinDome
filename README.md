@@ -116,8 +116,8 @@ of configuration questions (discussed below), and sets up the
 necessary configuration files for the server and the clients.
 
 Once that's done, run `bin/client_release` as root. This generates a
-numbered tar file in `var/client_releases` which is then download and
-install on clients as described below.
+numbered tar file in `var/client_releases` which is then downloaded
+and installed on clients as described below.
 
 Whenever any of the files used on the clients is changed, you run
 `bin/client_release` again, and a new release is generated and
