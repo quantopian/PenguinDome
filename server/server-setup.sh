@@ -85,7 +85,7 @@ done
 . $venv/bin/activate
 
 pip install -q --upgrade pip
-pip install -q -r server/requirements.txt -c server/constraints.txt
+pip install -q -r server/requirements.txt
 
 make_wrapper() {
     target="$1"; shift

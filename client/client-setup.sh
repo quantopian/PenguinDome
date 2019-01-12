@@ -46,7 +46,7 @@ done
 . $venv/bin/activate
 
 pip install -q --upgrade pip
-pip install -q -r client/requirements.txt -c client/constraints.txt
+pip install -q -r client/requirements.txt
 
 mkdir -p bin
 for file in client/*.py; do
