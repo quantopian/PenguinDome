@@ -26,7 +26,7 @@ mkdir -p var
 if [ "$ID_LIKE" = "debian" ]; then
     # Ubuntu setup will probably work on Debian, though not tested.
     apt-get -qq install $(sed 's/#.*//' client/ubuntu-packages.txt)
-elif [ "$ID_LIKE" = "archlinux" -o "$ID_LIKE" = "arch" ]; then
+elif [ "$ID_LIKE" = "archlinux" -o "$ID" = "arch" ]; then
     if ! pacman -S --needed --noconfirm $(sed -e 's/#.*//' -e '/\.git$/d' \
       client/arch-packages.txt) >| var/pacman.log 2>&1; then
 	echo "pacman -S failed:" 1>&2
