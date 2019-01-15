@@ -30,7 +30,7 @@ for collected in sorted(glob.glob(os.path.join(collected_dir, '*[0-9]'))):
     try:
         try:
             server_request('/penguindome/v1/submit', data_path=collected,
-                           exit_on_connection_error=True)
+                           exit_on_connection_error=True, logger=log)
         except HTTPError as e:
             if e.response.status_code == 400:
                 log.error('Server returned status code 400. '

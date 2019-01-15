@@ -106,7 +106,7 @@ def set_gpg(mode):
 
 
 def gpg_command(*cmd, with_trustdb=False, quiet=True,
-                minimum_version='2.1.15'):
+                minimum_version='2.1.15', log=None):
     global gpg_exe, gpg_exe
 
     if not gpg_mode:
@@ -145,8 +145,14 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
 
     cmd = tuple(chain((gpg_exe, '--batch', '--yes'), quiet_args, trustdb_args,
                       cmd))
-    return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
-        decode('utf8')
+    try:
+        return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
+            decode('utf8')
+    except subprocess.CalledProcessError as e:
+        if log:
+            log.exception('Gpg command {} failed. Output:\n{}'.format(
+                cmd, e.output.decode('utf8')))
+        raise
 
 
 def load_settings(which):
