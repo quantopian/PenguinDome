@@ -14,6 +14,7 @@ from base64 import b64encode
 from collections import namedtuple, OrderedDict
 import datetime
 from distutils.version import LooseVersion
+import fcntl
 import fnmatch
 import glob
 from hashlib import md5
@@ -242,6 +243,99 @@ def verify_signature(file, top_dir=top_dir, raise_errors=False):
     return signature_file[len(top_dir) + 1:]
 
 
+class FlockFileLock(object):
+    def __init__(self, path):
+        self.path = path
+        self.file = None
+
+    def acquire(self):
+        """Returns True if file has been changed, False otherwise"""
+        ret = False
+        while True:
+            if not self.file:
+                self.file = open(self.path, 'a')
+                self.fstatd = os.fstat(self.file.fileno())
+                ret = True
+            try:
+                fcntl.flock(self.file, fcntl.LOCK_EX)
+            except Exception:
+                try:
+                    self.file.close()
+                except Exception:
+                    pass
+                self.file = None
+                raise
+            try:
+                statd = os.stat(self.path)
+            except FileNotFoundError:
+                try:
+                    self.file.close()
+                except Exception:
+                    pass
+                self.file = None
+                continue
+            except Exception:
+                try:
+                    self.file.close()
+                except Exception:
+                    pass
+                self.file = None
+                raise
+            if self.fstatd[stat.ST_DEV] == statd[stat.ST_DEV] and \
+               self.fstatd[stat.ST_INO] == statd[stat.ST_INO]:
+                return ret
+            self.file.close()
+            self.file = None
+
+    def release(self):
+        if not self.file:
+            return
+        fcntl.flock(self.file, fcntl.LOCK_UN)
+
+
+class FlockRotatingFileHandler(logbook.FileHandler):
+    def __init__(self, filename, encoding='utf-8', level=logbook.NOTSET,
+                 format_string=None, delay=False, max_size=1024 * 1024,
+                 backup_count=5, filter=None, bubble=False):
+        self.max_size = max_size
+        self.backup_count = backup_count
+        super(FlockRotatingFileHandler, self).__init__(
+            filename, encoding=encoding, level=level,
+            format_string=format_string, delay=delay, filter=filter,
+            bubble=bubble)
+        self.flock = FlockFileLock(filename)
+
+    def should_rollover(self):
+        self.stream.seek(0, 2)
+        return self.stream.tell() >= self.max_size
+
+    def perform_rollover(self):
+        self.stream.close()
+        for x in range(self.backup_count - 1, 0, -1):
+            src = '%s.%d' % (self._filename, x)
+            dst = '%s.%d' % (self._filename, x + 1)
+            try:
+                os.rename(src, dst)
+            except FileNotFoundError:
+                pass
+        os.rename(self._filename, self._filename + '.1')
+        self._open('a')
+
+    def emit(self, record):
+        try:
+            changed = self.flock.acquire()
+            if changed:
+                self.flush()
+                self.stream.close()
+                self.stream = None
+                self.ensure_stream_is_open()
+            super(FlockRotatingFileHandler, self).emit(record)
+            if self.should_rollover():
+                self.perform_rollover()
+        finally:
+            self.flock.release()
+
+
 def get_logger(setting_getter, name, fail_to_local=False, filter=None):
     global got_logger
     if got_logger:
@@ -272,7 +366,7 @@ def get_logger(setting_getter, name, fail_to_local=False, filter=None):
 
     # We always do local debug logging, regardless of whether we're also
     # logging elsewhere.
-    logbook.RotatingFileHandler(
+    FlockRotatingFileHandler(
         internal_log_file, bubble=True, filter=log_filter).push_application()
 
     handler_name = setting_getter('logging:handler')
