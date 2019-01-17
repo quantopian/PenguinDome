@@ -323,16 +323,25 @@ class FlockRotatingFileHandler(logbook.FileHandler):
 
     def emit(self, record):
         try:
+            self.lock.acquire()
             changed = self.flock.acquire()
             if changed:
                 self.flush()
-                self.stream.close()
-                self.stream = None
+                if self.stream:
+                    try:
+                        self.stream.close()
+                    except Exception:
+                        pass
+                    self.stream = None
                 self.ensure_stream_is_open()
             super(FlockRotatingFileHandler, self).emit(record)
             if self.should_rollover():
                 self.perform_rollover()
         finally:
+            try:
+                self.lock.release()
+            except Exception:
+                pass
             self.flock.release()
 
 
