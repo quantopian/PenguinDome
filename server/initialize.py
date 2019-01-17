@@ -36,11 +36,13 @@ from penguindome.client import (
     get_setting as get_client_setting,
     set_setting as set_client_setting,
     save_settings as save_client_settings,
+    gpg_user_id as client_user_id,
 )
 from penguindome.server import (
     get_setting as get_server_setting,
     set_setting as set_server_setting,
     save_settings as save_server_settings,
+    gpg_user_id as server_user_id,
 )
 from penguindome.prompts import (
     get_bool,
@@ -53,9 +55,6 @@ os.chdir(top_dir)
 
 os.makedirs(gpg_private_home, 0o700, exist_ok=True)
 os.makedirs(gpg_public_home, 0o700, exist_ok=True)
-
-server_user_id = 'penguindome-server'
-client_user_id = 'penguindome-client'
 
 entropy_warned = False
 get_string_none = partial(get_string, none_ok=True)

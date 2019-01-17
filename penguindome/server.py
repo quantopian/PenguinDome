@@ -13,6 +13,7 @@
 from base64 import b64encode
 from collections import defaultdict
 import datetime
+from functools import partial
 from mongo_proxy import MongoProxy
 import os
 from pymongo import MongoClient
@@ -27,9 +28,12 @@ from penguindome import (
     signatures_dir,
     get_selectors as main_get_selectors,
     encrypt_document as main_encrypt_document,
-    gpg_command,
+    gpg_command as main_gpg_command,
     top_dir,
 )
+
+gpg_user_id = 'penguindome-server'
+gpg_command = partial(main_gpg_command, '-u', gpg_user_id)
 
 valid_client_parameters = (
     # This is a list of other client which should be treated as the same as the
