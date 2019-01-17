@@ -37,22 +37,22 @@ def lightdm_checker():
                           if lightdm_re.search(p['exe']))
     if not running_lightdm:
         return None
-    if not os.path.exists('/usr/share/lightdm/guest-session'):
+    if not (os.path.exists('/usr/share/lightdm/guest-session') or
+            os.path.exists('/usr/lib/lightdm/lightdm-guest-session')):
         return None
-    if not os.path.exists('/usr/share/lightdm/lightdm.conf.d'):
-        return None
-    status = None
-    for conf_file in glob.glob('/usr/share/lightdm/lightdm.conf.d/*.conf'):
-        parser = SafeConfigParser()
-        parser.read(conf_file)
-        if not parser.has_section('Seat:*'):
-            continue
-        if not parser.has_option('Seat:*', 'allow-guest'):
-            continue
-        if parser.getboolean('Seat:*', 'allow-guest'):
-            return True
-        status = False
-    return status
+    # "allow-guest" setting in "Seat:*" INI section controls whether guest
+    # session is allowed. It defaults to true if not set.
+    parser = SafeConfigParser()
+    parser.read(glob.glob('/usr/share/lightdm/lightdm.conf.d/*.conf') +
+                glob.glob('/etc/lightdm/*.conf'))
+    if not parser.has_section('Seat:*'):
+        return True
+    if not parser.has_option('Seat:*', 'allow-guest'):
+        return True
+    try:
+        return parser.getboolean('Seat:*', 'allow-guest')
+    except ValueError:
+        return True
 
 
 def gdm3_checker():
