@@ -80,6 +80,8 @@ def release_files_iter(with_signatures=False, top_dir=top_dir):
             relative_path = path[len(top_dir) + 1:]
             if fnmatch.fnmatch(relative_path, '*/keyring/reader_*.status'):
                 continue
+            if fnmatch.fnmatch(relative_path, '*/keyring/sshcontrol'):
+                continue
             if with_signatures:
                 yield (relative_path,
                        os.path.join('signatures', relative_path + '.sig'))
