@@ -14,6 +14,7 @@
 
 import argparse
 import datetime
+from functools import lru_cache
 import logbook
 import os
 import pytz
@@ -43,6 +44,13 @@ os.chdir(top_dir)
 log = None
 now = datetime.datetime.utcnow()
 _problem_checks = None
+
+
+@lru_cache(maxsize=None)
+def client_exists(hostname):
+    db = get_db()
+    return True if db.clients.find_one(
+        {'hostname': hostname}, projection=['_id']) else False
 
 
 def not_reporting_filter(issue):
@@ -375,6 +383,12 @@ def check_pending_patches():
     problem_hosts = set()
     for patch in db.patches.find({'pending_hosts': {'$not': {'$size': 0}}}):
         for hostname in patch['pending_hosts']:
+            if not client_exists(hostname):
+                db.patches.update({'_id': patch['_id']},
+                                  {'$pull': {'pending_hosts': hostname}})
+                log.info('Removed deleted client {} from pending patch {}',
+                         hostname, patch['_id'])
+                continue
             if open_issue(hostname, issue_name):
                 log.info('Opened {} issue for {}', issue_name, hostname)
             problem_hosts.add(hostname)
