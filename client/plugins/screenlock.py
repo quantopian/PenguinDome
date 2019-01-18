@@ -109,7 +109,41 @@ def xautolock_status(user, display):
     return None
 
 
-display_checkers = (gnome_xscreensaver_status, xautolock_status)
+def xidlehook_status(user, display):
+    procs = (p for p in process_dict_iter(
+        ('username', 'environ', 'exe', 'cmdline')) if p['username'] == user)
+    procs = (p for p in procs if p['environ'].get('DISPLAY', None) == display)
+    procs = (p for p in procs if p['exe'].endswith('/xidlehook'))
+    for proc in procs:
+        args = proc['cmdline']
+        timers = []
+        try:
+            while args:
+                # xidlehook timers always have 4 positional arguments
+                # https://github.com/jD91mZM2/xidlehook/blob/cbc3302e3485a8308d6ba5dd6b4d069d322908dd/src/main.rs#L122  # noqa
+                if args[0] == '--timer':
+                    timers.append({
+                        'time': int(args[2]),
+                        'locker': args[3]
+                    })
+                    del args[0:5]
+                else:
+                    args.pop(0)
+        except:
+            continue
+
+        # in xidlehook, each subsequent --timer is run after previous timer(s)
+        # so the total effective time is cumulative
+        total_timers = 0
+        for timer in timers:
+            total_timers += timer['time']
+            if valid_lockers_re.search(timer['locker']):
+                return {'enabled': True, 'delay': total_timers}
+    return None
+
+
+display_checkers = (gnome_xscreensaver_status, xautolock_status,
+                    xidlehook_status)
 
 user_displays = find_x_users()
 
