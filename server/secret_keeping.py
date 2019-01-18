@@ -343,6 +343,8 @@ def encrypt_handler(args):
 
 def combine_secret_key():
     key_name = get_server_setting('secret_keeping:key_name')
+    if not key_name:
+        sys.exit('secret_keeping:key_name not defined in server settings')
     split_dir = os.path.join(var_dir, key_name)
     key_file = os.path.join(split_dir, 'private_key.asc')
     os.makedirs(split_dir, exist_ok=True)
