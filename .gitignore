@@ -25,3 +25,9 @@ var
 
 # manually add the PKGBUILD files
 arch
+
+# pyenv
+.python-version
+
+# direnv
+.envrc
