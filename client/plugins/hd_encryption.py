@@ -55,7 +55,8 @@ for mount in open('/proc/mounts'):
     if fstype in ('aufs', 'autofs', 'binfmt_misc', 'bpf', 'cgroup', 'cgroup2',
                   'cifs', 'configfs', 'debugfs', 'devpts', 'devtmpfs',
                   'efivarfs', 'fuse', 'fuse.gvfsd-fuse', 'fusectl',
-                  'hugetlbfs', 'mqueue', 'nfs', 'nsfs', 'overlay', 'proc',
+                  'hugetlbfs', 'iso9660', 'mqueue', 'nfs', 'nsfs', 'overlay',
+                  'proc',
                   'pstore', 'rpc_pipefs', 'securityfs', 'selinuxfs',
                   'squashfs', 'sysfs',
                   'tmpfs', 'tracefs', 'vboxsf'):
