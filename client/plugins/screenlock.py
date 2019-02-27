@@ -21,7 +21,9 @@ from penguindome.client import get_logger
 import penguindome.json as json
 from penguindome.plugin_tools import find_x_users, DBusUser, process_dict_iter
 
-valid_lockers = ('slock', 'i3lock', 'i3lock-fancy', 'i3lock-fancy-rapid')
+valid_lockers = (
+    'betterlockscreen', 'slock', 'i3lock', 'i3lock-fancy', 'i3lock-fancy-rapid'
+)
 valid_lockers_re = re.compile(r'^(?:' +
                               '|'.join(re.escape(l) for l in valid_lockers) +
                               r')(?:\s|$)')
