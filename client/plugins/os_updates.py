@@ -191,7 +191,9 @@ def arch_checker():
     except OSError:
         security_patches = 'unknown'
     else:
-        security_patches = len(output.strip().split('\n')) > 1
+        # use filter to remove empty list items (i.e, if there are no updates)
+        num_patches = len(list(filter(None, output.strip().split('\n'))))
+        security_patches = num_patches > 0
 
     return status(True, True, security_patches)
 
