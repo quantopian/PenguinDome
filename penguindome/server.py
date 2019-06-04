@@ -61,10 +61,6 @@ client_parameter_types = {
     'user_clients': (client_type, True),
 }
 
-# If this has dots in it then clear_obsolete_flags in
-# server/plugin_managers/arch_os_updates.py will break, so either don't give it
-# dots or fix clear_obsolete_flags.
-arch_security_flag = 'arch_security_updates_at'
 db = None
 pid = None
 

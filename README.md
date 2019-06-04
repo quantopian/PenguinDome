@@ -134,8 +134,7 @@ besides creating the settings files. See
 documentation of what goes in these files.
 
 The server uses `cron` to periodically run an audit script which
-reports on outstanding issues, as well as a helper script necessary
-for tracking Arch Linux security updates.
+reports on outstanding issues.
 
 ### Client
 
@@ -173,12 +172,6 @@ advanced configuration options that are not handled by the setup
 script.
 
 ### Server setup script
-
-* **Do you want to support Arch Linux clients?** If you say yes, then
-  cron jobs will be configured on the server to periodically poll the
-  mailing list archives for the Arch Security mailing list and ingest
-  new security announcements, to enable the server to determine when
-  Arch clients need to install security patches.
 
 * **What port should the server listen on?** The port number of the
   PenguinDome web service. If you decide to run the web service behind
@@ -836,11 +829,7 @@ The database contains the following collections:
   clients, including the bookkeeping information necessary to
   determine when to alert about them.
 
-* `arch_security_updates` contains data about Arch Linux security
-  bulletins, maintained by the
-  `server/plugin_managers/arch_os_updates.py` script, for use in
-  determining when there are pending security patches for Arch
-  clients.
+* `arch_security_updates` DEPRECATED
 
 * `client_parameters` contains client-specific paramaters currently
   used only by `bin/client_parameters` and `bin/issues audit`.

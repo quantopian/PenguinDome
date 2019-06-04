@@ -138,7 +138,7 @@ def arch_checker():
         log.debug('clear_lock: inode changed')
         return False
 
-    def status(current, updates):
+    def status(current, updates, security_patches='unknown'):
         try:
             output = subprocess.check_output(('pacman', '-Q'),
                                              stderr=subprocess.STDOUT)
@@ -154,7 +154,7 @@ def arch_checker():
         return {'current': current,
                 'release': False,
                 'patches': updates,
-                'security_patches': 'unknown',
+                'security_patches': security_patches,
                 'installed_packages': installed}
 
     clear_eset_lock()
@@ -162,6 +162,7 @@ def arch_checker():
         log.info('Pacman is locked. Giving up for now.')
         return status(False, 'unknown')
 
+    # update package database
     try:
         subprocess.check_output(('pacman', '-Sy'), stderr=subprocess.STDOUT)
     except FileNotFoundError:
@@ -171,6 +172,7 @@ def arch_checker():
                   e.output.decode('utf8'))
         return status(False, 'unknown')
 
+    # check for all available updates
     try:
         subprocess.check_output(
             ('pacman', '-Qu'), stderr=subprocess.STDOUT).decode('utf8')
@@ -179,9 +181,19 @@ def arch_checker():
             return status(True, False)
         log.error('Call to pacman -Qu failed. Output: {}',
                   e.output.decode('utf8'))
-        return status(True, 'unknown')
+        return status(True, True, 'unknown')
 
-    return status(True, True)
+    # use arch-audit to check for available security updates
+    try:
+        output = subprocess.check_output(
+            ('/usr/bin/arch-audit', '-uq'),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except OSError:
+        security_patches = 'unknown'
+    else:
+        security_patches = len(output.strip().split('\n')) > 1
+
+    return status(True, True, security_patches)
 
 
 def ubuntu_checker():
