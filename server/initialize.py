@@ -213,10 +213,6 @@ def main(args):
     server_changed = client_changed = False
 
     if do_config:
-        server_changed |= maybe_changed(
-            'server', 'support_arch_linux', get_bool,
-            'Do you want to support Arch Linux clients?')
-
         if isinstance(get_server_setting('port'), int):
             # Otherwise, the settings file has been edited to make the port
             # either a list of ports or a mapping, and we don't want to try to
@@ -413,17 +409,6 @@ def main(args):
                     MAILTO={email}
                     {minute2} * * * * root "{top_dir}/bin/issues" audit --cron
                 '''.format(minute2=minute2, email=email, top_dir=top_dir))
-
-                if get_server_setting('support_arch_linux'):
-                    template = (
-                        '# Run hourly at a random time, so as not to overload '
-                        'the Arch server.\n'
-
-                        '{minute} * * * * root "{top_dir}/server/venv" '
-                        'python "{top_dir}/server/plugin_managers/'
-                        'arch_os_updates.py" --download\n')
-
-                    crontab += template.format(top_dir=top_dir, minute=minute)
 
                 with NamedTemporaryFile('w+') as temp_cron_file:
                     temp_cron_file.write(crontab)

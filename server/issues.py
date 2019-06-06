@@ -36,7 +36,6 @@ from penguindome.server import (
     get_setting,
     get_port_setting,
     get_logger,
-    arch_security_flag,
     get_client_parameter,
 )
 
@@ -110,14 +109,6 @@ def problem_checks():
         'os-update-available': {
             'grace-period': datetime.timedelta(days=90),
             'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
-        'os-security-patches-available': {
-            'grace-period': datetime.timedelta(days=1),
-            'alert-frequency': datetime.timedelta(days=1),
-            'spec': {'$or': [{'plugins.os_info.distname': {'$ne': 'arch'},
-                              'plugins.os_updates.security_patches':
-                              {'$not': {'$eq': False}}},
-                             {'plugins.os_info.distname': 'arch',
-                              arch_security_flag: {'$exists': True}}]}},
         'guest-session-enabled': {
             'spec': {'plugins.guest_session.enabled':
                      {'$not': {'$eq': False}}}},

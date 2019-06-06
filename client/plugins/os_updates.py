@@ -138,7 +138,7 @@ def arch_checker():
         log.debug('clear_lock: inode changed')
         return False
 
-    def status(current, updates):
+    def status(current, updates, security_patches='unknown'):
         try:
             output = subprocess.check_output(('pacman', '-Q'),
                                              stderr=subprocess.STDOUT)
@@ -154,14 +154,19 @@ def arch_checker():
         return {'current': current,
                 'release': False,
                 'patches': updates,
-                'security_patches': 'unknown',
+                'security_patches': security_patches,
                 'installed_packages': installed}
 
     clear_eset_lock()
     if not clear_lock():
         log.info('Pacman is locked. Giving up for now.')
-        return status(False, 'unknown')
+        return status(
+            current=False,
+            updates='unknown',
+            security_patches='unknown'
+        )
 
+    # update package database
     try:
         subprocess.check_output(('pacman', '-Sy'), stderr=subprocess.STDOUT)
     except FileNotFoundError:
@@ -169,19 +174,49 @@ def arch_checker():
     except subprocess.CalledProcessError as e:
         log.error('Call to pacman -Sy failed. Output: {}',
                   e.output.decode('utf8'))
-        return status(False, 'unknown')
+        return status(
+            current=False,
+            updates='unknown',
+            security_patches='unknown'
+        )
 
+    # check for all available updates
     try:
         subprocess.check_output(
             ('pacman', '-Qu'), stderr=subprocess.STDOUT).decode('utf8')
     except subprocess.CalledProcessError as e:
+        # no updates available = no security patches, either
         if e.returncode == 1 and not e.output:
-            return status(True, False)
+            return status(
+                current=True,
+                updates=False,
+                security_patches=False
+            )
         log.error('Call to pacman -Qu failed. Output: {}',
                   e.output.decode('utf8'))
-        return status(True, 'unknown')
+        return status(
+            current=True,
+            updates='unknown',
+            security_patches='unknown'
+        )
 
-    return status(True, True)
+    # use arch-audit to check for available security updates
+    try:
+        output = subprocess.check_output(
+            ('/usr/bin/arch-audit', '-uq'),
+            stderr=subprocess.STDOUT).decode('utf8')
+    except OSError:
+        security_patches = 'unknown'
+    else:
+        # use filter to remove empty list items (i.e, if there are no updates)
+        num_patches = len(list(filter(None, output.strip().split('\n'))))
+        security_patches = num_patches > 0
+
+    return status(
+        current=True,
+        updates=True,
+        security_patches=security_patches
+    )
 
 
 def ubuntu_checker():

@@ -51,7 +51,6 @@ from penguindome.server import (
     close_issue,
     encrypt_document,
     audit_trail_write,
-    arch_security_flag,
 )
 
 # Monkey-patch TCPServer before it's loaded by Werkzeug, to set keepalive on
@@ -921,12 +920,7 @@ def prepare_database():
     db.clients.create_indexes([
         IndexModel([('hostname', ASCENDING)],
                    unique=True),
-        IndexModel([('suspended', ASCENDING)]),
-        IndexModel([('plugins.os_info.distname', ASCENDING),
-                    ('plugins.os_updates.installed_packages', ASCENDING),
-                    (arch_security_flag, ASCENDING)]),
-        IndexModel([(arch_security_flag, ASCENDING),
-                    ('plugins.os_updates.patches', ASCENDING)])])
+        IndexModel([('suspended', ASCENDING)])])
     db.issues.create_indexes([IndexModel([('hostname', ASCENDING),
                                           ('name', ASCENDING),
                                           ('closed_at', ASCENDING),
