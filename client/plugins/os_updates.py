@@ -203,13 +203,19 @@ def arch_checker():
     # use arch-audit to check for available security updates
     try:
         output = subprocess.check_output(
-            ('/usr/bin/arch-audit', '-uq'),
+            ('/usr/bin/arch-audit', '-u'),
             stderr=subprocess.STDOUT).decode('utf8')
     except OSError:
         security_patches = 'unknown'
     else:
-        # use filter to remove empty list items (i.e, if there are no updates)
-        num_patches = len(list(filter(None, output.strip().split('\n'))))
+        patch_list_raw = output.strip().split('\n')
+        # remove empty list items (i.e, if there are no updates)
+        patch_list_notempty = list(filter(None, patch_list_raw))
+        # ignore updates from testing repos
+        # (arch-audit doesn't have a flag for this)
+        patch_list = [
+            p for p in patch_list_notempty if 'from testing repos' not in p]
+        num_patches = len(patch_list)
         security_patches = num_patches > 0
 
     return status(
