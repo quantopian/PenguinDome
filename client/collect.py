@@ -100,6 +100,7 @@ def run_file(run_path, run_name, results, parse_output=True,
 
 def run_dir(dir_path, parse_output=True, delete_after_success=False,
             submit_failures=False):
+    thread_timeout=(60*60) # timeout after one hour.
     results = {}
     if not os.path.exists(dir_path):
         log.debug('Skipping nonexistent directory {}', dir_path)
@@ -143,7 +144,6 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
         else:
             run_file(*args, **kwargs)
     for thread in threads:
-        thread_timeout=(60*60) # timeout after one hour.
         thread.join(timeout=thread_timeout)
         if thread.isAlive():
             log.error("Timeout executing {}", thread.name)
