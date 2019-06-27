@@ -134,6 +134,7 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
                   'submit_failures': submit_failures}
         if True:  # Change to False to disable threading
             thread = threading.Thread(
+                name=run_name,
                 target=run_file,
                 args=args,
                 kwargs=kwargs)
@@ -142,7 +143,10 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
         else:
             run_file(*args, **kwargs)
     for thread in threads:
-        thread.join()
+        thread_timeout=(60*60) # timeout after one hour.
+        thread.join(timeout=thread_timeout)
+        if thread.isAlive():
+            log.error("Timeout executing {}", thread.name)
     return results
 
 
