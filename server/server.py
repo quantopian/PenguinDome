@@ -57,16 +57,18 @@ from penguindome.server import (
 # its sockets, so that clients on flaky internet connections won't be able to
 # wedge Werkzeug child processes forever.
 
-import socketserver  # To create subclass that sets SO_KEEPALIVE
+import werkzeug.serving  # To create subclass that sets SO_KEEPALIVE
+
+old_tcpserver = werkzeug.serving.ForkingWSGIServer
 
 
-class MyTCPServer(socketserver.TCPServer):
+class MyTCPServer(old_tcpserver):
     def server_bind(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-        super(MyTCPServer, self).server_bind()
+        super(old_tcpserver, self).server_bind()
 
 
-socketserver.TCPServer = MyTCPServer
+werkzeug.serving.ForkingWSGIServer = MyTCPServer
 
 # End monkey-patching TCPServer.
 
