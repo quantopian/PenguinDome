@@ -10,6 +10,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+distro==1.5.0
 fasteners==0.14.1
 Logbook==1.4.3.post1
 netifaces==0.10.9

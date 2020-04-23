@@ -24,6 +24,7 @@ depends=('python'
          'python-crypto'
          'python-daemon'
          'python-dateutil'
+         'python-distro',
          'python-fasteners'
          'python-idna'
          'python-netifaces'
