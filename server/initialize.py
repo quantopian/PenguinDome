@@ -28,6 +28,7 @@ from penguindome import (
     top_dir,
     gpg_private_home,
     gpg_public_home,
+    gpg_user_ids,
     set_gpg,
     gpg_command,
     releases_dir,
@@ -36,13 +37,11 @@ from penguindome.client import (
     get_setting as get_client_setting,
     set_setting as set_client_setting,
     save_settings as save_client_settings,
-    gpg_user_id as client_user_id,
 )
 from penguindome.server import (
     get_setting as get_server_setting,
     set_setting as set_server_setting,
     save_settings as save_server_settings,
-    gpg_user_id as server_user_id,
 )
 from penguindome.prompts import (
     get_bool,
@@ -199,10 +198,10 @@ def main(args):
     else:
         maybe_changed = maybe_changed_extended
 
-    generate_key('server', server_user_id)
-    generate_key('client', client_user_id)
-    import_key('server', client_user_id)
-    import_key('client', server_user_id)
+    generate_key('server', gpg_user_ids['server'])
+    generate_key('client', gpg_user_ids['client'])
+    import_key('server', gpg_user_ids['client'])
+    import_key('client', gpg_user_ids['server'])
 
     default = not (get_client_setting('loaded') and
                    get_server_setting('loaded'))
