@@ -23,9 +23,6 @@ server/venv
 signatures
 var
 
-# manually add the PKGBUILD files
-arch
-
 # pyenv
 .python-version
 
