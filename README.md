@@ -70,8 +70,8 @@ functionality.
 Requirements
 ------------
 
-The two strictest requirements for PenguinDome are Python 3.5.x on
-both the clients and server, and GnuPG 2.1.11+ on the clients
+The two strictest requirements for PenguinDome are Python 3.5.x or
+newer on both the clients and server, and GnuPG 2.1.11+ on the clients
 and 2.1.15+ on the server.
 
 Aside from that, there are of course various OS package dependencies
