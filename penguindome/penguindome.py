@@ -52,6 +52,10 @@ got_logger = None
 client_gpg_version = '2.1.11'
 server_pipe_log_filter_re = re.compile(
     r'POST.*/server_pipe/.*/(?:send|receive).* 200 ')
+gpg_user_ids = {
+    'client': 'penguindome-client',
+    'server': 'penguindome-server',
+}
 
 SelectorVariants = namedtuple(
     'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
@@ -108,7 +112,7 @@ def set_gpg(mode):
     gpg_mode = mode
 
 
-def gpg_command(*cmd, with_trustdb=False, quiet=True,
+def gpg_command(*cmd, with_user_id=False, with_trustdb=False, quiet=True,
                 minimum_version='2.1.15', log=None):
     global gpg_exe, gpg_exe
 
@@ -141,13 +145,18 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
     else:
         trustdb_args = ('--trust-model', 'always')
 
+    if with_user_id:
+        user_id_args = ('-u', gpg_user_ids[gpg_mode])
+    else:
+        user_id_args = ()
+
     if quiet:
         quiet_args = ('--quiet',)
     else:
         quiet_args = ()
 
     cmd = tuple(chain((gpg_exe, '--batch', '--yes'), quiet_args, trustdb_args,
-                      cmd))
+                      user_id_args, cmd))
     try:
         return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
             decode('utf8')

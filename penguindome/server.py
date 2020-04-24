@@ -32,8 +32,7 @@ from penguindome import (
     top_dir,
 )
 
-gpg_user_id = 'penguindome-server'
-gpg_command = partial(main_gpg_command, '-u', gpg_user_id)
+gpg_command = partial(main_gpg_command, with_user_id=True)
 
 valid_client_parameters = (
     # This is a list of other client which should be treated as the same as the

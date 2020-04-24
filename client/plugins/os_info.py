@@ -13,9 +13,9 @@
 # the License.
 
 import json
-import platform
+import distro
 
-distname, version, _ = platform.linux_distribution()
+distname, version, _ = distro.linux_distribution()
 
 results = {
     'distname': distname,

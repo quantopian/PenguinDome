@@ -31,8 +31,7 @@ from penguindome import (
     top_dir,
 )
 
-gpg_user_id = 'penguindome-client'
-gpg_command = partial(main_gpg_command, '-u', gpg_user_id,
+gpg_command = partial(main_gpg_command, with_user_id=True,
                       minimum_version=client_gpg_version)
 session = None
 
