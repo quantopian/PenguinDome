@@ -18,11 +18,9 @@ log = get_logger('client_parameters')
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Administer client parameters')
-    # Backward compatibility for Python before 3.7. Remove try: and the except
-    # clause when we're no longer supporting them.
-    try:
+    if sys.version_info >= (3, 7):  # Only works from Python 3.7.0
         subparsers = parser.add_subparsers(dest='command', required=True)
-    except TypeError:
+    else:
         subparsers = parser.add_subparsers()
 
     ls_parser = subparsers.add_parser('ls', help='List client parameters',
@@ -52,9 +50,7 @@ def parse_args():
                               required=True)
 
     args = parser.parse_args()
-    # Backward compatibility for Python before 3.7. Remove the following two
-    # lines when we're no longer supporting them.
-    if 'func' not in args:
+    if sys.version_info < (3, 7) and 'func' not in args:
         parser.error('the following arguments are required: command')
     return args
 
