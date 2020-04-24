@@ -18,7 +18,7 @@ log = get_logger('client_parameters')
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Administer client parameters')
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(dest='command', required=True)
 
     ls_parser = subparsers.add_parser('ls', help='List client parameters',
                                       aliases=('list',))
