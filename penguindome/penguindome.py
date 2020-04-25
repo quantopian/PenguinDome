@@ -178,13 +178,13 @@ def load_settings(which):
         return settingses[which]['settings']
 
     if os.path.exists(settings_file):
-        settings = yaml.load(open(settings_file))
+        settings = yaml.safe_load(open(settings_file))
         settings['loaded'] = True
     else:
         settings = {'loaded': False}
 
     defaults_file = os.path.join(top_dir, which, 'default-settings.yml')
-    settings['defaults'] = yaml.load(open(defaults_file))
+    settings['defaults'] = yaml.safe_load(open(defaults_file))
 
     if 'server_url' in settings:
         settings['server_url'] = re.sub(r'/+$', '', settings['server_url'])
