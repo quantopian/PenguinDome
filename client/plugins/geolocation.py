@@ -39,7 +39,7 @@ def old_data_is_good(old_data, ip_addresses, access_points):
 
     try:
         old_ip_addresses = set(old_data['ip_addresses'].values())
-    except:
+    except Exception:
         old_ip_addresses = set()
     new_ip_addresses = set(ip_addresses.values())
     if old_ip_addresses != new_ip_addresses:
@@ -52,7 +52,7 @@ def old_data_is_good(old_data, ip_addresses, access_points):
     try:
         old_mac_addresses = set(a['macAddress']
                                 for a in old_data['access_points'])
-    except:
+    except Exception:
         old_mac_addresses = set()
 
     percentage_overlap = (100 * len(new_mac_addresses & old_mac_addresses) /
@@ -80,7 +80,7 @@ ip_addresses = json.loads(
 
 try:
     old_data = pickle.load(open(cache_file, 'rb'))
-except:
+except Exception:
     old_data = {}
 
 # iwlist returns slightly different results every time, so we need to run it
@@ -89,7 +89,7 @@ for i in range(5):
     try:
         output = subprocess.check_output(
             ('iwlist', 'scan'), stderr=subprocess.STDOUT).decode('utf8')
-    except:
+    except Exception:
         unknown()
 
     for cell in re.split(r'\n\s+Cell \d+ ', output):
@@ -125,7 +125,7 @@ url = 'https://www.googleapis.com/geolocation/v1/geolocate?key={}'.format(
 try:
     response = requests.post(url, data=json.dumps(data), timeout=5)
     response.raise_for_status()
-except:
+except Exception:
     unknown()
 
 old_data = {

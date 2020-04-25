@@ -76,7 +76,7 @@ def run_file(run_path, run_name, results, parse_output=True,
             if parse_output:
                 try:
                     results[run_name] = json.loads(run_output)
-                except:
+                except Exception:
                     log.exception('Output of {} failed to parse', run_path)
                     return
             else:
@@ -88,9 +88,9 @@ def run_file(run_path, run_name, results, parse_output=True,
                                             run_path + '.sig')
                     try:
                         os.remove(sig_file)
-                    except:
+                    except Exception:
                         log.warn('Failed to remove {}', sig_file)
-                except:
+                except Exception:
                     log.exception('Failed to remove {}', run_path)
                 else:
                     log.info('Removed {}', run_path)
@@ -224,7 +224,7 @@ def main():
     with open(collected_path, 'w') as f:
         try:
             f.write(json.dumps(results))
-        except:
+        except Exception:
             os.unlink(collected_path)
             raise
         log.debug('Saved collected data to {}', collected_path)

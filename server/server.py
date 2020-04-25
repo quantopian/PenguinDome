@@ -95,7 +95,7 @@ def log_deprecated_port(f):
         try:
             hostname = json.loads(request.form['data'])['hostname']
             ok = True
-        except:
+        except Exception:
             log.error('Failed to parse request data')
             ok = False
             hostname = request.remote_addr
@@ -120,7 +120,7 @@ def set_werkzeug_hostname(f):
     def wrapper(*args, **kwargs):
         try:
             hostname = json.loads(request.form['data'])['hostname']
-        except:
+        except Exception:
             hostname = None
         ret = f(*args, **kwargs)
         if hostname:
@@ -147,20 +147,20 @@ def check_ip_auth(auth_name):
         return False
     try:
         remote_addr = IPv4Address(request.remote_addr)
-    except:
+    except Exception:
         try:
             remote_addr = IPv6Address(request.remote_addr)
-        except:
+        except Exception:
             log.debug("No auth: can't parse IP address {}",
                       request.remote_addr)
             return False
     for range_string in auth_info:
         try:
             ip_range = IPv4Network(range_string)
-        except:
+        except Exception:
             try:
                 ip_range = IPv6Network(range_string)
-            except:
+            except Exception:
                 raise Exception('Invalid address range {} in {}'.format(
                     range_string, auth_name))
         if remote_addr in ip_range:
@@ -290,7 +290,7 @@ def verify_signature(f):
     def wrapper(*args, **kwargs):
         try:
             data = request.form['data']
-        except:
+        except Exception:
             remote_addr = getattr(request, 'remote_addr', None)
             # Probably just somebody port-scanning us, not worth logging as
             # an error and making people waste time investigating.
@@ -302,7 +302,7 @@ def verify_signature(f):
             return('error')
         try:
             signature = request.form['signature']
-        except:
+        except Exception:
             # We're not logging the data here because it may contain
             # sensitive info that should not be logged. Perhaps I am being
             # too paranoid about this. ¯\_(ツ)_/¯
@@ -320,7 +320,7 @@ def verify_signature(f):
             try:
                 gpg_command('--verify', signature_file.name,
                             data_file.name)
-            except:
+            except Exception:
                 hostname = getattr(data, 'hostname', None)
                 remote_addr = getattr(request, 'remote_addr', None)
                 log.error('Ignoring malformed request (bad signature) from '
@@ -719,7 +719,7 @@ class PipeLogger(object):
                 pending['send']['masking'] += 1
             try:
                 line = line.decode()
-            except:
+            except Exception:
                 line = str(line)
             if pending[direction]['masking']:
                 pending[direction]['masking'] -= 1
@@ -977,7 +977,7 @@ def main():
         for p in children.values():
             try:
                 os.kill(p.pid, signal.SIGINT)
-            except:
+            except Exception:
                 pass
 
     with Manager() as manager:

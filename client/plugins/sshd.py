@@ -56,7 +56,7 @@ else:
     try:
         sshd_config_file = sshd_cmdline[sshd_cmdline.index('-f') + 1]
         sshd_config_command.extend(['-f', sshd_config_file])
-    except:
+    except Exception:
         pass
 
 try:
@@ -66,7 +66,7 @@ except FileNotFoundError:
     if not sshd_process:
         results['status'] = 'missing'
     sshd_config = ''
-except:
+except Exception:
     sshd_config = ''
 
 results['config'] = {}

@@ -46,7 +46,7 @@ def get_int(prompt, default=None, minimum=None):
             print('The minimum is {}'.format(minimum))
             return get_int(prompt, default, minimum)
         return answer
-    except:
+    except Exception:
         return get_int(prompt, default, minimum)
 
 

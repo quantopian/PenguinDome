@@ -38,7 +38,7 @@ staging_dir = mkdtemp(dir=var_dir)
 try:
     try:
         os.remove(release_file)
-    except:
+    except Exception:
         pass
     release = int(time.time())
     release_file_path = os.path.join(staging_dir, release_file)

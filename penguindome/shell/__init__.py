@@ -242,7 +242,7 @@ class PenguinDomeServerPeer(InteractionPeer):
     def close(self):
         try:
             self._request('close')
-        except:
+        except Exception:
             pass
 
     def __enter__(self):

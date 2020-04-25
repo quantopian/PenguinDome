@@ -34,7 +34,7 @@ class PexpectPeer(InteractionPeer):
     def send(self, data):
         try:
             self.child.send(data)
-        except:
+        except Exception:
             self.done = True
             raise EOFError('Error sending data to child')
 
