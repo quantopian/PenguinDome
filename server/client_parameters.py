@@ -15,7 +15,7 @@ from penguindome.server import (
 log = get_logger('client_parameters')
 
 
-def parse_args():
+def parse_args(args=None):
     parser = argparse.ArgumentParser(
         description='Administer client parameters')
     if sys.version_info >= (3, 7):  # Only works from Python 3.7.0
@@ -49,7 +49,7 @@ def parse_args():
                               choices=valid_client_parameters,
                               required=True)
 
-    args = parser.parse_args()
+    args = parser.parse_args(args if args is not None else sys.argv)
     if sys.version_info < (3, 7) and 'func' not in args:
         parser.error('the following arguments are required: command')
     return args

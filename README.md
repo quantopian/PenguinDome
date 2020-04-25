@@ -790,6 +790,32 @@ Rather than using GnuPG signatures, the `server_pipe` endpoints use
 AES encryption using a random key and IV created when the pipe is
 created.
 
+Contributing
+------------
+
+You can contribute to PenguinDome by [opening an issue][issues],
+[submitting a PR][prs], or commenting on existing ones.
+
+Tests are implemented in [pytest][pytest] and are in the `tests`
+subdirectory. To run the tests, first install all of the packages in
+`client/requirements.txt`, `server/requirements.txt`, and
+`requirements_dev.txt`, then run `python3 -m pytest`.
+
+There aren't very many unit tests yet. Moving forward, new tests
+should be added to cover any committed changes, to make it less likely
+that a change breaks something. If you have useful changes to submit
+but you need help writing tests, feel free to submit a PR without the
+the tests and someone may be able to help.
+
+Tests should pass on Python 3.5, 3.6, 3.7, and 3.8 before the
+corresponding changes go onto master. there is a `tox` configuration
+in `tox.ini` to support that, but you may need to update it to reflect
+where you've installed the various required Python versions.
+
+[issues]: https://github.com/quantopian/PenguinDome/issues
+[prs]: https://github.com/quantopian/PenguinDome/pulls
+[pytest]: https://docs.pytest.org/
+
 Security
 --------
 
