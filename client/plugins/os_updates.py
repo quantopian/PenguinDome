@@ -247,7 +247,7 @@ def ubuntu_checker():
         update_stamp = os.stat(
             '/var/lib/apt/periodic/update-success-stamp').st_mtime
         results['current'] = time.time() - update_stamp < 60 * 60 * 24 * 2
-    except Exception:
+    except FileNotFoundError:
         results['current'] = False
 
     try:
