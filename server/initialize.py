@@ -365,6 +365,8 @@ def main(args):
                     ('systemctl', 'enable', 'penguindome-server'),
                     stderr=subprocess.STDOUT)
                 is_enabled = True
+            else:
+                is_enabled = False
         else:
             is_enabled = True
 
