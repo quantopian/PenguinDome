@@ -816,6 +816,27 @@ where you've installed the various required Python versions.
 [prs]: https://github.com/quantopian/PenguinDome/pulls
 [pytest]: https://docs.pytest.org/
 
+Note the following idiosyncrasies about using `tox` to test multiple
+Python versions:
+
+* As best as I can tell, bad things happen if you try to install and
+  run `tox` within a virtualenv, because then you end up using a
+  virtualenv within a virtualenv or something like that and things do
+  not work. Therefore, `tox` is not listed in `requirements_dev.txt`,
+  and you should install it in your base OS rather than in the
+  virtualenv (if any) you use for developing PenguinDome. You can and
+  should run the unit tests within your virtualenv using `python3 -m
+  pytest` as mentioned above, but when it's time to run `tox` to test
+  all Python versions, make sure to run `tox` from a shell in which no
+  virtualenv is activated. This shouldn't be this hard, but alas
+  apparently it is.
+
+* `tox` won't notice if you modify `client/requirements.txt`,
+  `server/requirements.txt`, or `requirements_dev.txt` after the first
+  time you run it. You should recursively remove `.tox` after
+  modifying any of the requirements files before running `tox` to
+  execute tests.
+  
 Security
 --------
 
