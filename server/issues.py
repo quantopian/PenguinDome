@@ -109,6 +109,11 @@ def problem_checks():
         'os-update-available': {
             'grace-period': datetime.timedelta(days=90),
             'spec': {'plugins.os_updates.release': {'$not': {'$eq': False}}}},
+        'os-security-patches-available': {
+            'grace-period': datetime.timedelta(days=1),
+            'alert-frequency': datetime.timedelta(days=1),
+            'spec': {'plugins.os_updates.security_patches':
+                     {'$not': {'$eq': False}}}},
         'guest-session-enabled': {
             'spec': {'plugins.guest_session.enabled':
                      {'$not': {'$eq': False}}}},
