@@ -37,7 +37,7 @@ def bin_path(cmd):
 def check_stamp(path, interval):
     try:
         modified = os.stat(path).st_mtime
-    except:
+    except Exception:
         return True
     # This is called once per minute, so we're going to round up.
     return time.time() - modified > (interval - 1) * 60

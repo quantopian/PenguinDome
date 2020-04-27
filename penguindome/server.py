@@ -97,10 +97,16 @@ def get_logger(name, filter=None):
     return main_get_logger(get_setting, name, filter=filter)
 
 
-def get_db():
+def get_db(force_db=None):
     global db, pid
 
-    if db and os.getpid() == pid:
+    if force_db is None and db and os.getpid() == pid:
+        return db
+
+    pid = os.getpid()
+
+    if force_db is not None:
+        db = force_db
         return db
 
     database_name = get_setting('database:name')
@@ -125,7 +131,6 @@ def get_db():
         newdb.authenticate(username, password)
 
     db = MongoProxy(newdb)
-    pid = os.getpid()
     return db
 
 

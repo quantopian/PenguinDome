@@ -80,7 +80,7 @@ def do_release(data):
                     continue
                 else:
                     log.info('Replacing {}', file)
-            except:
+            except Exception:
                 log.info('New file {}', file)
             shutil.move(src, target)
 
@@ -143,7 +143,7 @@ def do_patches(patches):
 def main():
     try:
         current_release = int(open(release_file).read().strip())
-    except:
+    except Exception:
         current_release = 0
 
     data = {'old_release': current_release,

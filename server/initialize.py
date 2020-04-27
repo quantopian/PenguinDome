@@ -76,7 +76,7 @@ def generate_key(mode, user_id):
     set_gpg(mode)
     try:
         gpg_command('--list-keys', user_id, with_trustdb=True)
-    except:
+    except Exception:
         entropy_warning()
         try:
             gpg_command('--passphrase', '', '--quick-gen-key', user_id,
@@ -91,7 +91,7 @@ def import_key(to_mode, user_id):
     set_gpg(to_mode)
     try:
         gpg_command('--list-keys', user_id)
-    except:
+    except Exception:
         with NamedTemporaryFile() as key_file:
             set_gpg(from_mode)
             gpg_command('--export', '-o', key_file.name, user_id)
@@ -171,7 +171,7 @@ def configure_logging(which, maybe_changed):
         level = getter('logging:level')
         try:
             int(logbook.__dict__[level.upper()])
-        except:
+        except Exception:
             print('That is not a valid logging level.')
             continue
         else:
@@ -358,13 +358,15 @@ def main(args):
             subprocess.check_output(
                 ('systemctl', 'is-enabled', 'penguindome-server'),
                 stderr=subprocess.STDOUT)
-        except:
+        except Exception:
             if maybe_get_bool('Do you want to enable the server?', True,
                               args.yes):
                 subprocess.check_output(
                     ('systemctl', 'enable', 'penguindome-server'),
                     stderr=subprocess.STDOUT)
                 is_enabled = True
+            else:
+                is_enabled = False
         else:
             is_enabled = True
 
@@ -373,7 +375,7 @@ def main(args):
                 subprocess.check_output(
                     ('systemctl', 'status', 'penguindome-server'),
                     stderr=subprocess.STDOUT)
-            except:
+            except Exception:
                 if maybe_get_bool('Do you want to start the server?', True,
                                   args.yes):
                     subprocess.check_output(
@@ -432,7 +434,7 @@ def main(args):
             try:
                 subprocess.check_output((os.path.join('bin', 'sign'),),
                                         stderr=subprocess.STDOUT)
-            except:
+            except Exception:
                 pass
             subprocess.check_output((os.path.join('bin', 'client_release'),),
                                     stderr=subprocess.STDOUT)

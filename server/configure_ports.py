@@ -363,7 +363,7 @@ def configure_client(args):
         server_port_ssl = get_port_setting(
             verbose_port, 'ssl:enabled',
             bool(get_port_setting(verbose_port, 'ssl:certificate')))
-    except:
+    except Exception:
         server_port_ssl = False
     if server_port_ssl and url[0] != 'https':
         print('\n'
@@ -396,7 +396,7 @@ def configure_client(args):
     elif args.ssl_ca_file:
         try:
             server_port = int(args.ssl_ca_file)
-        except:
+        except Exception:
             pass
         else:
             args.ssl_ca_file = get_port_setting(server_port, 'ssl:certificate')

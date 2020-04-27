@@ -26,14 +26,14 @@ def is_encrypted(device):
     try:
         subprocess.check_output(['cryptsetup', 'status', device])
         return True
-    except:
+    except Exception:
         pass
     try:
         # I hope it's a logical volume!
         vg = subprocess.check_output(
             ('lvs', '--noheadings', '-o', 'vg_name',
              device), close_fds=True).decode('utf8').strip()
-    except:
+    except Exception:
         log.info('Cryptsetup and lvs on {} failed, assuming not encrypted',
                  device)
         return False

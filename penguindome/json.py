@@ -35,7 +35,7 @@ def object_hook(dct):
         if key.endswith('_at'):
             try:
                 dct[key] = dateutil.parser.parse(dct[key])
-            except:
+            except Exception:
                 pass
         return dct
 

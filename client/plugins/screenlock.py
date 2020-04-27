@@ -101,7 +101,7 @@ def xautolock_status(user, display):
                     args.pop(0)
                 if _time and locker and nowlocker:
                     break
-        except:
+        except Exception:
             continue
         if not nowlocker:
             nowlocker = locker
@@ -131,7 +131,7 @@ def xidlehook_status(user, display):
                     del args[0:5]
                 else:
                     args.pop(0)
-        except:
+        except Exception:
             continue
 
         # in xidlehook, each subsequent --timer is run after previous timer(s)

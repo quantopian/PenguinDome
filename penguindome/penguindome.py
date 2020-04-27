@@ -123,7 +123,7 @@ def gpg_command(*cmd, with_user_id=False, with_trustdb=False, quiet=True,
             output = subprocess.check_output(
                 ('gpg2', '--version'),
                 stderr=subprocess.STDOUT).decode('utf8')
-        except:
+        except Exception:
             output = subprocess.check_output(
                 ('gpg', '--version'),
                 stderr=subprocess.STDOUT).decode('utf8')
@@ -171,20 +171,20 @@ def load_settings(which):
     settings_file = os.path.join(top_dir, which, 'settings.yml')
     try:
         mtime = os.stat(settings_file).st_mtime
-    except:
+    except Exception:
         mtime = 0
 
     if which in settingses and mtime <= settingses[which]['mtime']:
         return settingses[which]['settings']
 
     if os.path.exists(settings_file):
-        settings = yaml.load(open(settings_file))
+        settings = yaml.safe_load(open(settings_file))
         settings['loaded'] = True
     else:
         settings = {'loaded': False}
 
     defaults_file = os.path.join(top_dir, which, 'default-settings.yml')
-    settings['defaults'] = yaml.load(open(defaults_file))
+    settings['defaults'] = yaml.safe_load(open(defaults_file))
 
     if 'server_url' in settings:
         settings['server_url'] = re.sub(r'/+$', '', settings['server_url'])
@@ -216,7 +216,7 @@ def get_setting(settings, setting, default=None, check_defaults=True):
     for key in setting.split(':'):
         try:
             settings = settings[key]
-        except:
+        except Exception:
             if check_defaults:
                 return get_setting(defaults, setting, default,
                                    check_defaults=False)
@@ -407,7 +407,7 @@ def get_logger(setting_getter, name, fail_to_local=False, filter=None):
                 try:
                     addrinfo = socket.getaddrinfo(
                         hostname, port, socket.AF_INET, socket.SOCK_STREAM)[0]
-                except:
+                except Exception:
                     if not fail_to_local:
                         raise
                     logger.warn('Failed to resolve {}:{}, falling back to '
@@ -422,7 +422,7 @@ def get_logger(setting_getter, name, fail_to_local=False, filter=None):
                 try:
                     with ThreadingTimeout(5, swallow_exc=False):
                         handler = handler(**kwargs)
-                except:
+                except Exception:
                     logger.warn('Failed to create {}, falling back to '
                                 'local-only logging', handler_name)
                 else:

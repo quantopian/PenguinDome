@@ -15,9 +15,9 @@ Logbook==1.4.3.post1
 -e git://github.com/quantopian/MongoDBProxy.git#egg=mongodbproxy
 passlib==1.7.1
 pycryptodome==3.7.2
-pymongo==3.7.2
+pymongo==3.10.1
 python-dateutil==2.7.5
 pytz==2018.9
-PyYAML==4.2b4
+PyYAML==5.3.1
 requests==2.21.0
 stopit==1.1.2

@@ -27,7 +27,7 @@ def background_code(args):
                 PexpectPeer('/bin/bash') as shell:
             broker = InteractionBroker(shell, remote)
             broker.interact()
-    except:
+    except Exception:
         log.exception()
         sys.exit(1)
 
