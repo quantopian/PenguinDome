@@ -8,9 +8,6 @@ import pytest
 from client.plugins import os_updates
 
 
-# This test unfortunately does not currently work. See
-# https://github.com/aklajnert/pytest-subprocess/issues/16.
-@pytest.mark.xfail
 def test_ubuntu_checker_no_do_release_upgrade(fake_process):
     def raise_oserror(process):
         raise OSError()
@@ -23,10 +20,8 @@ def test_ubuntu_checker_no_do_release_upgrade(fake_process):
 
 def test_ubuntu_checker_release_update_available(fake_process):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
-    # stderr=() is necessary here and below because of
-    # https://github.com/aklajnert/pytest-subprocess/issues/17.
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",))
+                                     stdout=("0;0",))
     ret = os_updates.ubuntu_checker()
     assert ret['release'] is True
 
@@ -35,7 +30,7 @@ def test_ubuntu_checker_no_release_update_available(fake_process):
     fake_process.register_subprocess(('do-release-upgrade', '-c'),
                                      returncode=1)
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",))
+                                     stdout=("0;0",))
     ret = os_updates.ubuntu_checker()
     assert ret['release'] is False
 
@@ -65,7 +60,7 @@ def os_stat():
 def test_ubuntu_checker_current(fake_process, os_stat):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",))
+                                     stdout=("0;0",))
     with tempfile.NamedTemporaryFile() as f:
         os_stat('/var/lib/apt/periodic/update-success-stamp', f.name)
         ret = os_updates.ubuntu_checker()
@@ -75,7 +70,7 @@ def test_ubuntu_checker_current(fake_process, os_stat):
 def test_ubuntu_checker_not_current_not_found(fake_process, os_stat):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",))
+                                     stdout=("0;0",))
     with tempfile.NamedTemporaryFile(delete=False) as f:
         os_stat('/var/lib/apt/periodic/update-success-stamp', f.name)
         os.unlink(f.name)
@@ -86,7 +81,7 @@ def test_ubuntu_checker_not_current_not_found(fake_process, os_stat):
 def test_ubuntu_checker_not_current_old(fake_process, os_stat):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",))
+                                     stdout=("0;0",))
     with tempfile.NamedTemporaryFile() as f:
         os_stat('/var/lib/apt/periodic/update-success-stamp', f.name)
         t = time.time() - 60 * 60 * 24 * 3
@@ -95,16 +90,13 @@ def test_ubuntu_checker_not_current_old(fake_process, os_stat):
     assert ret['current'] is False
 
 
-# This test unfortunately does not currently work. See
-# https://github.com/aklajnert/pytest-subprocess/issues/16.
-@pytest.mark.xfail
 def test_ubuntu_checker_no_apt_check(fake_process):
     def raise_oserror(process):
         raise OSError()
 
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",),
+                                     stdout=("0;0",),
                                      callback=raise_oserror)
     ret = os_updates.ubuntu_checker()
     assert ret['patches'] == 'unknown'
@@ -113,7 +105,7 @@ def test_ubuntu_checker_no_apt_check(fake_process):
 def test_ubuntu_checker_no_patches(fake_process):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("0;0",))
+                                     stdout=("0;0",))
     ret = os_updates.ubuntu_checker()
     assert ret['patches'] is False
 
@@ -121,7 +113,7 @@ def test_ubuntu_checker_no_patches(fake_process):
 def test_ubuntu_checker_patches(fake_process):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("1;0",))
+                                     stdout=("1;0",))
     ret = os_updates.ubuntu_checker()
     assert ret['patches'] is True
 
@@ -129,7 +121,7 @@ def test_ubuntu_checker_patches(fake_process):
 def test_ubuntu_checker_no_security(fake_process):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("1;0",))
+                                     stdout=("1;0",))
     ret = os_updates.ubuntu_checker()
     assert ret['security_patches'] is False
 
@@ -137,6 +129,6 @@ def test_ubuntu_checker_no_security(fake_process):
 def test_ubuntu_checker_security(fake_process):
     fake_process.register_subprocess(('do-release-upgrade', '-c'))
     fake_process.register_subprocess('/usr/lib/update-notifier/apt-check',
-                                     stderr=(), stdout=("1;1",))
+                                     stdout=("1;1",))
     ret = os_updates.ubuntu_checker()
     assert ret['security_patches'] is True
