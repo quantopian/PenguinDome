@@ -9,3 +9,4 @@ install:
     requirements_dev.txt
 script:
   - python -m pytest
+  - flake8
