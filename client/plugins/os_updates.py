@@ -322,7 +322,7 @@ def fedora_checker():
     try:
         update_stamp = os.stat('/var/cache/dnf/last_makecache').st_mtime
         results['current'] = time.time() - update_stamp < 60 * 60 * 24 * 2
-    except:
+    except Exception:
         results['current'] = False
 
     # run dnf -q updateinfo --updates to find out if there are any OS updates
