@@ -21,7 +21,9 @@ from functools import wraps
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, IPv6Network
 import logging  # Only so we can replace werkzeug's logger
 from multiprocessing import Process, Manager, RLock
+import threading
 import os
+import pwd
 from passlib.hash import pbkdf2_sha256
 from pymongo import ASCENDING
 from pymongo.operations import IndexModel
@@ -31,6 +33,8 @@ import socket
 import sys
 import tempfile
 import time
+import redis
+import redis_collections
 from uuid import uuid4
 import werkzeug._internal  # To replace its logger to nix "werkzeug" in logs
 
@@ -53,36 +57,14 @@ from penguindome.server import (
     audit_trail_write,
 )
 
-# Monkey-patch TCPServer before it's loaded by Werkzeug, to set keepalive on
-# its sockets, so that clients on flaky internet connections won't be able to
-# wedge Werkzeug child processes forever.
-
-import werkzeug.serving  # To create subclass that sets SO_KEEPALIVE
-
-old_tcpserver = werkzeug.serving.ForkingWSGIServer
-
-
-class MyTCPServer(old_tcpserver):
-    def server_bind(self):
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-        super(old_tcpserver, self).server_bind()
-
-
-werkzeug.serving.ForkingWSGIServer = MyTCPServer
-
-# End monkey-patching TCPServer.
-
-from werkzeug.serving import (  # noqa
-    WSGIRequestHandler,  # So we can enable keep-alive and set timeout
-    run_simple,
-)
 
 log = None
 
 os.chdir(top_dir)
 set_gpg('server')
-pipes = None
-encryptors = None
+redis_pipes_db = redis.Redis(host='127.0.0.1', port=6379, db=0)
+redis_encryptors_db = redis.Redis(host='127.0.0.1', port=6379, db=1)
+
 pipes_lock = RLock()
 
 app = Flask(__name__)
@@ -611,18 +593,20 @@ def pipe_create():
     key = data['encryption_key']
     iv = data['encryption_iv']
     uuid = uuid4().hex
-    encryptors[uuid]['server'] = {'send': Encryptor(key, iv),
-                                  'receive': Encryptor(key, iv)}
-    pipes[uuid] = {
-        'client_opened': False,
-        'client_closed': False,
-        'server_closed': False,
-        'client_to_server': b'',
-        'server_to_client': b'',
-        'created': time.time(),
-        'activity': None,
-        'client_hostname': client_hostname,
-    }
+    with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+        encryptors[uuid]['server'] = {'send': {'k':key, 'i':iv},
+                                      'receive': {'k':key, 'i':iv}}
+    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+        pipes[uuid] = {
+            'client_opened': False,
+            'client_closed': False,
+            'server_closed': False,
+            'client_to_server': b'',
+            'server_to_client': b'',
+            'created': time.time(),
+            'activity': None,
+            'client_hostname': client_hostname,
+        }
     log.debug('Created pipe {}', uuid)
     return json.dumps({'pipe_id': uuid})
 
@@ -633,14 +617,16 @@ def pipe_create():
 def pipe_open():
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    with pipes_lock:
+    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
         if uuid not in pipes:
             log.error('Attempt to open nonexistent pipe {}', uuid)
             abort(404)
         key = data['encryption_key']
         iv = data['encryption_iv']
-        encryptors[uuid]['client'] = {'send': Encryptor(key, iv),
-                                      'receive': Encryptor(key, iv)}
+        
+        with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+            encryptors[uuid]['client'] = {'send': {'k':key, 'i':iv},
+                                          'receive': {'k':key, 'i':iv}}
         try:
             pipe = pipes[uuid]
             if pipe['client_opened']:
@@ -652,7 +638,9 @@ def pipe_open():
 
     return json.dumps({'status': 'ok'})
 
-
+# I didnt like the idea of logging, even in one direction, 
+# ie. what if someone cat's a private key or something?
+'''
 class PipeLogger(object):
     pending = {}
     directions = {'send': '<<<', 'receive': '>>>'}
@@ -676,7 +664,8 @@ class PipeLogger(object):
                     'masking': 0,
                     'prefix': p}
                 for d, p in cls.directions.items()}
-            cls.pending[uuid]['hostname'] = pipes[uuid]['client_hostname']
+            with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+                cls.pending[uuid]['hostname'] = pipes[uuid]['client_hostname']
         cls.pending[uuid][direction]['data'] += data
         return cls.pending[uuid]
 
@@ -745,7 +734,7 @@ class PipeLogger(object):
             if 'lines' in pending[direction]:
                 cls.emit_lines(pending, direction)
         del cls.pending[uuid]
-
+'''
 
 @app.route('/PenguinDome/v1/server_pipe/<peer_type>/send', methods=('POST',))
 @app.route('/penguindome/v1/server_pipe/<peer_type>/send', methods=('POST',))
@@ -755,10 +744,11 @@ def pipe_send(peer_type):
         raise Exception('Invalid peer type "{}"'.format(peer_type))
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    if uuid not in pipes:
-        log.error('Attempt to send to nonexistent pipe {}', uuid)
-        abort(404)
-    with pipes_lock:
+    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+        if uuid not in pipes:
+            log.error('Attempt to send to nonexistent pipe {}', uuid)
+            abort(404)
+        
         pipe = pipes[uuid]
         pipe['activity'] = time.time()
         try:
@@ -769,11 +759,14 @@ def pipe_send(peer_type):
             data_field = peer_type + '_to_' + other_peer_type
             encoded_data = data['data']
             encrypted_data = b64decode(encoded_data)
-            encryptor = encryptors[uuid][peer_type]['send']
-            decrypted_data = encryptor.decrypt(encrypted_data)
+            
+            with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+                encryptor = encryptors[uuid][peer_type]['send']
+            decrypted_data = Encryptor(encryptor['k'], encryptor['i']).decrypt(encrypted_data)
             pipe[data_field] += decrypted_data
             if peer_type == 'server':
-                PipeLogger.log(uuid, 'send', decrypted_data)
+                #PipeLogger.log(uuid, 'send', decrypted_data)
+                pass
             return json.dumps({'status': 'ok'})
         finally:
             # DictProxy doesn't detect updates to nested dicts.
@@ -790,22 +783,25 @@ def pipe_receive(peer_type):
         raise Exception('Invalid peer type "{}"'.format(peer_type))
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    if uuid not in pipes:
-        log.error('Attempt to receive from nonexistent pipe {}', uuid)
-        abort(404)
-    with pipes_lock:
+    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+        if uuid not in pipes:
+            log.error('Attempt to receive from nonexistent pipe {}', uuid)
+            abort(404)
+        
         pipe = pipes[uuid]
         pipe['activity'] = time.time()
         try:
             other_peer_type = 'server' if peer_type == 'client' else 'client'
             data_field = other_peer_type + '_to_' + peer_type
             if pipe[data_field]:
-                encryptor = encryptors[uuid][peer_type]['receive']
-                encrypted_data = encryptor.encrypt(pipe[data_field])
+                with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+                    encryptor = encryptors[uuid][peer_type]['receive']
+                encrypted_data = Encryptor(encryptor['k'], encryptor['i']).encrypt(pipe[data_field])
                 encoded_data = b64encode(encrypted_data).decode('utf8')
                 ret = json.dumps({'data': encoded_data})
                 if peer_type == 'server':
-                    PipeLogger.log(uuid, 'receive', pipe[data_field])
+                    #PipeLogger.log(uuid, 'receive', pipe[data_field])
+                    pass
                 pipe[data_field] = b''
                 return ret
             closed_field = other_peer_type + '_closed'
@@ -825,10 +821,11 @@ def pipe_close(peer_type):
         raise Exception('Invalid peer type "{}"'.format(peer_type))
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    if uuid not in pipes:
-        log.error('Attempt to close nonexistent pipe {}', uuid)
-        abort(404)
-    with pipes_lock:
+    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+        if uuid not in pipes:
+            log.error('Attempt to close nonexistent pipe {}', uuid)
+            abort(404)
+
         pipe = pipes[uuid]
         try:
             other_peer_type = 'server' if peer_type == 'client' else 'client'
@@ -838,9 +835,11 @@ def pipe_close(peer_type):
             client_opened = peer_type == 'client' or pipe['client_opened']
             if not client_opened or pipe[other_closed_field]:
                 del pipes[uuid]
-                encryptors.pop(uuid, None)
-                if peer_type == 'server':
-                    PipeLogger.finish(uuid)
+                with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+                    encryptors.pop(uuid, None)
+                    if peer_type == 'server':
+                        #PipeLogger.finish(uuid)
+                        pass
             return json.dumps({'status': 'ok'})
         finally:
             # DictProxy doesn't detect updates to nested dicts.
@@ -849,67 +848,66 @@ def pipe_close(peer_type):
 
 
 def clean_up_encryptors(*args):
-    with pipes_lock:
+    with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
         for uuid in list(encryptors.keys()):
-            if uuid not in pipes:
-                del encryptors[uuid]
-    signal.signal(signal.SIGALRM, clean_up_encryptors)
-    signal.alarm(60 * 60)
+            with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+                if uuid not in pipes:
+                    del encryptors[uuid]
+    newThread = threading.Timer(60*60, clean_up_encryptors)
+    newThread.daemon = True
+    newThread.start()
 
 
-def startServer(port, pipes_arg, local_only=False):
-    global log, pipes, encryptors
+def startDebugServer(pipes_arg, local_only=False):
+    global log
 
-    # To enable keep-alive
-    WSGIRequestHandler.protocol_version = 'HTTP/1.1'
-    # To prevent DoS attacks by opening connections and not closing them and
-    # consuming resources and filling all our connection slots in the kernel.
-    WSGIRequestHandler.timeout = 10
+    # Get the ports to listen on
+    port = get_server_setting('port')
+    local_port = get_server_setting('local_port')
 
-    log = get_logger('server')
-    pipes = pipes_arg
-    encryptors = defaultdict(dict)
-    clean_up_encryptors()
-
-    werkzeug._internal._logger = logging.getLogger(log.name)
-
-    if not local_only:
-        app.config['deprecated_port'] = get_port_setting(
-            port, 'deprecated', False)
+    #TODO: Not too sure what to do with this... i think dict logger for uwsgi would probably be the most configurable?
+    #werkzeug._internal._logger = logging.getLogger(log.name)
 
     # Logbook will handle all logging, via the root handler installed by
     # `get_logger` when it alls `logbook.compat.redirect_logging()`.
     del app.logger.handlers[:]
     app.logger.propagate = True
 
-    # Werkzeug has a bug which causes sockets to get stuck in TCP CLOSE_WAIT
-    # state. Eventually, there are so many stuck sockets that the kernel stops
-    # allowing new connections to the port, and then attempts to connect to the
-    # port by clients hang. The "real" way to fix this is to run the server
-    # under a different WSGI framework, but all of them are more of a pain to
-    # set up than werkzeug, so I'm hoping that we can solve this problem just
-    # by handling each request in a separate process so the socket for each
-    # request will get closed properly when its process exits.
-    # More info: https://stackoverflow.com/questions/31403261/\
-    # flask-werkzeug-sockets-stuck-in-close-wait
-    kwargs = {'processes': 10}
+    children = {}
+
+    def sigint_handler(*args):
+        for p in children.values():
+            try:
+                os.kill(p.pid, signal.SIGKILL)
+            except:
+                pass
+
     if local_only:
-        host = '127.0.0.1'
+        p = Process(target=app.run, args=("127.0.0.1",local_port))
+        p.start()
+        children[local_port] = p
     else:
-        host = '0.0.0.0'
+        p = Process(target=app.run, args=("0.0.0.0",port))
+        p.start()
+        children[port] = p
 
-        ssl_certificate = get_port_setting(port, 'ssl:certificate', None)
-        ssl_key = get_port_setting(port, 'ssl:key', None)
-        ssl_enabled = get_port_setting(port, 'ssl:enabled',
-                                       bool(ssl_certificate))
-        if bool(ssl_certificate) + bool(ssl_key) == 1:
-            raise Exception(
-                'You must specify both certificate and key for SSL!')
+    #check for errors
+    time.sleep(1)
+    problems = False
+    for port in children.keys():
+        if not children[port].is_alive():
+            log.error('Child process for port {} died on startup. Maybe '
+                    'its port is in use?', port)
+            problems = True
+    if problems:
+        sigint_handler()
+        log.error('Exiting because one or more servers failed to start up')
+        sys.exit(1)
 
-        if ssl_enabled:
-            kwargs['ssl_context'] = (ssl_certificate, ssl_key)
-
-    run_simple(host, port, app, **kwargs)
+    signal.signal(signal.SIGINT, sigint_handler)
+    
+    for p in children.values():
+        p.join() 
 
 
 def prepare_database():
@@ -943,71 +941,29 @@ def prepare_database():
 
 def clean_up_pipes(*args):
     now = time.time()
-    with pipes_lock:
+    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
         for uuid in list(pipes.keys()):
             active = pipes[uuid]['activity'] or pipes[uuid]['created']
             if now - active > 60 * 60:  # 1 hour
                 del pipes[uuid]
-    signal.signal(signal.SIGALRM, clean_up_pipes)
-    signal.alarm(60 * 60)
+    newThread = threading.Timer(60 * 60, clean_up_pipes)
+    newThread.daemon = True
+    newThread.start() 
 
 
-def main():
-    global log, pipes
+@app.before_first_request
+def serverInit():
+    # Keep this for when we run locally for debugging. The server startup will be done through nginx+gunicorn
+    global log
 
     log = get_logger('server')
-
-    ports = None
-    port = get_server_setting('port')
-    if isinstance(port, int):
-        ports = [port]
-    elif isinstance(port, dict):
-        ports = list(port.keys())
-    local_port = get_server_setting('local_port')
-    if local_port in ports:
-        sys.exit('Configuration error! Local port {} is also configured as a '
-                 'non-local port.'.format(local_port))
-    ports.append(local_port)
+    
+    app.config['deprecated_port'] = get_port_setting(get_server_setting('port'), 'deprecated', False)
 
     prepare_database()
+    clean_up_encryptors()
 
-    children = {}
-
-    def sigint_handler(*args):
-        for p in children.values():
-            try:
-                os.kill(p.pid, signal.SIGINT)
-            except Exception:
-                pass
-
-    with Manager() as manager:
-        pipes = manager.dict()
-        clean_up_pipes()
-        for port in ports:
-            p = Process(target=startServer, args=(port, pipes),
-                        kwargs={'local_only': port == local_port})
-            p.daemon = True
-            p.start()
-            children[port] = p
-
-        # Make sure the children didn't die on startup, e.g., because they
-        # couldn't bind to their ports.
-        time.sleep(1)
-        problems = False
-        for port in children.keys():
-            if not children[port].is_alive():
-                log.error('Child process for port {} died on startup. Maybe '
-                          'its port is in use?', port)
-                problems = True
-        if problems:
-            sigint_handler()
-            log.error('Exiting because one or more servers failed to start up')
-            sys.exit(1)
-
-        signal.signal(signal.SIGINT, sigint_handler)
-        for p in children.values():
-            p.join()
-
+    clean_up_pipes()
 
 if __name__ == '__main__':
-    main()
+    startDebugServer(serverInit(),local_only=True)

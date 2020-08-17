@@ -39,7 +39,7 @@ def main():
     log.info('Requesting remote shell from {}', args.hostname)
     with PenguinDomeServerPeer(
             'server', local_port=get_setting('local_port'),
-            logger=log, client_hostname=args.hostname) as remote, \
+            logger=log, client_hostname=args.hostname, useServerKeychain=True) as remote, \
             TerminalPeer() as terminal:
         host = args.hostname
         script = '#!/bin/bash\npython client/endpoints/shell.py {}\n'.format(

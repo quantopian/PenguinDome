@@ -150,9 +150,10 @@ class TerminalPeer(InteractionPeer):
 
 class PenguinDomeServerPeer(InteractionPeer):
     def __init__(self, peer_type, pipe_id=None, local_port=None, logger=None,
-                 client_hostname=None):
+                 client_hostname=None, useServerKeychain=False):
         if peer_type not in ('client', 'server'):
             raise Exception('Invalid peer type "{}"'.format(peer_type))
+        self.useServerKeychain = useServerKeychain
         self.type = peer_type
         self.pipe_id = pipe_id
         self.pending_data = b''
@@ -173,8 +174,8 @@ class PenguinDomeServerPeer(InteractionPeer):
         else:
             response = self._request('open', data=data)
         self.encryptors = {
-            'send': Encryptor(data['encryption_key'], data['encryption_iv']),
-            'receive': Encryptor(data['encryption_key'], data['encryption_iv'])
+                'send': {'k':data['encryption_key'], 'i': data['encryption_iv']},
+                'receive': {'k':data['encryption_key'], 'i':data['encryption_iv']}
         }
 
     def _request(self, request, data=None):
@@ -187,7 +188,8 @@ class PenguinDomeServerPeer(InteractionPeer):
         response = server_request(
             '/penguindome/v1/server_pipe/{}/{}'.format(self.type, request),
             data=data, local_port=self.local_port, logger=self.logger,
-            signed=request not in ('send', 'receive'))
+            signed=request not in ('send', 'receive'),
+            useServerKeychain=self.useServerKeychain)
         if response.status_code == 404:
             raise FileNotFoundError('Pipe ID {} not found'.format(
                 self.pipe_id))
@@ -203,7 +205,7 @@ class PenguinDomeServerPeer(InteractionPeer):
     def send(self, data):
         if self.done:
             raise EOFError()
-        encrypted_data = self.encryptors['send'].encrypt(data)
+        encrypted_data = Encryptor(self.encryptors['send']['k'], self.encryptors['send']['i']).encrypt(data)
         encoded_data = b64encode(encrypted_data).decode('utf8')
         data = self._request('send', {'data': encoded_data})
         if 'eof' in data and data['eof']:
@@ -229,7 +231,7 @@ class PenguinDomeServerPeer(InteractionPeer):
         if 'data' in data and data['data']:
             encoded_data = data['data']
             encrypted_data = b64decode(encoded_data)
-            decrypted_data = self.encryptors['receive'].decrypt(encrypted_data)
+            decrypted_data = Encryptor(self.encryptors['receive']['k'], self.encryptors['receive']['i']).decrypt(encrypted_data)
             self.pending_data += decrypted_data
         if 'eof' in data and data['eof']:
             self.done = True

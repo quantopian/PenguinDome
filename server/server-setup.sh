@@ -19,10 +19,15 @@ venv=var/server-venv
 
 cd "$(dirname $0)/.."
 
-# For the time being, this script needs to be run as root because
-# initialize.py installs files that only root can install, but
-# eventually we may want to fix that, so I've attempted to write this
-# build script so that it can run as root or non-root.
+# This script needs root to install, but will install penguindome to install under a service account,
+# and setting all the administrative files (like building releases and doing audits) will be owned by the
+# user calling this script. Therefor it is important that the user calls this script with sudo and not just as
+# the root user. We do the check below to tell the user to run as sudo.
+if [[ -z "${SUDO_USER}" ]]; then
+    echo "This script should be called with sudo from the account you wish to administer penguindome with."
+    exit 1
+fi
+
 arch_build() {
     git_url="$1"; shift
     mkdir -p var/makepkg
@@ -62,6 +67,7 @@ mkdir -p var
 
 if [ "$ID_LIKE" = "debian" ]; then
     # Ubuntu setup will probably work on Debian, though not tested.
+    apt-get update
     apt-get -qq install $(sed 's/#.*//' server/ubuntu-packages.txt)
 elif [ "$ID_LIKE" = "archlinux" ]; then
     if ! pacman -S --needed --noconfirm $(sed -e 's/#.*//' -e '/\.git$/d' \

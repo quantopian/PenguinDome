@@ -21,6 +21,8 @@ from hashlib import md5
 from itertools import chain
 import logbook
 import os
+import pwd
+import sys
 import pickle
 import re
 import socket
@@ -52,10 +54,6 @@ got_logger = None
 client_gpg_version = '2.1.11'
 server_pipe_log_filter_re = re.compile(
     r'POST.*/server_pipe/.*/(?:send|receive).* 200 ')
-gpg_user_ids = {
-    'client': 'penguindome-client',
-    'server': 'penguindome-server',
-}
 
 SelectorVariants = namedtuple(
     'SelectorVariants', ['plain_mongo', 'plain_mem', 'enc_mongo', 'enc_mem'])
@@ -105,14 +103,18 @@ def set_gpg(mode):
             mode))
 
     os.environ['GNUPGHOME'] = home
-    os.chmod(home, 0o0700)
+    try:
+        os.chmod(home, 0o0700)
+    except PermissionError:
+        print("It looks like you are trying to run the debug server as your user, please run with `sudo -u "+pwd.getpwuid(os.stat(top_dir).st_uid).pw_name+"`")
+        sys.exit(1)
     # random seed gets corrupted sometimes because we're copying keyring from
     # server to client
     list(map(os.unlink, glob.glob(os.path.join(home, "random_seed*"))))
     gpg_mode = mode
 
 
-def gpg_command(*cmd, with_user_id=False, with_trustdb=False, quiet=True,
+def gpg_command(*cmd, with_trustdb=False, quiet=True,
                 minimum_version='2.1.15', log=None):
     global gpg_exe, gpg_exe
 
@@ -123,13 +125,27 @@ def gpg_command(*cmd, with_user_id=False, with_trustdb=False, quiet=True,
             output = subprocess.check_output(
                 ('gpg2', '--version'),
                 stderr=subprocess.STDOUT).decode('utf8')
-        except Exception:
-            output = subprocess.check_output(
-                ('gpg', '--version'),
-                stderr=subprocess.STDOUT).decode('utf8')
-            gpg_exe = 'gpg'
+        except:
+            try:
+                output = subprocess.check_output(
+                    ('gpg', '--version'),
+                    stderr=subprocess.STDOUT).decode('utf8')
+            except:
+                try:
+                    # We know we installed gpg during the server install, so chances are the user running this just doent have PATH configured right
+                    output = subprocess.check_output(
+                        ('/usr/bin/gpg', '--version'),
+                        stderr=subprocess.STDOUT).decode('utf8')
+                except:
+                    raise Exception("No gpg application found. verify gpg or gpg2 is installed!")
+                else:
+                    gpg_exe = '/usr/bin/gpg'
+            else:
+                gpg_exe = "gpg"
         else:
-            gpg_exe = 'gpg2'
+            gpg_exe = "gpg2"
+
+        
         match = re.search(r'^gpg \(GnuPG\) (\d+(?:\.\d+(?:\.\d+)?)?)', output,
                           re.MULTILINE)
         if not match:
@@ -145,18 +161,13 @@ def gpg_command(*cmd, with_user_id=False, with_trustdb=False, quiet=True,
     else:
         trustdb_args = ('--trust-model', 'always')
 
-    if with_user_id:
-        user_id_args = ('-u', gpg_user_ids[gpg_mode])
-    else:
-        user_id_args = ()
-
     if quiet:
         quiet_args = ('--quiet',)
     else:
         quiet_args = ()
 
     cmd = tuple(chain((gpg_exe, '--batch', '--yes'), quiet_args, trustdb_args,
-                      user_id_args, cmd))
+                      cmd))
     try:
         return subprocess.check_output(cmd, stderr=subprocess.STDOUT).\
             decode('utf8')
