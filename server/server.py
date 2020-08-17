@@ -879,7 +879,7 @@ def startDebugServer(pipes_arg, local_only=False):
         for p in children.values():
             try:
                 os.kill(p.pid, signal.SIGKILL)
-            except:
+            except Exception:
                 pass
 
     if local_only:

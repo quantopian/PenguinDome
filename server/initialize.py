@@ -211,7 +211,7 @@ def main(args):
     if not penguinDomeUserName in [x.pw_name for x in pwd.getpwall()]:
         try:
             subprocess.check_output(('useradd', '-r', '-s', '/bin/nologin', penguinDomeUserName), stderr=subprocess.STDOUT)
-        except:
+        except Exception:
             print("Could not create penguindome user!")
 
     generate_key('server', server_user_id)
@@ -344,17 +344,17 @@ def main(args):
 
         try:
             subprocess.check_output(('systemctl', 'daemon-reload'), stderr=subprocess.STDOUT)
-        except:
+        except Exception:
             pass
 
 
         try:
             subprocess.check_output(('systemctl', 'is-enabled', 'redis'), stderr=subprocess.STDOUT)
-        except:
+        except Exception:
             try:
                 subprocess.check_output(('systemctl', 'enable', 'redis'), stderr=subprocess.STDOUT)
                 is_enabled = True
-            except:
+            except Exception:
                 print("Error when enabling redis with systemd!")
         else:
             is_enabled = True
@@ -362,7 +362,7 @@ def main(args):
         if is_enabled:
             try:
                 subprocess.check_output(('systemctl', 'status', 'redis'), stderr=subprocess.STDOUT)
-            except:
+            except Exception:
                 if maybe_get_bool('Do you want to start redis?', True, args.yes):
                     subprocess.check_output(('systemctl', 'start', 'redis'), stderr=subprocess.STDOUT)
             else:
@@ -390,7 +390,7 @@ def main(args):
         if rm_default_nginx_site:
             try:
                 subprocess.check_output(('rm', '/etc/nginx/sites-enabled/default'), stderr=subprocess.STDOUT)
-            except:
+            except Exception:
                 print("ERROR when removing nginx default site (at /etc/nginx/sites-enabled/default). manually remove after the installation is complete and reload nginx!")
 
         
@@ -499,13 +499,13 @@ def main(args):
         #do a reload since we made new service files!
         try:
             subprocess.check_output(('systemctl', 'daemon-reload'), stderr=subprocess.STDOUT)
-        except:
+        except Exception:
             pass
 
 
         try:
             subprocess.check_output(('systemctl', 'is-enabled', 'penguindome_gunicorn'), stderr=subprocess.STDOUT)
-        except:
+        except Exception:
             if maybe_get_bool('Do you want to enable the PenguinDome server?', True, args.yes):
                 subprocess.check_output(('systemctl', 'enable', 'penguindome_gunicorn'), stderr=subprocess.STDOUT)
                 is_enabled = True
@@ -515,7 +515,7 @@ def main(args):
         if is_enabled:
             try:
                 subprocess.check_output(('systemctl', 'status', 'penguindome_gunicorn'), stderr=subprocess.STDOUT)
-            except:
+            except Exception:
                 if maybe_get_bool('Do you want to start the PenguinDome server?', True, args.yes):
                     subprocess.check_output(('systemctl', 'start', 'penguindome_gunicorn'), stderr=subprocess.STDOUT)
             else:
@@ -567,7 +567,7 @@ def main(args):
         if fixFiles:
             try:
                 subprocess.check_output(('chown', '-R', penguinDomeUserName+":"+currentUserName, top_dir), stderr=subprocess.STDOUT)
-            except:
+            except Exception:
                 print("Error setting ownership of files!")
 
             

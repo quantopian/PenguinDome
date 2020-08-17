@@ -125,18 +125,18 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
             output = subprocess.check_output(
                 ('gpg2', '--version'),
                 stderr=subprocess.STDOUT).decode('utf8')
-        except:
+        except Exception:
             try:
                 output = subprocess.check_output(
                     ('gpg', '--version'),
                     stderr=subprocess.STDOUT).decode('utf8')
-            except:
+            except Exception:
                 try:
                     # We know we installed gpg during the server install, so chances are the user running this just doent have PATH configured right
                     output = subprocess.check_output(
                         ('/usr/bin/gpg', '--version'),
                         stderr=subprocess.STDOUT).decode('utf8')
-                except:
+                except Exception:
                     raise Exception("No gpg application found. verify gpg or gpg2 is installed!")
                 else:
                     gpg_exe = '/usr/bin/gpg'
