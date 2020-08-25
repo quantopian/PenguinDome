@@ -14,29 +14,23 @@
 
 from base64 import b64encode, b64decode
 from bson import ObjectId
-from collections import defaultdict
 import datetime
 from flask import Flask, request, Response, abort
 from functools import wraps
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, IPv6Network
-import logging  # Only so we can replace werkzeug's logger
-from multiprocessing import Process, Manager, RLock
+from multiprocessing import Process, RLock
 import threading
 import os
-import pwd
 from passlib.hash import pbkdf2_sha256
 from pymongo import ASCENDING
 from pymongo.operations import IndexModel
-import re
 import signal
-import socket
 import sys
 import tempfile
 import time
 import redis
 import redis_collections
 from uuid import uuid4
-import werkzeug._internal  # To replace its logger to nix "werkzeug" in logs
 
 from penguindome import (
     top_dir,
@@ -593,10 +587,15 @@ def pipe_create():
     key = data['encryption_key']
     iv = data['encryption_iv']
     uuid = uuid4().hex
-    with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
-        encryptors[uuid]['server'] = {'send': {'k':key, 'i':iv},
-                                      'receive': {'k':key, 'i':iv}}
-    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+    with redis_collections.SyncableDefaultDict(
+            dict,
+            redis=redis_encryptors_db,
+            key='encryptors') as encryptors:
+        encryptors[uuid]['server'] = {'send': {'k': key, 'i': iv},
+                                      'receive': {'k': key, 'i': iv}}
+    with redis_collections.SyncableDict(
+            redis=redis_pipes_db,
+            key="pipes") as pipes:
         pipes[uuid] = {
             'client_opened': False,
             'client_closed': False,
@@ -617,16 +616,21 @@ def pipe_create():
 def pipe_open():
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+    with redis_collections.SyncableDict(
+            redis=redis_pipes_db,
+            key="pipes") as pipes:
         if uuid not in pipes:
             log.error('Attempt to open nonexistent pipe {}', uuid)
             abort(404)
         key = data['encryption_key']
         iv = data['encryption_iv']
-        
-        with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
-            encryptors[uuid]['client'] = {'send': {'k':key, 'i':iv},
-                                          'receive': {'k':key, 'i':iv}}
+
+        with redis_collections.SyncableDefaultDict(
+                dict,
+                redis=redis_encryptors_db,
+                key='encryptors') as encryptors:
+            encryptors[uuid]['client'] = {'send': {'k': key, 'i': iv},
+                                          'receive': {'k': key, 'i': iv}}
         try:
             pipe = pipes[uuid]
             if pipe['client_opened']:
@@ -638,7 +642,8 @@ def pipe_open():
 
     return json.dumps({'status': 'ok'})
 
-# I didnt like the idea of logging, even in one direction, 
+
+# I didnt like the idea of logging, even in one direction,
 # ie. what if someone cat's a private key or something?
 '''
 class PipeLogger(object):
@@ -664,7 +669,9 @@ class PipeLogger(object):
                     'masking': 0,
                     'prefix': p}
                 for d, p in cls.directions.items()}
-            with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+            with redis_collections.SyncableDict(
+                    redis=redis_pipes_db,
+                    key="pipes") as pipes:
                 cls.pending[uuid]['hostname'] = pipes[uuid]['client_hostname']
         cls.pending[uuid][direction]['data'] += data
         return cls.pending[uuid]
@@ -736,6 +743,7 @@ class PipeLogger(object):
         del cls.pending[uuid]
 '''
 
+
 @app.route('/PenguinDome/v1/server_pipe/<peer_type>/send', methods=('POST',))
 @app.route('/penguindome/v1/server_pipe/<peer_type>/send', methods=('POST',))
 @flush_content
@@ -744,11 +752,13 @@ def pipe_send(peer_type):
         raise Exception('Invalid peer type "{}"'.format(peer_type))
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+    with redis_collections.SyncableDict(
+            redis=redis_pipes_db,
+            key="pipes") as pipes:
         if uuid not in pipes:
             log.error('Attempt to send to nonexistent pipe {}', uuid)
             abort(404)
-        
+
         pipe = pipes[uuid]
         pipe['activity'] = time.time()
         try:
@@ -759,13 +769,19 @@ def pipe_send(peer_type):
             data_field = peer_type + '_to_' + other_peer_type
             encoded_data = data['data']
             encrypted_data = b64decode(encoded_data)
-            
-            with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+
+            with redis_collections.SyncableDefaultDict(
+                    dict,
+                    redis=redis_encryptors_db,
+                    key='encryptors') as encryptors:
                 encryptor = encryptors[uuid][peer_type]['send']
-            decrypted_data = Encryptor(encryptor['k'], encryptor['i']).decrypt(encrypted_data)
+            decrypted_data = Encryptor(
+                encryptor['k'],
+                encryptor['i']
+            ).decrypt(encrypted_data)
             pipe[data_field] += decrypted_data
             if peer_type == 'server':
-                #PipeLogger.log(uuid, 'send', decrypted_data)
+                # PipeLogger.log(uuid, 'send', decrypted_data)
                 pass
             return json.dumps({'status': 'ok'})
         finally:
@@ -783,24 +799,30 @@ def pipe_receive(peer_type):
         raise Exception('Invalid peer type "{}"'.format(peer_type))
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+    with redis_collections.SyncableDict(redis=redis_pipes_db,
+                                        key="pipes") as pipes:
         if uuid not in pipes:
             log.error('Attempt to receive from nonexistent pipe {}', uuid)
             abort(404)
-        
+
         pipe = pipes[uuid]
         pipe['activity'] = time.time()
         try:
             other_peer_type = 'server' if peer_type == 'client' else 'client'
             data_field = other_peer_type + '_to_' + peer_type
             if pipe[data_field]:
-                with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+                with redis_collections.SyncableDefaultDict(
+                        dict, redis=redis_encryptors_db,
+                        key='encryptors') as encryptors:
                     encryptor = encryptors[uuid][peer_type]['receive']
-                encrypted_data = Encryptor(encryptor['k'], encryptor['i']).encrypt(pipe[data_field])
+                encrypted_data = Encryptor(
+                    encryptor['k'],
+                    encryptor['i']
+                ).encrypt(pipe[data_field])
                 encoded_data = b64encode(encrypted_data).decode('utf8')
                 ret = json.dumps({'data': encoded_data})
                 if peer_type == 'server':
-                    #PipeLogger.log(uuid, 'receive', pipe[data_field])
+                    # PipeLogger.log(uuid, 'receive', pipe[data_field])
                     pass
                 pipe[data_field] = b''
                 return ret
@@ -821,7 +843,8 @@ def pipe_close(peer_type):
         raise Exception('Invalid peer type "{}"'.format(peer_type))
     data = json.loads(request.form['data'])
     uuid = data['pipe_id']
-    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+    with redis_collections.SyncableDict(
+            redis=redis_pipes_db, key="pipes") as pipes:
         if uuid not in pipes:
             log.error('Attempt to close nonexistent pipe {}', uuid)
             abort(404)
@@ -835,10 +858,13 @@ def pipe_close(peer_type):
             client_opened = peer_type == 'client' or pipe['client_opened']
             if not client_opened or pipe[other_closed_field]:
                 del pipes[uuid]
-                with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+                with redis_collections.SyncableDefaultDict(
+                        dict,
+                        redis=redis_encryptors_db,
+                        key='encryptors') as encryptors:
                     encryptors.pop(uuid, None)
                     if peer_type == 'server':
-                        #PipeLogger.finish(uuid)
+                        # PipeLogger.finish(uuid)
                         pass
             return json.dumps({'status': 'ok'})
         finally:
@@ -848,12 +874,14 @@ def pipe_close(peer_type):
 
 
 def clean_up_encryptors(*args):
-    with redis_collections.SyncableDefaultDict(dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
+    with redis_collections.SyncableDefaultDict(
+            dict, redis=redis_encryptors_db, key='encryptors') as encryptors:
         for uuid in list(encryptors.keys()):
-            with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+            with redis_collections.SyncableDict(redis=redis_pipes_db,
+                                                key="pipes") as pipes:
                 if uuid not in pipes:
                     del encryptors[uuid]
-    newThread = threading.Timer(60*60, clean_up_encryptors)
+    newThread = threading.Timer(60 * 60, clean_up_encryptors)
     newThread.daemon = True
     newThread.start()
 
@@ -865,8 +893,8 @@ def startDebugServer(pipes_arg, local_only=False):
     port = get_server_setting('port')
     local_port = get_server_setting('local_port')
 
-    #TODO: Not too sure what to do with this... i think dict logger for uwsgi would probably be the most configurable?
-    #werkzeug._internal._logger = logging.getLogger(log.name)
+    # TODO: Not too sure what to do with this... i think dict logger
+    # would probably be the most configurable?
 
     # Logbook will handle all logging, via the root handler installed by
     # `get_logger` when it alls `logbook.compat.redirect_logging()`.
@@ -883,21 +911,21 @@ def startDebugServer(pipes_arg, local_only=False):
                 pass
 
     if local_only:
-        p = Process(target=app.run, args=("127.0.0.1",local_port))
+        p = Process(target=app.run, args=("127.0.0.1", local_port))
         p.start()
         children[local_port] = p
     else:
-        p = Process(target=app.run, args=("0.0.0.0",port))
+        p = Process(target=app.run, args=("0.0.0.0", port))
         p.start()
         children[port] = p
 
-    #check for errors
+    # check for errors
     time.sleep(1)
     problems = False
     for port in children.keys():
         if not children[port].is_alive():
             log.error('Child process for port {} died on startup. Maybe '
-                    'its port is in use?', port)
+                      'its port is in use?', port)
             problems = True
     if problems:
         sigint_handler()
@@ -905,9 +933,9 @@ def startDebugServer(pipes_arg, local_only=False):
         sys.exit(1)
 
     signal.signal(signal.SIGINT, sigint_handler)
-    
+
     for p in children.values():
-        p.join() 
+        p.join()
 
 
 def prepare_database():
@@ -941,29 +969,34 @@ def prepare_database():
 
 def clean_up_pipes(*args):
     now = time.time()
-    with redis_collections.SyncableDict(redis=redis_pipes_db, key="pipes") as pipes:
+    with redis_collections.SyncableDict(
+            redis=redis_pipes_db, key="pipes") as pipes:
         for uuid in list(pipes.keys()):
             active = pipes[uuid]['activity'] or pipes[uuid]['created']
             if now - active > 60 * 60:  # 1 hour
                 del pipes[uuid]
     newThread = threading.Timer(60 * 60, clean_up_pipes)
     newThread.daemon = True
-    newThread.start() 
+    newThread.start()
 
 
 @app.before_first_request
 def serverInit():
-    # Keep this for when we run locally for debugging. The server startup will be done through nginx+gunicorn
+    # Keep this for when we run locally for debugging.
+    # The server startup will be done through nginx+gunicorn
     global log
 
     log = get_logger('server')
-    
-    app.config['deprecated_port'] = get_port_setting(get_server_setting('port'), 'deprecated', False)
+
+    app.config['deprecated_port'] = get_port_setting(
+        get_server_setting('port'), 'deprecated', False
+    )
 
     prepare_database()
     clean_up_encryptors()
 
     clean_up_pipes()
 
+
 if __name__ == '__main__':
-    startDebugServer(serverInit(),local_only=True)
+    startDebugServer(serverInit(), local_only=True)

@@ -100,14 +100,18 @@ def server_request(cmd, data=None, data_path=None,
         post_data = {'data': data}
         if signed:
             if useServerKeychain:
-                main_gpg_command('-u', 'penguindome-server',
-                        '--armor', '--detach-sign', '-o', signature_file.name,
-                        data_path, log=logger, minimum_version=client_gpg_version)
+                main_gpg_command(
+                    '-u', 'penguindome-server',
+                    '--armor', '--detach-sign', '-o', signature_file.name,
+                    data_path, log=logger, minimum_version=client_gpg_version
+                )
                 signature_file.seek(0)
                 post_data['signature'] = signature_file.read()
             else:
-                gpg_command('--armor', '--detach-sign', '-o', signature_file.name,
-                            data_path, log=logger)
+                gpg_command(
+                    '--armor', '--detach-sign', '-o', signature_file.name,
+                    data_path, log=logger
+                )
                 signature_file.seek(0)
                 post_data['signature'] = signature_file.read()
 

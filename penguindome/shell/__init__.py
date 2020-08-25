@@ -174,8 +174,16 @@ class PenguinDomeServerPeer(InteractionPeer):
         else:
             response = self._request('open', data=data)
         self.encryptors = {
-                'send': {'k':data['encryption_key'], 'i': data['encryption_iv']},
-                'receive': {'k':data['encryption_key'], 'i':data['encryption_iv']}
+            'send':
+                {
+                    'k': data['encryption_key'],
+                    'i': data['encryption_iv']
+                },
+            'receive':
+                {
+                    'k': data['encryption_key'],
+                    'i': data['encryption_iv']
+                }
         }
 
     def _request(self, request, data=None):
@@ -205,7 +213,11 @@ class PenguinDomeServerPeer(InteractionPeer):
     def send(self, data):
         if self.done:
             raise EOFError()
-        encrypted_data = Encryptor(self.encryptors['send']['k'], self.encryptors['send']['i']).encrypt(data)
+        encrypted_data = Encryptor(
+            self.encryptors['send']['k'],
+            self.encryptors['send']['i']
+        ).encrypt(data)
+
         encoded_data = b64encode(encrypted_data).decode('utf8')
         data = self._request('send', {'data': encoded_data})
         if 'eof' in data and data['eof']:
@@ -231,7 +243,12 @@ class PenguinDomeServerPeer(InteractionPeer):
         if 'data' in data and data['data']:
             encoded_data = data['data']
             encrypted_data = b64decode(encoded_data)
-            decrypted_data = Encryptor(self.encryptors['receive']['k'], self.encryptors['receive']['i']).decrypt(encrypted_data)
+
+            decrypted_data = Encryptor(
+                self.encryptors['receive']['k'],
+                self.encryptors['receive']['i']
+            ).decrypt(encrypted_data)
+
             self.pending_data += decrypted_data
         if 'eof' in data and data['eof']:
             self.done = True

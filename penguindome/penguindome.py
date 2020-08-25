@@ -106,7 +106,10 @@ def set_gpg(mode):
     try:
         os.chmod(home, 0o0700)
     except PermissionError:
-        print("It looks like you are trying to run the debug server as your user, please run with `sudo -u "+pwd.getpwuid(os.stat(top_dir).st_uid).pw_name+"`")
+        print("It looks like you are trying to run the debug server as " +
+              "your user, please run with `sudo -u " +
+              pwd.getpwuid(os.stat(top_dir).st_uid).pw_name + "`"
+              )
         sys.exit(1)
     # random seed gets corrupted sometimes because we're copying keyring from
     # server to client
@@ -132,12 +135,15 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
                     stderr=subprocess.STDOUT).decode('utf8')
             except Exception:
                 try:
-                    # We know we installed gpg during the server install, so chances are the user running this just doent have PATH configured right
+                    # We know we installed gpg during the server install
+                    # so chances are the user running this just doent have
+                    # PATH configured right
                     output = subprocess.check_output(
                         ('/usr/bin/gpg', '--version'),
                         stderr=subprocess.STDOUT).decode('utf8')
                 except Exception:
-                    raise Exception("No gpg application found. verify gpg or gpg2 is installed!")
+                    raise Exception("No gpg application found. " +
+                                    "verify gpg or gpg2 is installed!")
                 else:
                     gpg_exe = '/usr/bin/gpg'
             else:
@@ -145,7 +151,6 @@ def gpg_command(*cmd, with_trustdb=False, quiet=True,
         else:
             gpg_exe = "gpg2"
 
-        
         match = re.search(r'^gpg \(GnuPG\) (\d+(?:\.\d+(?:\.\d+)?)?)', output,
                           re.MULTILINE)
         if not match:
