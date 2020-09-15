@@ -72,7 +72,10 @@ def main():
             log.error('update failed:\n{}', e.output.decode('utf8'))
 
     if not successful_update:
-        subprocess.check_output((bin_path('verify'),))
+        try:
+            subprocess.check_output((bin_path('verify'),))
+        except subprocess.CalledProcessError as e:
+            log.error('verification failed:\n{}', e.output.decode('utf8'))
 
     if do_collect:
         try:
