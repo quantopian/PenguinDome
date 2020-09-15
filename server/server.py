@@ -105,9 +105,10 @@ def log_deprecated_port(f):
                 if open_issue(hostname, issue_name):
                     log.info('Opened {} issue for {}', issue_name, hostname)
             else:
-                doc = close_issue(hostname, issue_name)
-                if doc:
-                    log.info('Closed {} issue for {}', issue_name, hostname)
+                if ok:
+                    doc = close_issue(hostname, issue_name)
+                    if doc:
+                        log.info('Closed {} issue for {}', issue_name, hostname)
         return f(*args, **kwargs)
     return wrapper
 
