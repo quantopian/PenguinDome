@@ -99,13 +99,12 @@ def log_deprecated_port(f):
             log.error('Failed to parse request data')
             ok = False
             hostname = request.remote_addr
-        if app.config['deprecated_port']:
+        if app.config.get('deprecated_port'):
             log.warn('Host {} connected to deprecated port', hostname)
             if ok:
                 if open_issue(hostname, issue_name):
                     log.info('Opened {} issue for {}', issue_name, hostname)
-        else:
-            if ok:
+            else:
                 doc = close_issue(hostname, issue_name)
                 if doc:
                     log.info('Closed {} issue for {}', issue_name, hostname)
