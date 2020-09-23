@@ -332,7 +332,7 @@ def main(args):
 
     do_service = maybe_get_bool(prompt, default, args.yes)
 
-    if do_service:
+    if do_service and not args.skipsystemctl:
         with NamedTemporaryFile('w+') as temp_service_file:
             temp_service_file.write(dedent('''\
                 [Unit]
@@ -353,7 +353,7 @@ def main(args):
                                 stderr=subprocess.STDOUT)
         service_exists = True
 
-    if service_exists:
+    if service_exists and not args.skipsystemctl:
         try:
             subprocess.check_output(
                 ('systemctl', 'is-enabled', 'penguindome-server'),
@@ -419,8 +419,8 @@ def main(args):
 
                 print('Installed {}'.format(cron_file))
 
-    if client_changed or not glob.glob(os.path.join(releases_dir,
-                                                    '*.tar.asc')):
+    if (client_changed or not glob.glob(os.path.join(releases_dir,
+                                                    '*.tar.asc')) and not args.skipbuildrelease):
         if client_changed:
             prompt = ('Do you want to build a release with the new client '
                       'settings?')
@@ -448,6 +448,8 @@ def parse_args():
                         help='Use default answers to all questions')
     parser.add_argument('--audit-crontab', action='store_true',
                         help='Replace the audit crontab')
+    parser.add_argument('--skipsystemctl', action='store_true', help='Do not use systemctl')
+    parser.add_argument('--skipbuildrelease', action='store_true', help='Do not build a client release')
     args = parser.parse_args()
     return args
 
