@@ -93,11 +93,6 @@ def problem_checks():
             'spec': {'$and': [
                 {'plugins.sshd.status': 'running'},
                 {'plugins.sshd.config.permitrootlogin': 'yes'}]}},
-        'eraagent-absent': {
-            'spec': {'plugins.eraagent.installed': {'$not': {'$eq': True}}}},
-        'eraagent-stopped': {
-            'grace-period': datetime.timedelta(hours=4),
-            'spec': {'plugins.eraagent.running': {'$not': {'$eq': True}}}},
         'eset-absent': {
             'spec': {'plugins.eset.installed': {'$not': {'$eq': True}}}},
         'eset-out-of-date': {
