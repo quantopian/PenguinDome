@@ -82,9 +82,6 @@ def problem_checks():
             'spec': {'submitted_at':
                      {'$lt': business_days_ago(1)}},
             'filter': not_reporting_filter},
-        'no-location': {
-            'grace-period': datetime.timedelta(days=1),
-            'spec': {'plugins.geolocation': 'unknown'}},
         'ssh-password-authentication': {
             'spec': {'$and': [
                 {'plugins.sshd.status': 'running'},
