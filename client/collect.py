@@ -145,7 +145,7 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
             run_file(*args, **kwargs)
     for thread in threads:
         thread.join(timeout=thread_timeout)
-        if thread.isAlive():
+        if thread.is_alive():
             log.error("Timeout executing {}", thread.name)
     return results
 
