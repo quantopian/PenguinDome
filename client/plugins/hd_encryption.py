@@ -72,7 +72,7 @@ for mount in open('/proc/mounts'):
                                'device': device,
                                'encrypted': True}
         continue
-    if mountpoint in ('/boot', '/boot/efi'):
+    if mountpoint in ('/boot', '/boot/efi', '/efi'):
         continue
     if device.find(':') > -1 or device.startswith('//'):
         # Remote device
