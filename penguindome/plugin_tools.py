@@ -18,6 +18,7 @@ who_x_re = re.compile(r'(\S+)\s+.*\((:\d[^\)]*)\)')
 _who_x_users = None
 _xinit_users = None
 _x_users = None
+_greetd_users = None
 
 
 def find_who_x_users():
@@ -96,6 +97,28 @@ def find_x_users():
         return _x_users
     _x_users = list(set(find_who_x_users()) | set(find_xinit_users()))
     return _x_users
+
+
+def find_greetd_users():
+    """Return all users logged in via greetd
+
+    The list items are (username, $XDG_SEAT).
+    """
+    global _greetd_users
+    if _greetd_users is not None:
+        return _greetd_users
+
+    greets = [p for p in process_dict_iter(('exe', 'pid'))
+              if p['exe'].endswith('/greetd')]
+    users = []
+    for p in process_dict_iter(('ppid', 'exe', 'username', 'environ')):
+        if not p['exe'].endswith('/greetd'):
+            greetd = any(x for x in greets if p['ppid'] == x['pid'])
+            seat = p['environ'].get('XDG_SEAT', None)
+            if greetd and seat:
+                users.append((p['username'], seat))
+    _greetd_users = users
+    return users
 
 
 class DBusUser(object):

@@ -19,10 +19,16 @@ from tempfile import TemporaryFile
 from penguindome import cached_data
 from penguindome.client import get_logger
 import penguindome.json as json
-from penguindome.plugin_tools import find_x_users, DBusUser, process_dict_iter
+from penguindome.plugin_tools import (
+    find_x_users,
+    find_greetd_users,
+    DBusUser,
+    process_dict_iter
+)
 
 valid_lockers = (
-    'betterlockscreen', 'slock', 'i3lock', 'i3lock-fancy', 'i3lock-fancy-rapid'
+    'betterlockscreen', 'slock', 'i3lock', 'i3lock-fancy',
+    'i3lock-fancy-rapid', 'swaylock',
 )
 valid_lockers_re = re.compile(r'\b(?:' +
                               '|'.join(re.escape(l) for l in valid_lockers) +
@@ -144,10 +150,49 @@ def xidlehook_status(user, display):
     return None
 
 
-display_checkers = (gnome_xscreensaver_status, xautolock_status,
-                    xidlehook_status)
+def swayidle_status(user, seat):
+    procs = (p for p in process_dict_iter(
+        ('username', 'environ', 'exe', 'cmdline')) if p['username'] == user)
+    procs = (p for p in procs if p['environ'].get('XDG_SEAT', None) == seat)
+    procs = (p for p in procs if p['exe'].endswith('/swayidle'))
+    for proc in procs:
+        args = proc['cmdline']
+        timers = []
+        try:
+            while args:
+                if args[0] == 'timeout':
+                    # syntax: timeout <timeout> <timeout command> \
+                    #         [<resume> <resume command>]
+                    timers.append({
+                        'time': int(args[1]),
+                        'locker': args[2]
+                    })
+                    params = 5 if args[3] == 'resume' else 3
+                    del args[0:params]
+                elif (args[0] == 'before_sleep' and
+                      valid_lockers_re.search(args[1])):
+                    # this makes sure the locker is called before the computer
+                    # goes to sleep
+                    del args[0:2]
+                elif args[0] == '-w':
+                    # this makes sure that the before_sleep command finishes
+                    # before the computer sleeps
+                    args.pop(0)
+                else:
+                    args.pop(0)
+        except Exception:
+            continue
 
-user_displays = find_x_users()
+        for timer in timers:
+            if valid_lockers_re.search(timer['locker']):
+                return {'enabled': True, 'delay': timer['time']}
+    return None
+
+
+display_checkers = (gnome_xscreensaver_status, xautolock_status,
+                    xidlehook_status, swayidle_status)
+
+user_displays = find_x_users() + find_greetd_users()
 
 results = {}
 

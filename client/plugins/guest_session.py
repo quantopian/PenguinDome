@@ -95,10 +95,20 @@ def xguest_checker():
     return any(l for l in open('/etc/passwd') if re.match(r'xguest:', l))
 
 
+def greetd_checker():
+    # greetd doesn't support guest sesssions
+    running_greetd = any(p for p in process_dict_iter(('exe', 'username'))
+                         if p['username'] == 'root' and
+                         re.search(r'/greetd$', p['exe']))
+    if running_greetd:
+        return False
+
+
 # Make sure xinit_checker is last. Just because somebody is running xinit
 # doesn't mean that they aren't _also_ running a display manager that has a
 # guest session, so xinit_checker should only be used as a last resort.
-checkers = (lightdm_checker, xinit_checker, gdm3_checker, xguest_checker)
+checkers = (lightdm_checker, xinit_checker, gdm3_checker, xguest_checker,
+            greetd_checker)
 
 for checker in checkers:
     results = checker()
