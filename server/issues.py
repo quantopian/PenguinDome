@@ -82,9 +82,6 @@ def problem_checks():
             'spec': {'submitted_at':
                      {'$lt': business_days_ago(1)}},
             'filter': not_reporting_filter},
-        'no-location': {
-            'grace-period': datetime.timedelta(days=1),
-            'spec': {'plugins.geolocation': 'unknown'}},
         'ssh-password-authentication': {
             'spec': {'$and': [
                 {'plugins.sshd.status': 'running'},
@@ -93,11 +90,6 @@ def problem_checks():
             'spec': {'$and': [
                 {'plugins.sshd.status': 'running'},
                 {'plugins.sshd.config.permitrootlogin': 'yes'}]}},
-        'eraagent-absent': {
-            'spec': {'plugins.eraagent.installed': {'$not': {'$eq': True}}}},
-        'eraagent-stopped': {
-            'grace-period': datetime.timedelta(hours=4),
-            'spec': {'plugins.eraagent.running': {'$not': {'$eq': True}}}},
         'eset-absent': {
             'spec': {'plugins.eset.installed': {'$not': {'$eq': True}}}},
         'eset-out-of-date': {
