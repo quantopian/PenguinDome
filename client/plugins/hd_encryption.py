@@ -57,7 +57,7 @@ for mount in open('/proc/mounts'):
                   'efivarfs', 'fuse', 'fuse.gvfsd-fuse', 'fusectl',
                   'hugetlbfs', 'iso9660', 'mqueue', 'nfs', 'nsfs', 'overlay',
                   'proc',
-                  'pstore', 'rpc_pipefs', 'securityfs', 'selinuxfs',
+                  'pstore', 'ramfs', 'rpc_pipefs', 'securityfs', 'selinuxfs',
                   'squashfs', 'sysfs',
                   'tmpfs', 'tracefs', 'vboxsf'):
         continue
