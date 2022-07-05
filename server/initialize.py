@@ -17,6 +17,7 @@ from functools import partial
 import glob
 import logbook
 import os
+import pwd
 import random
 import subprocess
 import shutil
@@ -28,7 +29,6 @@ from penguindome import (
     top_dir,
     gpg_private_home,
     gpg_public_home,
-    gpg_user_ids,
     set_gpg,
     gpg_command,
     releases_dir,
@@ -37,11 +37,13 @@ from penguindome.client import (
     get_setting as get_client_setting,
     set_setting as set_client_setting,
     save_settings as save_client_settings,
+    gpg_user_id as client_user_id,
 )
 from penguindome.server import (
     get_setting as get_server_setting,
     set_setting as set_server_setting,
     save_settings as save_server_settings,
+    gpg_user_id as server_user_id,
 )
 from penguindome.prompts import (
     get_bool,
@@ -198,10 +200,39 @@ def main(args):
     else:
         maybe_changed = maybe_changed_extended
 
-    generate_key('server', gpg_user_ids['server'])
-    generate_key('client', gpg_user_ids['client'])
-    import_key('server', gpg_user_ids['client'])
-    import_key('client', gpg_user_ids['server'])
+    # We will be running penguindome under a locked down account, to do so we
+    # need to create a system account, tell the service files to run penguin
+    # dome under that account, change the owner of the penguindome files to be
+    # owned by penguindome, but callable by the user, and make sure the web
+    # socket can be talked to by penguindome.
+    #
+    # before we do any of that though, we need to create the acount, and keep
+    # track of the user running the script as they will most likely be the one
+    # administering penguindome. since this installer needs to be ran as root,
+    # handle the condition where they use sudo!
+    if os.getenv("SUDO_USER"):
+        currentUserName = os.getenv("SUDO_USER")
+    else:
+        currentUserName = os.getenv("USER")
+
+    penguinDomeUserName = "PenguinDomeSVC"
+
+    if penguinDomeUserName not in [x.pw_name for x in pwd.getpwall()]:
+        try:
+            subprocess.check_output(
+                ('useradd',
+                 '-r',
+                 '-s',
+                 '/bin/nologin',
+                 penguinDomeUserName),
+                stderr=subprocess.STDOUT)
+        except Exception:
+            print("Could not create penguindome user!")
+
+    generate_key('server', server_user_id)
+    generate_key('client', client_user_id)
+    import_key('server', client_user_id)
+    import_key('client', server_user_id)
 
     default = not (get_client_setting('loaded') and
                    get_server_setting('loaded'))
@@ -260,18 +291,46 @@ def main(args):
                     break
                 print('That file does not exist.')
 
-        server_changed |= maybe_changed('server', 'database:host',
-                                        get_string_or_list,
-                                        'Database host:port:')
+        server_changed |= maybe_changed(
+            'server',
+            'database:host',
+            get_string_or_list,
+            'Database host:port:'
+        )
+
         if get_server_setting('database:host'):
             server_changed |= maybe_changed(
-                'server', 'database:replicaset', get_string_none,
-                'Replicaset name:', empty_ok=True)
-        server_changed |= maybe_changed('server', 'database:name',
-                                        get_string, 'Database name:')
-        server_changed |= maybe_changed('server', 'database:username',
-                                        get_string_none, 'Database username:',
-                                        empty_ok=True)
+                'server',
+                'database:replicaset',
+                get_string_none,
+                'Replicaset name:',
+                empty_ok=True
+            )
+
+        server_changed |= maybe_changed(
+            'server',
+            'database:name',
+            get_string,
+            'Database name:'
+        )
+
+        server_changed |= maybe_changed(
+            'server',
+            'database:username',
+            get_string_none,
+            'Database username:',
+            empty_ok=True
+        )
+
+        server_changed |= maybe_changed(
+            'server',
+            'database:ssl_ca',
+            get_string_none,
+            'Database SSL CA file ' +
+            '(empty for none):',
+            empty_ok=True
+        )
+
         if get_server_setting('database:username'):
             server_changed |= maybe_changed('server', 'database:password',
                                             get_string, 'Database password:')
@@ -320,73 +379,272 @@ def main(args):
         if client_changed:
             print('Saved client settings.')
 
-    service_file = '/etc/systemd/system/penguindome-server.service'
-    service_exists = os.path.exists(service_file)
+    nginx_site_file = '/etc/nginx/sites-enabled/penguindome'
+    service_exists = os.path.exists(nginx_site_file)
     default = not service_exists
 
-    if service_exists:
-        prompt = ("Do you want to replace the server's systemd "
-                  "configuration?")
-    else:
-        prompt = 'Do you want to add the server to systemd?'
-
-    do_service = maybe_get_bool(prompt, default, args.yes)
-
-    if do_service:
-        with NamedTemporaryFile('w+') as temp_service_file:
-            temp_service_file.write(dedent('''\
-                [Unit]
-                Description=PenguinDome Server
-                After=network.target
-
-                [Service]
-                Type=simple
-                ExecStart={server_exe}
-
-                [Install]
-                WantedBy=multi-user.target
-            '''.format(server_exe=os.path.join(top_dir, 'bin', 'server'))))
-            temp_service_file.flush()
-            os.chmod(temp_service_file.name, 0o644)
-            shutil.copy(temp_service_file.name, service_file)
-        subprocess.check_output(('systemctl', 'daemon-reload'),
-                                stderr=subprocess.STDOUT)
-        service_exists = True
-
-    if service_exists:
+    do_redis = maybe_get_bool(
+        "do you want to configure redis?", default, args.yes)
+    if do_redis:
         try:
             subprocess.check_output(
-                ('systemctl', 'is-enabled', 'penguindome-server'),
-                stderr=subprocess.STDOUT)
+                ('sed',
+                 '-i',
+                 's/supervised no/supervised systemd/',
+                 '/etc/redis/redis.conf'), stderr=subprocess.STDOUT)
         except Exception:
-            if maybe_get_bool('Do you want to enable the server?', True,
-                              args.yes):
+            pass
+
+        try:
+            subprocess.check_output(
+                ('systemctl',
+                 'daemon-reload'), stderr=subprocess.STDOUT)
+        except Exception:
+            pass
+
+        try:
+            subprocess.check_output(
+                ('systemctl',
+                 'is-enabled',
+                 'redis'), stderr=subprocess.STDOUT)
+        except Exception:
+            try:
                 subprocess.check_output(
-                    ('systemctl', 'enable', 'penguindome-server'),
-                    stderr=subprocess.STDOUT)
+                    ('systemctl',
+                     'enable',
+                     'redis'), stderr=subprocess.STDOUT)
                 is_enabled = True
-            else:
-                is_enabled = False
+            except Exception:
+                print("Error when enabling redis with systemd!")
         else:
             is_enabled = True
 
         if is_enabled:
             try:
                 subprocess.check_output(
-                    ('systemctl', 'status', 'penguindome-server'),
+                    ('systemctl',
+                     'status',
+                     'redis'), stderr=subprocess.STDOUT)
+            except Exception:
+                if maybe_get_bool(
+                        'Do you want to start redis?', True, args.yes):
+                    subprocess.check_output(
+                        ('systemctl',
+                         'start',
+                         'redis'), stderr=subprocess.STDOUT)
+            else:
+                if maybe_get_bool(
+                        'Do you want to restart redis?',
+                        server_changed, args.yes):
+                    subprocess.check_output(
+                        ('systemctl',
+                         'restart',
+                         'redis'), stderr=subprocess.STDOUT
+                    )
+
+    if service_exists:
+        prompt = ("Do you want to replace the server's webserver "
+                  "configuration?")
+    else:
+        prompt = 'Do you want to add the server to autostart?'
+
+    do_service = maybe_get_bool(prompt, default, args.yes)
+
+    if do_service:
+        # do_service needs to complete the following:
+        #   1) ask to disable the default site, as penguindome might be on
+        #      port 80
+        #   2) create the nginx site using the given port / ssl values
+        #   3) create a service to make sure the socket file exists in tmp
+        #      that the nginx service uses
+        #   4) create a service to run our wsgi server (gunicorn)
+
+        # 1 - disable default site, nginx is reloaded below,
+        # so dont worry about reloading it here!
+        rm_default_nginx_site = maybe_get_bool(
+            'Do you want to remove the default NGINX site? you should ' +
+            'do this if you are using penguindome on port 80',
+            default, args.yes)
+        if rm_default_nginx_site:
+            try:
+                subprocess.check_output(
+                    ('rm',
+                     '/etc/nginx/sites-enabled/default'),
                     stderr=subprocess.STDOUT)
             except Exception:
-                if maybe_get_bool('Do you want to start the server?', True,
-                                  args.yes):
+                print("ERROR when removing nginx default site " +
+                      "(at /etc/nginx/sites-enabled/default). manually " +
+                      "remove after the installation is complete and reload " +
+                      "nginx!")
+
+        # 2 - create our nginx reverse proxy to our app
+        if get_server_setting('ssl:enabled'):
+            ssl_port = get_server_setting('port')
+            nginx_listen_string = str(ssl_port) + " ssl;"
+            nginx_ssl_params = '''
+                                \tssl_certificate = {crt};
+                                \tssl_certificate_key = {key};
+            '''.format(
+                crt=get_server_setting('ssl:certificate'),
+                key=get_server_setting('ssl:key')
+            )
+        else:
+            plaintext_port = get_server_setting('port')
+            nginx_listen_string = str(plaintext_port) + ';'
+            nginx_ssl_params = ""
+
+        with NamedTemporaryFile('w+') as temp_nginx_site_file:
+            temp_nginx_site_file.write(dedent('''\
+                server {{
+                \tlisten {listen_str}
+                {ssl_params}
+                \tclient_max_body_size 2G;
+                \tkeepalive_timeout 60;
+
+                \tlocation / {{
+                    \t\tinclude uwsgi_params;
+                    \t\tproxy_pass http://unix:/tmp/penguindome.sock;
+                \t}}
+                }}
+
+                server {{
+                \tlisten 127.0.0.1:{local_port};
+                {ssl_params}
+                \tclient_max_body_size 2G;
+                \tkeepalive_timeout 60;
+
+                \tlocation / {{
+                    \t\tinclude uwsgi_params;
+                    \t\tproxy_pass http://unix:/tmp/penguindome.sock;
+                \t}}
+                }}
+            '''.format(
+                listen_str=nginx_listen_string,
+                ssl_params=nginx_ssl_params,
+                local_port=get_server_setting('local_port'))))
+
+            temp_nginx_site_file.flush()
+            os.chmod(temp_nginx_site_file.name, 0o644)
+            shutil.copy(temp_nginx_site_file.name, nginx_site_file)
+
+        # 2 - create a systemd service to make sure our gunicorn socket file
+        # always exists before gunicorn starts
+        with NamedTemporaryFile('w+') as temp_gunicorn_sock_service_file:
+            temp_gunicorn_sock_service_file.write(dedent('''\
+                    [Unit]
+                    Description=gunicorn socket for penguindome server
+
+                    [Socket]
+                    ListenStream=/tmp/penguindome.sock
+                    SocketUser={Username}
+                    SocketGroup=www-data
+                    SocketMode=660
+
+                    [Install]
+                    WantedBy=sockets.target
+            '''.format(Username=penguinDomeUserName)))
+            temp_gunicorn_sock_service_file.flush()
+            os.chmod(temp_gunicorn_sock_service_file.name, 0o644)
+            os.chown(temp_gunicorn_sock_service_file.name, 0, 0)
+            shutil.copy(
+                temp_gunicorn_sock_service_file.name,
+                "/etc/systemd/system/penguindome_gunicorn.socket"
+            )
+
+        # 3 - create a systemd service to run gunicorn
+        with NamedTemporaryFile('w+') as temp_gunicorn_server_service_file:
+            temp_gunicorn_server_service_file.write(dedent('''\
+                [Unit]
+                Description=penguindome gunicorn daemon
+                Requires=penguindome_gunicorn.socket
+                After=network.target
+
+                [Service]
+                Type=notify
+                # the specific user that our service will run as
+                User={Username}
+                Group={Username}
+                RuntimeDirectory=gunicorn
+                WorkingDirectory={server_app_folder}
+                Environment="PATH={server_venv}/bin"
+                ExecStart={server_venv}/bin/gunicorn --workers 1 --bind unix:/tmp/penguindome.sock server:app
+                ExecReload=/bin/kill -s HUP $MAINPID
+                KillMode=mixed
+                TimeoutStopSec=5
+                PrivateTmp=true
+
+                [Install]
+                WantedBy=multi-user.target
+            ''').format(
+                server_venv=top_dir + "/var/server-venv",
+                server_app_folder=top_dir + "/server",
+                Username=penguinDomeUserName
+            ))
+            temp_gunicorn_server_service_file.flush()
+            os.chmod(temp_gunicorn_server_service_file.name, 0o644)
+            os.chown(temp_gunicorn_server_service_file.name, 0, 0)
+            shutil.copy(
+                temp_gunicorn_server_service_file.name,
+                "/etc/systemd/system/penguindome_gunicorn.service"
+            )
+
+        service_exists = True
+
+    if service_exists:
+        # do a reload since we made new service files!
+        try:
+            subprocess.check_output(
+                ('systemctl',
+                 'daemon-reload'), stderr=subprocess.STDOUT)
+        except Exception:
+            pass
+
+        try:
+            subprocess.check_output(
+                ('systemctl',
+                 'is-enabled',
+                 'penguindome_gunicorn'), stderr=subprocess.STDOUT)
+        except Exception:
+            if maybe_get_bool(
+                    'Do you want to enable the PenguinDome server?',
+                    True, args.yes):
+                subprocess.check_output(
+                    ('systemctl',
+                     'enable',
+                     'penguindome_gunicorn'), stderr=subprocess.STDOUT)
+                is_enabled = True
+        else:
+            is_enabled = True
+
+        if is_enabled:
+            try:
+                subprocess.check_output(
+                    ('systemctl',
+                     'status',
+                     'penguindome_gunicorn'), stderr=subprocess.STDOUT)
+            except Exception:
+                if maybe_get_bool(
+                        'Do you want to start the PenguinDome server?',
+                        True, args.yes):
                     subprocess.check_output(
-                        ('systemctl', 'start', 'penguindome-server'),
-                        stderr=subprocess.STDOUT)
+                        ('systemctl',
+                         'start',
+                         'penguindome_gunicorn'), stderr=subprocess.STDOUT)
             else:
-                if maybe_get_bool('Do you want to restart the server?',
-                                  server_changed, args.yes):
+                if maybe_get_bool(
+                        'Do you want to restart the PenguinDome server?',
+                        server_changed, args.yes):
                     subprocess.check_output(
-                        ('systemctl', 'restart', 'penguindome-server'),
-                        stderr=subprocess.STDOUT)
+                        ('systemctl',
+                         'restart',
+                         'penguindome_gunicorn'), stderr=subprocess.STDOUT)
+
+            if maybe_get_bool(
+                    'Do you want to reload nginx?', server_changed, args.yes):
+                subprocess.check_output(
+                    ('systemctl',
+                     'reload',
+                     'nginx'), stderr=subprocess.STDOUT)
 
         if get_server_setting('audit_cron:enabled'):
             cron_file = '/etc/cron.d/penguindome-audit'
@@ -418,6 +676,30 @@ def main(args):
                     shutil.copy(temp_cron_file.name, cron_file)
 
                 print('Installed {}'.format(cron_file))
+
+        # Check the file permissions
+        fixFilePermissionsDefault = False
+        if not(
+                (pwd.getpwuid(os.stat(__file__).st_uid).pw_name ==
+                    penguinDomeUserName) and
+                (pwd.getpwuid(os.stat(__file__).st_gid).pw_name ==
+                    currentUserName)):
+            fixFilePermissionsDefault = True
+
+        fixFiles = maybe_get_bool('Do you want to change fix the file ' +
+                                  'ownership on your PenguinDome install?',
+                                  fixFilePermissionsDefault, args.yes)
+        if fixFiles:
+            try:
+                subprocess.check_output(
+                    ('chown',
+                     '-R',
+                     penguinDomeUserName + ":" + currentUserName,
+                     top_dir),
+                    stderr=subprocess.STDOUT
+                )
+            except Exception:
+                print("Error setting ownership of files!")
 
     if client_changed or not glob.glob(os.path.join(releases_dir,
                                                     '*.tar.asc')):

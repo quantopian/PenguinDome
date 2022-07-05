@@ -31,7 +31,8 @@ from penguindome import (
     top_dir,
 )
 
-gpg_command = partial(main_gpg_command, with_user_id=True,
+gpg_user_id = 'penguindome-client'
+gpg_command = partial(main_gpg_command, '-u', gpg_user_id,
                       minimum_version=client_gpg_version)
 session = None
 
@@ -79,7 +80,7 @@ def server_request(cmd, data=None, data_path=None,
                    exit_on_connection_error=False, logger=None,
                    # Clients should never need to use these. They are for
                    # internal use on the server.
-                   local_port=None, signed=True):
+                   local_port=None, signed=True, useServerKeychain=False):
     global session
     if session is None:
         session = requests.Session()
@@ -98,10 +99,21 @@ def server_request(cmd, data=None, data_path=None,
             data_path = temp_data_file.name
         post_data = {'data': data}
         if signed:
-            gpg_command('--armor', '--detach-sign', '-o', signature_file.name,
-                        data_path, log=logger)
-            signature_file.seek(0)
-            post_data['signature'] = signature_file.read()
+            if useServerKeychain:
+                main_gpg_command(
+                    '-u', 'penguindome-server',
+                    '--armor', '--detach-sign', '-o', signature_file.name,
+                    data_path, log=logger, minimum_version=client_gpg_version
+                )
+                signature_file.seek(0)
+                post_data['signature'] = signature_file.read()
+            else:
+                gpg_command(
+                    '--armor', '--detach-sign', '-o', signature_file.name,
+                    data_path, log=logger
+                )
+                signature_file.seek(0)
+                post_data['signature'] = signature_file.read()
 
     kwargs = {
         'data': post_data,

@@ -32,7 +32,8 @@ from penguindome import (
     top_dir,
 )
 
-gpg_command = partial(main_gpg_command, with_user_id=True)
+gpg_user_id = 'penguindome-server'
+gpg_command = partial(main_gpg_command, '-u', gpg_user_id)
 
 valid_client_parameters = (
     # This is a list of other client which should be treated as the same as the
@@ -121,6 +122,10 @@ def get_db(force_db=None):
         replicaset = get_setting('database:replicaset')
         if replicaset:
             kwargs['replicaset'] = replicaset
+        db_ssl_ca = get_setting('database:ssl_ca')
+        if db_ssl_ca:
+            kwargs['ssl'] = True
+            kwargs['ssl_ca_certs'] = db_ssl_ca
         connection = MongoClient(host, **kwargs)
 
     newdb = connection[database_name]

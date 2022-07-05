@@ -21,3 +21,6 @@ pytz==2018.9
 PyYAML==5.3.1
 requests==2.21.0
 stopit==1.1.2
+gunicorn==20.0.4
+redis==3.3.11
+redis-collections==0.7.0

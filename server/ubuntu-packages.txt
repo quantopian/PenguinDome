@@ -15,7 +15,10 @@ cron
 gnupg
 libgfshare-bin
 openssl
+python3-virtualenv
 python3
 systemd
 tar
-virtualenv
+haveged
+nginx
+redis-server

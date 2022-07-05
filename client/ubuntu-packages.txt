@@ -20,11 +20,11 @@ gnupg
 iptables
 login
 lvm2
+python3-virtualenv
 python3
 python3-dev
 systemd
 tar
 ubuntu-release-upgrader-core
 update-notifier-common
-virtualenv
 wireless-tools
