@@ -49,6 +49,9 @@ log = get_logger('collect')
 
 def run_file(run_path, run_name, results, parse_output=True,
              delete_after_success=False, submit_failures=False):
+    if run_name == '__init__':
+        return
+
     log.debug('Running {}', run_path)
     with NamedTemporaryFile('w+') as stderr_file:
         try:
