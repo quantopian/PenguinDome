@@ -1,5 +1,7 @@
 flake8==3.7.9
-pytest==5.4.1
+pyfakefs==4.6.3
+pytest==7.1.2
 pytest-mock==3.1.0
 pytest-mongodb==2.2.0
 pytest-subprocess==0.1.4
+tox-setuptools-version==0.0.0.3

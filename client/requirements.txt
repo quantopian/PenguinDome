@@ -12,7 +12,7 @@
 
 distro==1.5.0
 fasteners==0.14.1
-Logbook==1.4.3.post1
+Logbook==1.5.3
 netifaces==0.10.9
 pexpect==4.6.0
 psutil==5.6.6

@@ -70,8 +70,8 @@ functionality.
 Requirements
 ------------
 
-The two strictest requirements for PenguinDome are Python 3.5.x or
-newer on both the clients and server, and GnuPG 2.1.11+ on the clients
+The two strictest requirements for PenguinDome are Python 3.7 or newer
+on both the clients and server, and GnuPG 2.1.11+ on the clients
 and 2.1.15+ on the server.
 
 Aside from that, there are of course various OS package dependencies
@@ -807,7 +807,7 @@ that a change breaks something. If you have useful changes to submit
 but you need help writing tests, feel free to submit a PR without the
 the tests and someone may be able to help.
 
-Tests should pass on Python 3.5, 3.6, 3.7, and 3.8 before the
+Tests should pass on Python 3.7, 3.8, 3.9, and 3.10 before the
 corresponding changes go onto master. there is a `tox` configuration
 in `tox.ini` to support that, but you may need to update it to reflect
 where you've installed the various required Python versions.

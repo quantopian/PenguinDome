@@ -11,7 +11,7 @@
 # the License.
 
 Flask==1.0.2
-Logbook==1.4.3.post1
+Logbook==1.5.3
 -e git+https://github.com/quantopian/MongoDBProxy.git#egg=mongodbproxy
 passlib==1.7.1
 pycryptodome==3.7.2
