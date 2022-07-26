@@ -35,9 +35,6 @@ from penguindome import (
 from penguindome.client import get_logger, encrypt_document
 import penguindome.json as json
 
-os.chdir(top_dir)
-set_gpg('client')
-
 # Some commands the plugins use are in /sbin or /usr/sbin on some
 # distributions, and it isn't always in the search path used by cron scripts.
 for d in ('/sbin', '/usr/sbin'):
@@ -145,7 +142,7 @@ def run_dir(dir_path, parse_output=True, delete_after_success=False,
             run_file(*args, **kwargs)
     for thread in threads:
         thread.join(timeout=thread_timeout)
-        if thread.isAlive():
+        if thread.is_alive():
             log.error("Timeout executing {}", thread.name)
     return results
 
@@ -178,6 +175,9 @@ def runlevel_info():
 
 
 def main():
+    os.chdir(top_dir)
+    set_gpg('client')
+
     args = parse_args()
 
     if not (args.plugins or args.commands):
