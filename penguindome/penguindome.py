@@ -86,6 +86,8 @@ def release_files_iter(with_signatures=False, top_dir=top_dir):
                 continue
             if fnmatch.fnmatch(relative_path, '*/keyring/sshcontrol'):
                 continue
+            if relative_path == 'client/plugins/__init__.py':
+                continue
             if with_signatures:
                 yield (relative_path,
                        os.path.join('signatures', relative_path + '.sig'))
