@@ -29,7 +29,7 @@ def get_policies(cmd):
             return None
         print(e.output.decode('utf8'))
     lines = output.strip().split('\n')
-    chains = filter(None, (chain_re.match(l) for l in lines))
+    chains = filter(None, (chain_re.match(line) for line in lines))
     return {c.group(1): c.group(2)
             for c in chains}
 
@@ -48,7 +48,7 @@ for layer in ('iptables', 'ip6tables'):
                    else 'off'),
     }
 
-results['status'] = 'off' if any(l for l in results['layers'].values()
-                                 if l['status'] == 'off') else 'on'
+results['status'] = 'off' if any(layer for layer in results['layers'].values()
+                                 if layer['status'] == 'off') else 'on'
 
 print(json.dumps(results))

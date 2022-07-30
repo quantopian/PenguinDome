@@ -32,7 +32,7 @@ def find_who_x_users():
 
     w_lines = subprocess.check_output(
         ('who',)).decode('utf8').strip().split('\n')
-    matches = filter(None, (who_x_re.match(l) for l in w_lines))
+    matches = filter(None, (who_x_re.match(line) for line in w_lines))
     _who_x_users = [m.groups() for m in matches]
     return _who_x_users
 

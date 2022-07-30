@@ -31,7 +31,8 @@ valid_lockers = (
     'i3lock-fancy-rapid', 'swaylock',
 )
 valid_lockers_re = re.compile(r'\b(?:' +
-                              '|'.join(re.escape(l) for l in valid_lockers) +
+                              '|'.join(re.escape(locker)
+                                       for locker in valid_lockers) +
                               r')(?:\s|$)')
 log = get_logger('plugins/screenlock')
 

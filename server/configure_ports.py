@@ -60,8 +60,8 @@ def make_self_signed_cert(hostname):
                  '/CN={}/'.format(hostname), '-config', ssl_config.name),
                 stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            raise Exception('Certificate generation failed. Output:\n'.format(
-                e.output))
+            raise Exception(f'Certificate generation failed. '
+                            f'Output:\n{e.output}')
     return (cert_file, key_file)
 
 

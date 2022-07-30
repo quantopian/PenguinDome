@@ -92,7 +92,8 @@ def xguest_checker():
                               stderr=subprocess.DEVNULL)
     except (FileNotFoundError, subprocess.CalledProcessError):
         return None
-    return any(l for l in open('/etc/passwd') if re.match(r'xguest:', l))
+    return any(line for line in open('/etc/passwd')
+               if re.match(r'xguest:', line))
 
 
 def greetd_checker():

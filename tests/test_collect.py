@@ -1,7 +1,5 @@
-import os
-import pytest
-
 from client.collect import run_dir
+
 
 def test_is_alive(fs, fake_process):
     script_directory = '/tmp/collect'

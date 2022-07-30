@@ -148,8 +148,8 @@ def arch_checker():
                           e.output.decode('utf8'))
             installed = []
         else:
-            installed = [l.split(' ')[0]
-                         for l in output.decode('utf8').strip().split('\n')]
+            installed = [line.split(' ')[0]
+                         for line in output.decode('utf8').strip().split('\n')]
 
         return {'current': current,
                 'release': False,
@@ -273,7 +273,8 @@ def fedora_release_checker():
 
     try:
         version_id_line = next(
-            l for l in os_release if l.startswith('VERSION_ID=')).strip()
+            line for line in os_release
+            if line.startswith('VERSION_ID=')).strip()
     except StopIteration:
         log.error('Could not find VERSION_ID= line in /etc/os-release')
         return 'unknown'
