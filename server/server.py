@@ -873,9 +873,8 @@ def startServer(port, pipes_arg, local_only=False):
 
     werkzeug._internal._logger = logging.getLogger(log.name)
 
-    if not local_only:
-        app.config['deprecated_port'] = get_port_setting(
-            port, 'deprecated', False)
+    app.config['deprecated_port'] = not local_only and get_port_setting(
+        port, 'deprecated', False)
 
     # Logbook will handle all logging, via the root handler installed by
     # `get_logger` when it alls `logbook.compat.redirect_logging()`.
