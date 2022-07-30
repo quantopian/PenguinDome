@@ -14,7 +14,7 @@ from base64 import b64encode
 from collections import defaultdict
 import datetime
 from functools import partial
-from mongo_proxy import MongoProxy
+from mongodb_proxy import MongoProxy
 import os
 from pymongo import MongoClient
 from tempfile import NamedTemporaryFile
@@ -100,7 +100,7 @@ def get_logger(name, filter=None):
 def get_db(force_db=None):
     global db, pid
 
-    if force_db is None and db and os.getpid() == pid:
+    if force_db is None and db is not None and os.getpid() == pid:
         return db
 
     pid = os.getpid()

@@ -469,7 +469,7 @@ def submit():
             spec, {'$set': update,
                    '$unset': {'suspended': True}})
         if update_result.modified_count == 0:
-            db.clients.save(update)
+            db.clients.insert_one(update)
             log.info('Added new client: {}', hostname)
         log.info('Successful submission of {} by {}',
                  ', '.join(which), hostname)
