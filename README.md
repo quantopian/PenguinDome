@@ -1,6 +1,8 @@
 PenguinDome -- Simple Linux Mobile Device Management
 ====================================================
 
+Please [support this project on Patreon](https://patreon.com/jikseclecticofferings).
+
 PenguinDome is a minimalist MDM solution for Linux laptop and desktop
 computers. It strives to be simple, secure, and easily extendable.
 Unlike other MDM solutions which invest a lot of effort in policy
