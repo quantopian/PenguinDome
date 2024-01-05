@@ -16,7 +16,7 @@ Logbook==1.6.0
 netifaces==0.11.0
 pexpect==4.8.0
 psutil==5.9.5
-pycryptodome==3.19.0
+pycryptodome==3.19.1
 python-daemon==3.0.1
 python-dateutil==2.8.2
 PyYAML==6.0.1
