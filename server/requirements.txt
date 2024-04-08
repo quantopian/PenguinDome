@@ -15,7 +15,7 @@ Logbook==1.6.0
 git+https://github.com/openedx/MongoDBProxy.git#egg=openedx-mongodbproxy
 passlib==1.7.4
 pycryptodome==3.19.1
-pymongo==4.5.0
+pymongo==4.6.3
 python-dateutil==2.8.2
 pytz==2023.3.post1
 PyYAML==6.0.1
