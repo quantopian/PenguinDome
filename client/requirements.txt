@@ -20,5 +20,5 @@ pycryptodome==3.19.1
 python-daemon==3.0.1
 python-dateutil==2.8.2
 PyYAML==6.0.1
-requests==2.31.0
+requests==2.32.0
 stopit==1.1.2
