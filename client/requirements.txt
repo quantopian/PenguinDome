@@ -21,5 +21,5 @@ pycryptodome==3.19.1
 python-daemon==3.0.1
 python-dateutil==2.8.2
 PyYAML==6.0.1
-requests==2.31.0
+requests==2.32.3
 git+https://github.com/jikamens/stopit.git@9204d1de2ae294b878ed726c8278b28696a91f87#egg=stopit
