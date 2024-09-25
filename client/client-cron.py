@@ -44,7 +44,7 @@ def check_stamp(path, interval):
 
 
 def update_stamp(path):
-    open(path, 'w').write(str(datetime.datetime.utcnow()))
+    open(path, 'w').write(str(datetime.datetime.now(datetime.timezone.utc)))
 
 
 def main():

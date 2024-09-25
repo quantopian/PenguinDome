@@ -440,7 +440,7 @@ def dict_changes(old, new, prefix=None, changes=None, audit_trail=None):
 def submit():
     db = get_db()
     which = []
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     try:
         data = json.loads(request.form['data'])
     except json.decoder.JSONDecodeError as e:

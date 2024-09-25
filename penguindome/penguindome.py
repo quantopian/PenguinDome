@@ -545,7 +545,7 @@ def cached_data(key, data=None, add_timestamp=False, check_logged_in=False,
 
     if add_timestamp and isinstance(data, dict):
         save_data = data.copy()
-        save_data['cached_at'] = datetime.datetime.utcnow()
+        save_data['cached_at'] = datetime.datetime.now(datetime.timezone.utc)
     else:
         save_data = data
 

@@ -185,7 +185,7 @@ def main():
 
     results = {
         'hostname': socket.gethostname(),
-        'collected_at': datetime.datetime.utcnow(),
+        'collected_at': datetime.datetime.now(datetime.timezone.utc),
     }
 
     before_runlevel = runlevel_info()

@@ -41,7 +41,11 @@ from penguindome.server import (
 
 os.chdir(top_dir)
 log = None
-now = datetime.datetime.utcnow()
+# Timestamps retrieved from the database are UTC but have the timezone
+# stripped, so we have to strip the timezone here so we can compare against
+# the database timestamps without Python complaining that we're comparing
+# timezone-aware with timezone-naive datetimes.
+now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 _problem_checks = None
 
 

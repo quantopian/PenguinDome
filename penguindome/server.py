@@ -180,7 +180,7 @@ def patch_hosts(patch_path, patch_mode=0o755, patch_content=b'', signed=True,
         })
 
     result = db.patches.insert_one({
-        'submitted_at': datetime.datetime.utcnow(),
+        'submitted_at': datetime.datetime.now(datetime.timezone.utc),
         'pending_hosts': hosts,
         'completed_hosts': [],
         'files': files,
@@ -204,9 +204,10 @@ def open_issue(hostname, issue_name, as_of=None):
 
     existing = db.issues.find_one(spec)
     if not existing:
-        db.issues.insert_one({'hostname': hostname,
-                              'name': issue_name,
-                              'opened_at': datetime.datetime.utcnow()})
+        db.issues.insert_one({
+            'hostname': hostname,
+            'name': issue_name,
+            'opened_at': datetime.datetime.now(datetime.timezone.utc)})
     return not existing
 
 
@@ -223,7 +224,7 @@ def close_issue(hostname, issue_name):
     docs = list(db.issues.find(spec))
     if not docs:
         return docs
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     for doc in docs:
         doc['closed_at'] = now
     db.issues.update_many({'_id': {'$in': [d['_id'] for d in docs]}},
@@ -334,7 +335,7 @@ def unsnooze_issue(hostname, issue_name):
 
     db = get_db()
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     spec = {'closed_at': {'$exists': False}, 'unsnooze_at': {'$gt': now}}
 
     if hostname:
@@ -429,7 +430,7 @@ def audit_trail_write(tags, records):
     """
 
     if 'audited_at' not in tags:
-        tags['audited_at'] = datetime.datetime.utcnow()
+        tags['audited_at'] = datetime.datetime.now(datetime.timezone.utc)
 
     if isinstance(records, dict):
         records = (records,)
@@ -505,7 +506,7 @@ def set_client_parameter(hostname, parameter, value, recurse=True):
         new = spec.copy()
 
     new['value'] = value
-    new['updated_at'] = datetime.datetime.utcnow()
+    new['updated_at'] = datetime.datetime.now(datetime.timezone.utc)
     collection.replace_one(spec, new, upsert=True)
 
     return old_value
