@@ -13,7 +13,7 @@
 from base64 import b64encode
 from collections import namedtuple, OrderedDict
 import datetime
-from distutils.version import LooseVersion
+from packaging.version import Version
 import fcntl
 import fnmatch
 import glob
@@ -137,7 +137,7 @@ def gpg_command(*cmd, with_user_id=False, with_trustdb=False, quiet=True,
         if not match:
             raise Exception('Could not determine GnuPG version in output:\n{}'.
                             format(output))
-        if LooseVersion(match.group(1)) < LooseVersion(minimum_version):
+        if Version(match.group(1)) < Version(minimum_version):
             raise Exception('GnuPG version {} or newer is required. '
                             'You have version {}.'.format(
                                 minimum_version, match.group(1)))

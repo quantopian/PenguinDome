@@ -14,6 +14,7 @@ distro==1.8.0
 fasteners==0.18
 Logbook==1.6.0
 netifaces==0.11.0
+packaging==24.1
 pexpect==4.8.0
 psutil==5.9.5
 pycryptodome==3.19.1
