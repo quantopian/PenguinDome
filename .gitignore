@@ -19,6 +19,7 @@ client/cacert.pem
 client/keyring
 client/settings.yml
 server/keyring
+client/release.txt
 server/settings.yml
 server/venv
 signatures
