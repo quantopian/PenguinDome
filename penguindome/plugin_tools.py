@@ -157,7 +157,7 @@ class DBusUser(object):
         self.environ = self.found_users[which]
 
     def __str__(self):
-        return("<DBusUser('{}', '{}')>".format(self.user, self.display))
+        return "<DBusUser('{}', '{}')>".format(self.user, self.display)
 
     def command(self, cmd, stderr=None):
         """Executes the specified shell command in the user's DBus context

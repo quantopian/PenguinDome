@@ -299,7 +299,7 @@ def verify_signature(f):
                     remote_addr))
             else:
                 log.info('Ignoring empty request with no remote address')
-            return('error')
+            return 'error'
         try:
             signature = request.form['signature']
         except Exception:
@@ -310,7 +310,7 @@ def verify_signature(f):
             remote_addr = getattr(request, 'remote_addr', None)
             log.error('Ignoring malformed request (no signature) from '
                       'host {}, addr {}'.format(hostname, remote_addr))
-            return('error')
+            return 'error'
         with tempfile.NamedTemporaryFile('w+') as data_file, \
                 tempfile.NamedTemporaryFile('w+') as signature_file:
             data_file.write(data)
@@ -325,7 +325,7 @@ def verify_signature(f):
                 remote_addr = getattr(request, 'remote_addr', None)
                 log.error('Ignoring malformed request (bad signature) from '
                           'host {}, addr {}'.format(hostname, remote_addr))
-                return('error')
+                return 'error'
         return f(*args, **kwargs)
     return wrapper
 
@@ -488,10 +488,10 @@ def submit():
             if audit_trail:
                 audit_trail_write({'audited_at': now, 'hostname': hostname},
                                   audit_trail)
-        return('ok')
+        return 'ok'
     else:
         log.error('Empty submission from {}', hostname)
-        return('error')
+        return 'error'
 
 
 @app.route('/PenguinDome/v1/update', methods=('POST',))
