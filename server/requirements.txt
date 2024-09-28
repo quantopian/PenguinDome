@@ -12,7 +12,7 @@
 
 Flask==3.0.3
 Logbook==1.7.0.post0
-git+https://github.com/jikamens/openedx-MongoDBProxy.git@d1d7184566a98d4e6ea3180fb98e03807c4f5f18#egg=openedx-mongodbproxy
+git+https://github.com/jikamens/openedx-MongoDBProxy.git@8c36cb0389b8c32638b64c5db507deab6f754655#egg=openedx-mongodbproxy
 packaging==24.1
 passlib==1.7.4
 pycryptodome==3.20.0
