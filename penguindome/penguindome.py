@@ -368,12 +368,12 @@ def get_logger(setting_getter, name, fail_to_local=False, filter=None):
 
     if filter:
         def log_filter(r, h):
-            if server_pipe_log_filter_re.search(r.message):
+            if server_pipe_log_filter_re.search(str(r.message)):
                 return False
             return filter(r, h)
     else:
         def log_filter(r, h):
-            return not server_pipe_log_filter_re.search(r.message)
+            return not server_pipe_log_filter_re.search(str(r.message))
 
     logger_name = 'penguindome-' + name
     file_safe_logger_name = logger_name.replace(os.sep, '_')

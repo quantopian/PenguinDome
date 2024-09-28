@@ -10,15 +10,15 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-Flask==2.3.3
-Logbook==1.6.0
-git+https://github.com/openedx/MongoDBProxy.git@77fc125b115ed522818816171c446293b99be25b#egg=openedx-mongodbproxy
+Flask==3.0.3
+Logbook==1.7.0.post0
+git+https://github.com/jikamens/openedx-MongoDBProxy.git@d1d7184566a98d4e6ea3180fb98e03807c4f5f18#egg=openedx-mongodbproxy
 packaging==24.1
 passlib==1.7.4
-pycryptodome==3.19.1
-pymongo==4.6.3
-python-dateutil==2.8.2
-pytz==2023.3.post1
-PyYAML==6.0.1
+pycryptodome==3.20.0
+pymongo==4.9.1
+python-dateutil==2.9.0.post0
+pytz==2024.2
+PyYAML==6.0.2
 requests==2.32.3
 git+https://github.com/jikamens/stopit.git@9204d1de2ae294b878ed726c8278b28696a91f87#egg=stopit

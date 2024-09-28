@@ -15,7 +15,8 @@
 import json
 import distro
 
-distname, version, _ = distro.linux_distribution()
+distname = distro.name()
+version = distro.version()
 
 results = {
     'distname': distname,

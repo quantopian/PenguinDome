@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 import glob
 import os
 import re
@@ -42,7 +42,7 @@ def lightdm_checker():
         return None
     # "allow-guest" setting in "Seat:*" INI section controls whether guest
     # session is allowed. It defaults to true if not set.
-    parser = SafeConfigParser()
+    parser = ConfigParser()
     parser.read(glob.glob('/usr/share/lightdm/lightdm.conf.d/*.conf') +
                 glob.glob('/etc/lightdm/*.conf'))
     if not parser.has_section('Seat:*'):

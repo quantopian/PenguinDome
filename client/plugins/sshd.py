@@ -37,7 +37,7 @@ try:
     for p in psutil.process_iter():
         try:
             if sshd_name_re.search(p.exe()) or \
-               any(c for c in p.connections('tcp')
+               any(c for c in p.net_connections('tcp')
                    if c.laddr[1] == 22 and not len(c.raddr)):
                 sshd_process = p.as_dict(attrs=('exe', 'cmdline'))
                 break

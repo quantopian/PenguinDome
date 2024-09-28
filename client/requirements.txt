@@ -10,16 +10,16 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-distro==1.8.0
-fasteners==0.18
-Logbook==1.6.0
+distro==1.9.0
+fasteners==0.19
+Logbook==1.7.0.post0
 netifaces==0.11.0
 packaging==24.1
-pexpect==4.8.0
-psutil==5.9.5
-pycryptodome==3.19.1
+pexpect==4.9.0
+psutil==6.0.0
+pycryptodome==3.20.0
 python-daemon==3.0.1
-python-dateutil==2.8.2
-PyYAML==6.0.1
+python-dateutil==2.9.0.post0
+PyYAML==6.0.2
 requests==2.32.3
 git+https://github.com/jikamens/stopit.git@9204d1de2ae294b878ed726c8278b28696a91f87#egg=stopit
