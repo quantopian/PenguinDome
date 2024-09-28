@@ -121,15 +121,13 @@ def get_db(force_db=None):
         replicaset = get_setting('database:replicaset')
         if replicaset:
             kwargs['replicaset'] = replicaset
+        username = get_setting('database:username')
+        if username:
+            kwargs['username'] = username
+            kwargs['password'] = get_setting('database:password')
         connection = MongoClient(host, **kwargs)
 
     newdb = connection[database_name]
-
-    username = get_setting('database:username')
-    if username:
-        password = get_setting('database:password')
-        newdb.authenticate(username, password)
-
     db = MongoProxy(newdb)
     return db
 
