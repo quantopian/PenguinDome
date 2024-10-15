@@ -139,8 +139,9 @@ def cancel_handler(args):
         for f in file_descriptions(patch):
             log.info('Canceling {} on {}', f, hosts_list)
             print('Canceling {} on {}'.format(f, hosts_list))
-        db.patches.update({'_id': patch['_id']},
-                          {'$set': {'pending_hosts': list(remaining_hosts)}})
+        db.patches.update_one(
+            {'_id': patch['_id']},
+            {'$set': {'pending_hosts': list(remaining_hosts)}})
 
 
 def main():

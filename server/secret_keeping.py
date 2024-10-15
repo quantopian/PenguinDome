@@ -323,7 +323,7 @@ def encrypt_handler(args):
     for doc in db.clients.find(spec):
         doc, update = encrypt_document(doc)
         if update:
-            db.clients.update({'_id': doc['_id']}, update)
+            db.clients.update_one({'_id': doc['_id']}, update)
             log.info('Encrypted data in client document {} (host {})',
                      doc['_id'], doc['hostname'])
             print('Encrypted client document {} (host {})'.format(
@@ -334,7 +334,7 @@ def encrypt_handler(args):
         if update:
             update['$set']['key'] = next(s.enc_mongo for s in selectors if
                                          s.plain_mongo == doc['key'])
-            db.audit_trail.update({'_id': doc['_id']}, update)
+            db.audit_trail.update_one({'_id': doc['_id']}, update)
             log.info('Encrypted data in audit trail document {} (host {})',
                      doc['_id'], doc['hostname'])
             print('Encrypted audit trail document {} (host {})'.format(
@@ -440,7 +440,7 @@ def decrypt_handler(args):
                 spec = {'_id': keys['_id']}
                 update = {'$set': {s.plain_mongo: u for s, u in tuples},
                           '$unset': {s.enc_mongo: True for s, u in tuples}}
-                db.clients.update(spec, update)
+                db.clients.update_one(spec, update)
                 log.info('Decrypted data in client document {} (host {})',
                          keys['_id'], keys['hostname'])
                 print('Decrypted client document {} (host {})'.format(
@@ -454,7 +454,7 @@ def decrypt_handler(args):
                 dct['key'] = next(s.plain_mongo for s in selectors if
                                   s.enc_mongo == dct['key'])
                 spec = {'_id': dct['_id']}
-                db.audit_trail.update(spec, dct)
+                db.audit_trail.update_one(spec, dct)
                 log.info('Decrypted data in audit trail document {} (host {})',
                          dct['_id'], dct['hostname'])
                 print('Decrypted audit trail document {} (host {})'.format(

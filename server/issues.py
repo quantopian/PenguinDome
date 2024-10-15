@@ -384,8 +384,8 @@ def check_pending_patches():
     for patch in db.patches.find({'pending_hosts': {'$not': {'$size': 0}}}):
         for hostname in patch['pending_hosts']:
             if not client_exists(hostname):
-                db.patches.update({'_id': patch['_id']},
-                                  {'$pull': {'pending_hosts': hostname}})
+                db.patches.update_one({'_id': patch['_id']},
+                                      {'$pull': {'pending_hosts': hostname}})
                 log.info('Removed deleted client {} from pending patch {}',
                          hostname, patch['_id'])
                 continue
@@ -479,7 +479,7 @@ def audit_handler(args):
                 if not in_a_terminal:
                     log.warn('{} {} since {}', key1, key2, issue['opened_at'])
                 if args.update_recent:
-                    db.issues.update(
+                    db.issues.update_one(
                         {'_id': issue['_id']}, {'$set': {'alerted_at': now}})
         if client and args.email and email_list:
             email = get_client_parameter(key1, 'user_email')
