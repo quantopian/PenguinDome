@@ -26,5 +26,6 @@ systemd
 tar
 ubuntu-release-upgrader-core
 update-notifier-common
-virtualenv
+python3-venv
+python3-dev
 wireless-tools

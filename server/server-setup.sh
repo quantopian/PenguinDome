@@ -75,7 +75,7 @@ elif [ "$ID_LIKE" = "archlinux" ]; then
 fi
 
 if [ ! -d $venv ]; then
-    virtualenv -p python3 $venv
+    python3 -m venv $venv
 fi
 
 for dir in $(find $venv -name site-packages); do

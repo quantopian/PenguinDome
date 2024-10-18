@@ -18,4 +18,5 @@ openssl
 python3
 systemd
 tar
-virtualenv
+python3-venv
+python3-dev

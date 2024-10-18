@@ -22,7 +22,7 @@ git
 lvm2
 psmisc
 python
-python-virtualenv
+python
 systemd
 tar
 util-linux

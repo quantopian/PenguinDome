@@ -90,6 +90,14 @@ PenguinDome also uses a bunch of Python packages, all of which are
 deployed into a private virtualenv on the clients and server using
 `pip` at install time.
 
+`virtualenv` are created with native `python3 -m venv` tool now.
+Existing `virtualenv` created previously with `virtualenv` continue
+to work as-is.
+
+The use of `netifaces` package in client plugins requires `pip` 
+to compile it, hence the requirement of ubuntu `python-dev` or 
+equivalent on *the client* side.
+
 There's a nascent attempt in the `arch` subdirectory to build Pacman
 client packages for Arch Linux, but these don't entirely work right
 now, so for the time being, Arch clients use the same deployment
