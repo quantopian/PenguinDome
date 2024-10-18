@@ -17,6 +17,6 @@ gnupg
 https://aur.archlinux.org/libgfshare.git
 openssl
 python
-python-virtualenv
+python
 systemd
 tar
