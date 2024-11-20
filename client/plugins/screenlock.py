@@ -128,14 +128,26 @@ def xidlehook_status(user, display):
         timers = []
         try:
             while args:
-                # xidlehook timers always have 4 positional arguments
-                # https://github.com/jD91mZM2/xidlehook/blob/cbc3302e3485a8308d6ba5dd6b4d069d322908dd/src/main.rs#L122  # noqa
+                # xidlehook timers have either 3 or 4 positional arguments
+                # depending on the version of xidlehook being used. Older
+                # versions have "mode" (which can be "normal" or "primary",
+                # "duration", "command", and "canceller", but newer versions
+                # (as of 2020-05-24) omit the "mode" argument. Eventually the
+                # backward-compatibility support for the "mode" argument can
+                # be removed.
                 if args[0] == '--timer':
-                    timers.append({
-                        'time': int(args[2]),
-                        'locker': args[3]
-                    })
-                    del args[0:5]
+                    if args[1] in ("normal", "primary"):
+                        timers.append({
+                            'time': int(args[2]),
+                            'locker': args[3]
+                        })
+                        del args[0:5]
+                    else:
+                        timers.append({
+                            'time': int(args[1]),
+                            'locker': args[2]
+                        })
+                        del args[0:4]
                 else:
                     args.pop(0)
         except Exception:
