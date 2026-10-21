@@ -5,3 +5,6 @@ pytest-mock==3.14.0
 pytest-mongodb==2.4.0
 pytest-subprocess==1.5.2
 tox-setuptools-version==0.0.0.3
+# Explicit tox version to make installs faster; there are no known
+# dependencies in the project on this specific version.
+tox>=4.23.2,<4.24.0
